@@ -53,6 +53,7 @@ import {
 } from "lucide-react";
 import type { Employee, UserRole } from "@/lib/types";
 import { createEmployeeWithAuth } from "./actions";
+import { AvatarImage } from "@radix-ui/react-avatar";
 
 export default function EmployeesPage() {
 	const { employee: currentUser } = useUser();
@@ -564,16 +565,17 @@ export default function EmployeesPage() {
 											<TableRow key={employee.id}>
 												<TableCell>
 													<div className='flex items-center gap-3'>
-														<Avatar className='h-9 w-9'>
-															<AvatarFallback className='bg-primary/10 text-primary text-sm'>
-																{
-																	employee
-																		.first_name?.[0]
-																}
-																{
-																	employee
-																		.last_name?.[0]
-																}
+														<Avatar className="h-9 w-9">
+															{employee.avatar_url && (
+																<AvatarImage className="object-cover"
+																	src={employee.avatar_url}
+																	alt={`${employee.first_name} ${employee.last_name}`}
+																/>
+															)}
+
+															<AvatarFallback className="bg-primary/10 text-primary text-sm">
+																{employee.first_name?.[0]}
+																{employee.last_name?.[0]}
 															</AvatarFallback>
 														</Avatar>
 														<div>
