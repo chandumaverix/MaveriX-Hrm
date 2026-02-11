@@ -31,7 +31,7 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
-import { Plus, Users, Pencil, Trash2, UserPlus, Search } from "lucide-react";
+import { Plus, Users, Pencil, Trash2, UserPlus, Search, Croissant, X } from "lucide-react";
 import type { Team, Employee, TeamMember } from "@/lib/types";
 
 interface TeamWithDetails extends Team {
@@ -410,17 +410,17 @@ export default function TeamsPage() {
 												Add
 											</Button>
 										</div>
-										<div className='space-y-2'>
+										<div className='space-2 flex items-center flex-wrap gap-2'>
 											{team.team_members &&
-											team.team_members.length > 0 ? (
+												team.team_members.length > 0 ? (
 												team.team_members
 													.slice(0, 4)
 													.map((member) => (
 														<div
 															key={member.id}
-															className='flex items-center justify-between rounded-lg border border-border p-2'>
+															className='flex items-center justify-center rounded-full border px-2 py-1'>
 															<div className='flex items-center gap-2'>
-																<Avatar className='h-7 w-7'>
+																<Avatar className='h-5 w-5'>
 																	{member.employee?.avatar_url && (
 																		<AvatarImage
 																			height={32}
@@ -443,7 +443,7 @@ export default function TeamsPage() {
 																		}
 																	</AvatarFallback>
 																</Avatar>
-																<span className='text-sm'>
+																<span className='text-xs'>
 																	{
 																		member
 																			.employee
@@ -458,14 +458,13 @@ export default function TeamsPage() {
 															</div>
 															<Button
 																variant='ghost'
-																size='icon'
-																className='h-6 w-6 text-muted-foreground hover:text-destructive'
+																className='h-6 w-6 text-xs hover:text-destructive'
 																onClick={() =>
 																	handleRemoveMember(
 																		member.id
 																	)
 																}>
-																<Trash2 className='h-3 w-3' />
+																<X className='h-1 w-1' />
 															</Button>
 														</div>
 													))
@@ -476,7 +475,7 @@ export default function TeamsPage() {
 											)}
 											{team.team_members &&
 												team.team_members.length >
-													4 && (
+												4 && (
 													<Badge
 														variant='secondary'
 														className='text-xs'>
@@ -624,12 +623,11 @@ export default function TeamsPage() {
 																	emp.id
 																)
 															}
-															className={`w-full flex items-center gap-3 rounded-md px-3 py-2 text-left text-sm transition-colors hover:bg-accent ${
-																selectedEmployee ===
+															className={`w-full flex items-center gap-3 rounded-md px-3 py-2 text-left text-sm transition-colors hover:bg-accent ${selectedEmployee ===
 																emp.id
-																	? "bg-accent"
-																	: ""
-															}`}>
+																? "bg-accent"
+																: ""
+																}`}>
 															<Avatar className='h-8 w-8'>
 																{emp.avatar_url && (
 																	<AvatarImage

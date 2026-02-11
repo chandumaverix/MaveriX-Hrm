@@ -765,7 +765,7 @@ export default function LeavePage() {
 
 			<div className='flex-1 p-6'>
 				<Tabs defaultValue='requests' className='space-y-4'>
-					<TabsList className='h-12 w-full grid grid-cols-2'>
+					<TabsList className='h-12 '>
 						<TabsTrigger
 							value='requests'
 							className='gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground'>
@@ -1077,7 +1077,7 @@ export default function LeavePage() {
 															{/* Allocated Leaves */}
 															<div className='space-y-1.5'>
 																<p className='text-[10px] uppercase tracking-wide text-muted-foreground font-medium'>Allocated Leaves</p>
-																<div className='space-y-1.5'>
+																<div className='space-y-1.5 flex flex-wrap gap-2'>
 																	{group.balances.map(
 																		(
 																			bal
@@ -1096,17 +1096,17 @@ export default function LeavePage() {
 																					key={
 																						bal.id
 																					}
-																					className='flex items-center justify-between p-1.5 rounded bg-muted/30'>
+																					className='flex items-center justify-between py-1 px-3 rounded-full border gap-2'>
 																					<div className='flex-1 min-w-0'>
 																						<p className='text-xs font-medium truncate'>
 																							{typeName}
 																						</p>
-																						<p className='text-[10px] text-muted-foreground'>
+																						{/* <p className='text-[10px] text-muted-foreground'>
 																							{formatRemainingDays(
 																								remaining
 																							)}{" "}
 																							remaining
-																						</p>
+																						</p> */}
 																					</div>
 																					<div className='text-right'>
 																						<p className='text-base font-bold text-primary'>
@@ -1114,9 +1114,9 @@ export default function LeavePage() {
 																								remaining
 																							)}
 																						</p>
-																						<p className='text-[9px] text-muted-foreground'>
+																						{/* <p className='text-[9px] text-muted-foreground'>
 																							of {bal.total_days}
-																						</p>
+																						</p> */}
 																					</div>
 																				</div>
 																			);

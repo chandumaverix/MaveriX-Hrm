@@ -110,7 +110,7 @@ export default function FinancePage() {
 		const { data } = await supabase
 			.from("finance_records")
 			.select(
-				"*, employee:employees!finance_records_employee_id_fkey(id, first_name, last_name, designation, email)"
+				"*, employee:employees!finance_records_employee_id_fkey(id, first_name, last_name, designation, email, avatar)"
 			)
 			.order("year", { ascending: false })
 			.order("month", { ascending: false })
@@ -1330,10 +1330,10 @@ export default function FinancePage() {
 												{/* Employee Header */}
 												<div className='flex items-center gap-3 pb-3 border-b border-border/50'>
 													<Avatar className='h-12 w-12 shrink-0'>
-														{emp.avatar_url ? (
+														{emp.avatar_url? (
 															<AvatarImage className="object-cover"
 																src={emp.avatar_url}
-																alt={`${emp.first_name} ${emp.last_name}`}
+																
 															/>
 														) : null}
 														<AvatarFallback className='bg-primary text-primary-foreground'>
