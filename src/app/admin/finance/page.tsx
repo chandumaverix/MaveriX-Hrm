@@ -110,7 +110,7 @@ export default function FinancePage() {
 		const { data } = await supabase
 			.from("finance_records")
 			.select(
-				"*, employee:employees!finance_records_employee_id_fkey(id, first_name, last_name, designation, email)"
+				"*, employee:employees!finance_records_employee_id_fkey(id, first_name, last_name, avatar_url, designation, email)"
 			)
 			.order("year", { ascending: false })
 			.order("month", { ascending: false })
