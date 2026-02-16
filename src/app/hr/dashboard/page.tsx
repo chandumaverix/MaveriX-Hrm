@@ -526,23 +526,66 @@ export default function HRDashboardPage() {
 
 							{/* Recent Attendance (unchanged functionality) */}
 							<div className="space-y-2 border-t border-border/50 pt-4">
-								<p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Recent Attendance</p>
-								{recentAttendance.length === 0 ? (
-									<p className="text-xs text-muted-foreground">No attendance records for this month yet.</p>
+								<p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+									Today's Attendance
+								</p>
+
+								{recentAttendance.filter((att) => {
+									const today = new Date();
+									const attDate = new Date(att.date);
+
+									return (
+										attDate.getDate() === today.getDate() &&
+										attDate.getMonth() === today.getMonth() &&
+										attDate.getFullYear() === today.getFullYear()
+									);
+								}).length === 0 ? (
+									<p className="text-xs text-muted-foreground">
+										No attendance record for today.
+									</p>
 								) : (
-									<div className="space-y-2 max-h-40 overflow-y-auto pr-1">
-										{recentAttendance.map((att) => (
-											<div key={att.id} className="flex items-center justify-between rounded-xl border border-border/50 bg-white px-3 py-2.5">
-												<div className="flex gap-2">
-													<p className="text-xs font-medium">{new Date(att.date).toLocaleDateString("en-US", { month: "short", day: "numeric" })}</p>
-													<p className="text-[11px] text-muted-foreground">{formatTime(att.clock_in)} – {formatTime(att.clock_out)}</p>
+									<div className="space-y-2">
+										{recentAttendance
+											.filter((att) => {
+												const today = new Date();
+												const attDate = new Date(att.date);
+
+												return (
+													attDate.getDate() === today.getDate() &&
+													attDate.getMonth() === today.getMonth() &&
+													attDate.getFullYear() === today.getFullYear()
+												);
+											})
+											.map((att) => (
+												<div
+													key={att.id}
+													className="flex items-center justify-between rounded-xl border border-border/50 bg-white px-3 py-2.5"
+												>
+													<div className="flex gap-2">
+														<CheckCircle2 className="h-4 w-4 text-green-500" />
+														<p className="text-xs font-medium">
+															{new Date(att.date).toLocaleDateString("en-US", {
+																month: "short",
+																day: "numeric",
+															})}
+														</p>
+														<p className="text-[11px] text-muted-foreground">
+															{formatTime(att.clock_in)} – {formatTime(att.clock_out)}
+														</p>
+													</div>
+
+													<div className="flex gap-2 text-right">
+														<p className="text-xs font-medium capitalize">
+															Total
+														</p>
+														{att.total_hours != null && (
+															<p className="text-[11px] text-muted-foreground">
+																{att.total_hours.toFixed(2)} hrs
+															</p>
+														)}
+													</div>
 												</div>
-												<div className="flex gap-2 text-right">
-													<p className="text-xs font-medium capitalize">{att.status}</p>
-													{att.total_hours != null && <p className="text-[11px] text-muted-foreground">{att.total_hours.toFixed(2)} hrs</p>}
-												</div>
-											</div>
-										))}
+											))}
 									</div>
 								)}
 							</div>

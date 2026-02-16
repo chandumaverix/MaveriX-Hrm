@@ -152,3 +152,11 @@
   background-repeat: no-repeat;
   background-position: center;
 }
+
+/* Search header image */
+.search-header-image {
+  background-image: url("/searchheader.png");
+  background-size: cover;
+  background-repeat: no-repeat;
+  background-position: center;
+}
