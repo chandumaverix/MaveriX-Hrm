@@ -2,15 +2,7 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import {
-	Building2,
-	Loader2,
-	ArrowLeft,
-	Mail,
-	Shield,
-	Users,
-	Clock,
-} from "lucide-react";
+import { Building2, Loader2, ArrowLeft, Mail } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import {
@@ -55,37 +47,29 @@ export default function ForgotPasswordPage() {
 	};
 
 	return (
-		<div className='grid min-h-svh grid-cols-1 bg-background lg:grid-cols-2'>
-			<div className='relative hidden lg:block'>
-				<Image
-					src='/newloginbackground.png'
-					alt='MaveriX HRM — simplify your HR workflows'
-					fill
-					priority
-					className='object-cover'
-				/>
-
-			</div>
-			<div className='flex items-center p-6 md:p-10'>
-				<div className='w-full max-w-md'>
-					<div>
-						<CardHeader className='mb-5'>
-							<Image className="mb-6"
-								src='/maverix-logo.png'
-								alt='MaveriX - Smart HRM'
-								width={100}
-								height={100}
-							/>
-							<CardTitle className='text-2xl'>Forgot Password</CardTitle>
+		<div className='flex min-h-svh w-full items-center justify-center bg-gradient-to-br from-primary/5 via-background to-primary/10 p-6 md:p-10'>
+			<div className='w-full max-w-md'>
+				<div className='flex flex-col gap-6'>
+					<div className='flex items-center justify-center gap-2 text-primary'>
+					<Image src="/maverix-logo.png" alt="MaveriX - Smart HRM" width={100} height={100} />
+					</div>
+					<Card className='shadow-lg'>
+						<CardHeader className='text-center'>
+							<CardTitle className='text-2xl'>
+								Forgot Password
+							</CardTitle>
 							<CardDescription>
-								Enter your email to receive a reset link
+								Enter your email and we&apos;ll send you a link
+								to reset your password
 							</CardDescription>
 						</CardHeader>
 						<CardContent>
 							{success ? (
 								<div className='space-y-4'>
 									<div className='rounded-md bg-success/10 p-3 text-sm text-success'>
-										Check your email for a reset link. It may take a few minutes. If you don&apos;t see it, check your spam folder.
+										Check your email for a reset link. It may
+										take a few minutes. If you don&apos;t see
+										it, check your spam folder.
 									</div>
 									<Button asChild variant='outline' className='w-full'>
 										<Link href='/auth/login'>
@@ -105,7 +89,9 @@ export default function ForgotPasswordPage() {
 												placeholder='you@company.com'
 												required
 												value={email}
-												onChange={(e) => setEmail(e.target.value)}
+												onChange={(e) =>
+													setEmail(e.target.value)
+												}
 												className='h-11'
 											/>
 										</div>
@@ -114,7 +100,10 @@ export default function ForgotPasswordPage() {
 												{error}
 											</div>
 										)}
-										<Button type='submit' className='h-11 w-full' disabled={isLoading}>
+										<Button
+											type='submit'
+											className='h-11 w-full'
+											disabled={isLoading}>
 											{isLoading ? (
 												<>
 													<Loader2 className='mr-2 h-4 w-4 animate-spin' />
@@ -137,7 +126,7 @@ export default function ForgotPasswordPage() {
 								</form>
 							)}
 						</CardContent>
-					</div>
+					</Card>
 				</div>
 			</div>
 		</div>
