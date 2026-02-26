@@ -38,6 +38,7 @@ export function DashboardHeader({
 		null
 	);
 	const searchRef = useRef<HTMLDivElement>(null);
+	const searchMobileRef = useRef<HTMLDivElement>(null);
 
 	const getGreeting = () => {
 		const hour = new Date().getHours();
@@ -81,12 +82,10 @@ export function DashboardHeader({
 
 	useEffect(() => {
 		const handleClickOutside = (e: MouseEvent) => {
-			if (
-				searchRef.current &&
-				!searchRef.current.contains(e.target as Node)
-			) {
-				setIsDropdownOpen(false);
-			}
+			const target = e.target as Node;
+			if (searchRef.current && searchRef.current.contains(target)) return;
+			if (searchMobileRef.current && searchMobileRef.current.contains(target)) return;
+			setIsDropdownOpen(false);
 		};
 		document.addEventListener("mousedown", handleClickOutside);
 		return () =>
@@ -198,6 +197,63 @@ export function DashboardHeader({
 					{actions}
 				</div>
 			</header>
+
+			<div className="px-4 pt-3 md:hidden" ref={searchMobileRef}>
+				<div className="relative">
+					<Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+					<Input
+						placeholder={searchPlaceholder}
+						className="w-full bg-muted/50 pl-9"
+						value={searchQuery}
+						onChange={(e) => setSearchQuery(e.target.value)}
+						onFocus={() => {
+							if (searchQuery.trim().length >= 2) setIsDropdownOpen(true);
+						}}
+					/>
+					{isDropdownOpen && (
+						<div className="absolute left-0 top-full z-50 mt-1 w-full rounded-md border border-border bg-popover shadow-lg">
+							{isSearching ? (
+								<div className="flex items-center gap-2 p-4 text-sm text-muted-foreground">
+									<Loader2 className="h-4 w-4 animate-spin" />
+									Searching...
+								</div>
+							) : searchResults.length === 0 ? (
+								<div className="p-4 text-sm text-muted-foreground">
+									No employees found
+								</div>
+							) : (
+								<div className="max-h-64 overflow-y-auto py-1">
+									{searchResults.map((emp) => {
+										const name =
+											`${emp.first_name || ""} ${emp.last_name || ""}`.trim() || emp.email;
+										return (
+											<button
+												key={emp.id}
+												type="button"
+												className="flex w-full items-center gap-3 px-3 py-2.5 text-left text-sm hover:bg-muted/80"
+												onClick={() => handleSelectEmployee(emp)}
+											>
+												<Avatar className="h-8 w-8">
+													{emp.avatar_url ? <AvatarImage src={emp.avatar_url} alt={name} /> : null}
+													<AvatarFallback className="text-xs">
+														{(emp.first_name?.[0] || "") + (emp.last_name?.[0] || "") || "?"}
+													</AvatarFallback>
+												</Avatar>
+												<div className="min-w-0 flex-1">
+													<p className="truncate font-medium">{name}</p>
+													<p className="truncate text-xs text-muted-foreground">
+														{emp.designation || emp.email}
+													</p>
+												</div>
+											</button>
+										);
+									})}
+								</div>
+							)}
+						</div>
+					)}
+				</div>
+			</div>
 
 			<Dialog
 				open={!!selectedEmployee}
