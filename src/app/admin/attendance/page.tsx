@@ -66,11 +66,22 @@ export default function AttendancePage() {
 		if (settingsLoading || !settings) return;
 		let cancelled = false;
 		(async () => {
-			await fetchAttendance();
-			if (cancelled) return;
-			await fetchEmployees();
-			if (cancelled) return;
-			// Auto clock-out is now handled by API endpoint and cron job
+			try {
+				setIsLoading(true);
+				// Fetch the active roster first so blocked employees are never rendered.
+				await fetchEmployees();
+				if (cancelled) return;
+				await fetchAttendance();
+				if (cancelled) return;
+				// Auto clock-out is now handled by API endpoint and cron job
+			} catch (e) {
+				console.error(e);
+				toast.error(
+					e instanceof Error ? e.message : "Failed to load attendance data"
+				);
+			} finally {
+				if (!cancelled) setIsLoading(false);
+			}
 		})();
 		return () => {
 			cancelled = true;
@@ -87,7 +98,6 @@ export default function AttendancePage() {
 
 		const records = (data as unknown as AttendanceWithEmployee[]) || [];
 		setAttendanceRecords(records);
-		setIsLoading(false);
 	};
 
 	const fetchEmployees = async () => {
@@ -95,12 +105,11 @@ export default function AttendancePage() {
 		const { data } = await supabase
 			.from("employees")
 			.select("*")
+			// Exclude blocked employees (blocked = account disabled)
 			.eq("is_active", true)
 			.neq("role", "admin");
 		setEmployees(data || []);
 	};
-
-	
 
 	const handleClockOut = async (attendanceId: string) => {
 		const supabase = createClient();
