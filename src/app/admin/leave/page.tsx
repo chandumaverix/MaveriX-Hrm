@@ -35,6 +35,7 @@ import {
 	CalendarDays,
 	CalendarCheck,
 	ExternalLink,
+	Info,
 } from "lucide-react";
 import type {
 	Employee,
@@ -51,6 +52,12 @@ import {
 	DialogTitle,
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
+import {
+	Tooltip,
+	TooltipContent,
+	TooltipProvider,
+	TooltipTrigger,
+  } from "@/components/ui/tooltip";
 
 interface LeaveRequestWithDetails extends LeaveRequest {
 	employee?: Employee;
@@ -598,7 +605,22 @@ export default function LeavePage() {
 						<TableHead>Leave Type</TableHead>
 						<TableHead>Duration</TableHead>
 						<TableHead>Days</TableHead>
-						<TableHead>Reason</TableHead>
+						<TableHead>
+							<div className="flex items-center gap-1">
+								Reason
+
+								<TooltipProvider>
+								<Tooltip>
+									<TooltipTrigger asChild>
+									<Info className="w-4 h-4 text-muted-foreground cursor-pointer" />
+									</TooltipTrigger>
+									<TooltipContent>
+									<p>Hover on reason text to view full content</p>
+									</TooltipContent>
+								</Tooltip>
+								</TooltipProvider>
+							</div>
+						</TableHead>
 						<TableHead>Document</TableHead>
 						<TableHead>Status</TableHead>
 						{showActions && <TableHead>Actions</TableHead>}
@@ -688,7 +710,7 @@ export default function LeavePage() {
 											})`}
 									</Badge>
 								</TableCell>
-								<TableCell className='max-w-[200px] truncate text-sm'>
+								<TableCell className='max-w-[200px] truncate text-sm' title={request.reason || "-"}>
 									{request.reason || "-"}
 								</TableCell>
 								<TableCell>

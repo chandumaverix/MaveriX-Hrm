@@ -50,10 +50,19 @@ import {
 	Mail,
 	Phone,
 	Loader2,
+	UserX,
+	UserCheck,
 } from "lucide-react";
 import type { Employee, UserRole } from "@/lib/types";
 import { createEmployeeWithAuth } from "./actions";
 import { AvatarImage } from "@radix-ui/react-avatar";
+
+/** Local date as YYYY-MM-DD (avoids UTC shift for "today" and attendance queries). */
+function toLocalDateStr(d: Date): string {
+	return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
+		d.getDate()
+	).padStart(2, "0")}`;
+}
 
 export default function EmployeesPage() {
 	const { employee: currentUser } = useUser();
@@ -71,10 +80,20 @@ export default function EmployeesPage() {
 	);
 	const [isLoading, setIsLoading] = useState(true);
 	const [isAddLoading, setIsAddLoading] = useState(false);
+	const [blockActionEmployeeId, setBlockActionEmployeeId] = useState<
+		string | null
+	>(null);
 
 	// Only admin and HR can add employees
 	const canAddEmployee =
 		currentUser?.role === "admin" || currentUser?.role === "hr";
+
+	const canBlockEmployee = (target: Employee) => {
+		if (!currentUser) return false;
+		// HR can block regular employees; only Admin can block HR/Admin.
+		if (currentUser.role === "hr") return target.role === "employee";
+		return currentUser.role === "admin";
+	};
 
 	// Form state
 	const [formData, setFormData] = useState<{
@@ -205,6 +224,72 @@ export default function EmployeesPage() {
 		}
 		toast.success("Employee deleted successfully");
 		await fetchEmployees();
+	};
+
+	const handleToggleBlockEmployee = async (target: Employee) => {
+		if (!canBlockEmployee(target)) {
+			toast.error("You are not allowed to block/unblock this employee.");
+			return;
+		}
+
+		const nextIsActive = !target.is_active;
+		setBlockActionEmployeeId(target.id);
+
+		try {
+			const supabase = createClient();
+			const { error } = await supabase
+				.from("employees")
+				.update({ is_active: nextIsActive })
+				.eq("id", target.id);
+
+			if (error) {
+				toast.error(error.message);
+				return;
+			}
+
+			// If we're blocking the employee, immediately clock them out (today) if they are currently clocked in.
+			if (nextIsActive === false) {
+				const today = toLocalDateStr(new Date());
+				const { data: activeAttendance } = await supabase
+					.from("attendance")
+					.select("id, clock_in")
+					.eq("employee_id", target.id)
+					.eq("date", today)
+					.is("clock_out", null)
+					.maybeSingle();
+
+				if (activeAttendance?.id && activeAttendance.clock_in) {
+					const now = new Date();
+					const clockIn = new Date(activeAttendance.clock_in);
+					const totalHours = (
+						(now.getTime() - clockIn.getTime()) /
+						(1000 * 60 * 60)
+					).toFixed(2);
+
+					const { error: clockOutError } = await supabase
+						.from("attendance")
+						.update({
+							clock_out: now.toISOString(),
+							total_hours: parseFloat(totalHours),
+						})
+						.eq("id", activeAttendance.id);
+
+					if (clockOutError) {
+						// Blocking should still succeed; just let admin know attendance update failed.
+						toast.error(
+							`Employee blocked, but failed to clock out: ${clockOutError.message}`
+						);
+					}
+				}
+			}
+
+			toast.success(
+				nextIsActive ? "Employee unblocked successfully" : "Employee blocked successfully"
+			);
+			await fetchEmployees();
+		} finally {
+			setBlockActionEmployeeId(null);
+		}
 	};
 
 	const resetForm = () => {
@@ -615,7 +700,7 @@ export default function EmployeesPage() {
 											<TableHead>Designation</TableHead>
 											<TableHead>Week Off</TableHead>
 											<TableHead>Role</TableHead>
-											<TableHead>Status</TableHead>
+									<TableHead>Account Status</TableHead>
 											<TableHead className='w-[70px]'>
 												Actions
 											</TableHead>
@@ -713,11 +798,11 @@ export default function EmployeesPage() {
 														className={
 															employee.is_active
 																? "bg-success text-success-foreground"
-																: ""
+																: "bg-destructive/10 text-destructive"
 														}>
 														{employee.is_active
 															? "Active"
-															: "Inactive"}
+															: "Blocked"}
 													</Badge>
 												</TableCell>
 												<TableCell>
@@ -740,6 +825,36 @@ export default function EmployeesPage() {
 																}>
 																<Pencil className='mr-2 h-4 w-4' />
 																Edit
+															</DropdownMenuItem>
+															<DropdownMenuItem
+																disabled={
+																	!canBlockEmployee(
+																		employee
+																	) ||
+																	blockActionEmployeeId ===
+																		employee.id
+																}
+																onClick={() =>
+																	handleToggleBlockEmployee(
+																		employee
+																	)
+																}>
+																{blockActionEmployeeId ===
+																	employee.id ? (
+																	<Loader2 className='mr-2 h-4 w-4 animate-spin' />
+																) : employee.is_active ? (
+																	<UserX className='mr-2 h-4 w-4' />
+																) : (
+																	<UserCheck className='mr-2 h-4 w-4' />
+																)}
+																{blockActionEmployeeId ===
+																employee.id
+																	? employee.is_active
+																		? "Blocking..."
+																		: "Unblocking..."
+																	: employee.is_active
+																		? "Block"
+																		: "Unblock"}
 															</DropdownMenuItem>
 															<DropdownMenuItem
 																className='text-destructive'
