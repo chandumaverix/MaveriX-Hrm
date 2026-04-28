@@ -36,6 +36,9 @@ import {
 	CalendarCheck,
 	ExternalLink,
 	Info,
+	FileDown,
+	Download,
+	User,
 } from "lucide-react";
 import type {
 	Employee,
@@ -44,6 +47,7 @@ import type {
 	LeaveBalance,
 } from "@/lib/types";
 import { useUser } from "../../../contexts/user-context";
+import { cn } from "@/lib/utils";
 import {
 	Dialog,
 	DialogContent,
@@ -74,6 +78,32 @@ type EmployeeYearGroup = {
 	year: number;
 	employee?: Employee;
 	balances: LeaveBalanceRow[];
+};
+
+const ExpandableReason = ({ reason }: { reason: string }) => {
+	const [isExpanded, setIsExpanded] = useState(false);
+	if (!reason) return <span className='text-muted-foreground'>—</span>;
+
+	const isLong = reason.length > 80 || reason.split('\n').length > 2;
+
+	if (!isLong) return <span className='whitespace-pre-wrap'>{reason}</span>;
+
+	return (
+		<div className="flex flex-col items-start gap-1.5 w-full">
+			<div className={cn(
+				"text-sm w-full transition-all duration-300",
+				isExpanded ? "whitespace-pre-wrap break-words" : "line-clamp-2 break-all text-muted-foreground"
+			)}>
+				{reason}
+			</div>
+			<button
+				onClick={() => setIsExpanded(!isExpanded)}
+				className="text-[11px] font-semibold text-primary hover:text-primary/70 active:scale-95 transition-all outline-none"
+			>
+				{isExpanded ? "Show less" : "Read more"}
+			</button>
+		</div>
+	);
 };
 
 export default function LeavePage() {
@@ -117,6 +147,13 @@ export default function LeavePage() {
 	});
 	const [isSavingType, setIsSavingType] = useState(false);
 	const [typeError, setTypeError] = useState<string | null>(null);
+
+	// ── Download Report state ──────────────────────────────────────────
+	const [reportEmployeeId, setReportEmployeeId] = useState<string>("all");
+	const [reportStatus, setReportStatus] = useState<string>("all");
+	const [reportDateFrom, setReportDateFrom] = useState<string>("");
+	const [reportDateTo, setReportDateTo] = useState<string>("");
+	const [reportSearch, setReportSearch] = useState<string>("");
 
 	const canApproveLeave =
 		currentUser?.role === "admin" || currentUser?.role === "hr";
@@ -551,14 +588,25 @@ export default function LeavePage() {
 		switch (status) {
 			case "approved":
 				return (
-					<Badge className='bg-success text-success-foreground'>
+					<span className='inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200'>
+						<span className='h-1.5 w-1.5 rounded-full bg-emerald-500 inline-block' />
 						Approved
-					</Badge>
+					</span>
 				);
 			case "rejected":
-				return <Badge variant='destructive'>Rejected</Badge>;
+				return (
+					<span className='inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-red-50 text-red-700 border border-red-200'>
+						<span className='h-1.5 w-1.5 rounded-full bg-red-500 inline-block' />
+						Rejected
+					</span>
+				);
 			case "pending":
-				return <Badge variant='secondary'>Pending</Badge>;
+				return (
+					<span className='inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-amber-50 text-amber-700 border border-amber-200'>
+						<span className='h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse inline-block' />
+						Pending
+					</span>
+				);
 			default:
 				return <Badge variant='outline'>{status}</Badge>;
 		}
@@ -593,6 +641,67 @@ export default function LeavePage() {
 		return String(Number(n.toFixed(2)));
 	};
 
+	// ── Report filtered data (memoized) ──────────────────────────────
+	const reportRows = useMemo(() => {
+		return leaveRequests.filter((req) => {
+			const fullName = `${req.employee?.first_name ?? ""} ${req.employee?.last_name ?? ""}`.toLowerCase();
+			if (reportSearch.trim() && !fullName.includes(reportSearch.toLowerCase())) return false;
+			if (reportEmployeeId !== "all" && req.employee_id !== reportEmployeeId) return false;
+			if (reportStatus !== "all" && req.status !== reportStatus) return false;
+			if (reportDateFrom && req.start_date < reportDateFrom) return false;
+			if (reportDateTo && req.end_date > reportDateTo) return false;
+			return true;
+		});
+	}, [leaveRequests, reportEmployeeId, reportStatus, reportDateFrom, reportDateTo, reportSearch]);
+
+	// ── CSV download ──────────────────────────────────────────────────
+	const downloadCSV = () => {
+		if (reportRows.length === 0) return;
+		const escape = (v: string | number | null | undefined) => {
+			const s = String(v ?? "").replace(/"/g, '""');
+			return `"${s}"`;
+		};
+		const headers = [
+			"Employee Name",
+			"Email",
+			"Designation",
+			"Leave Type",
+			"Start Date",
+			"End Date",
+			"Days",
+			"Half Day",
+			"Half Day Period",
+			"Status",
+			"Reason",
+			"Applied On",
+		];
+		const rows = reportRows.map((req) => [
+			escape(`${req.employee?.first_name ?? ""} ${req.employee?.last_name ?? ""}`),
+			escape(req.employee?.email ?? ""),
+			escape(req.employee?.designation ?? ""),
+			escape((req.leave_type as { name?: string })?.name ?? ""),
+			escape(req.start_date),
+			escape(req.end_date),
+			escape(formatLeaveDays(req.start_date, req.end_date, req.half_day)),
+			escape(req.half_day ? "Yes" : "No"),
+			escape(req.half_day_period === "first_half" ? "9am–1pm" : req.half_day_period === "second_half" ? "1pm–7pm" : ""),
+			escape(req.status),
+			escape(req.reason ?? ""),
+			escape(req.created_at ? new Date(req.created_at).toLocaleDateString() : ""),
+		].join(","));
+		const csv = [headers.join(","), ...rows].join("\n");
+		const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+		const url = URL.createObjectURL(blob);
+		const a = document.createElement("a");
+		a.href = url;
+		const empName = reportEmployeeId !== "all"
+			? (employees.find((e) => e.id === reportEmployeeId)?.first_name ?? "employee")
+			: "all-employees";
+		a.download = `leave-report-${empName}-${new Date().toISOString().split("T")[0]}.csv`;
+		a.click();
+		URL.revokeObjectURL(url);
+	};
+
 	const renderLeaveTable = (
 		requests: LeaveRequestWithDetails[],
 		showActions = false
@@ -608,17 +717,6 @@ export default function LeavePage() {
 						<TableHead>
 							<div className="flex items-center gap-1">
 								Reason
-
-								<TooltipProvider>
-								<Tooltip>
-									<TooltipTrigger asChild>
-									<Info className="w-4 h-4 text-muted-foreground cursor-pointer" />
-									</TooltipTrigger>
-									<TooltipContent>
-									<p>Hover on reason text to view full content</p>
-									</TooltipContent>
-								</Tooltip>
-								</TooltipProvider>
 							</div>
 						</TableHead>
 						<TableHead>Document</TableHead>
@@ -710,8 +808,8 @@ export default function LeavePage() {
 											})`}
 									</Badge>
 								</TableCell>
-								<TableCell className='max-w-[200px] truncate text-sm' title={request.reason || "-"}>
-									{request.reason || "-"}
+								<TableCell className='min-w-[200px] max-w-[400px] text-sm text-foreground'>
+									<ExpandableReason reason={request.reason || ""} />
 								</TableCell>
 								<TableCell>
 									{request.document_url ? (
@@ -778,248 +876,441 @@ export default function LeavePage() {
 	);
 
 	return (
-		<div className='flex flex-col'>
+		<div className='flex flex-col min-h-screen bg-background'>
 			<DashboardHeader
 				title='Leave Management'
 				description='Manage employee leave requests'
 			/>
 
-			<div className='flex-1 p-6'>
-				<Tabs defaultValue='requests' className='space-y-4'>
-					<TabsList className='h-12 '>
+			<div className='flex-1 p-4 md:p-6 pb-20 md:pb-8 space-y-5'>
+				<Tabs defaultValue='requests' className='space-y-5'>
+					{/* ── Top-level Tab Pills ── */}
+					<TabsList className='h-auto bg-muted/40 p-1 rounded-xl gap-1 border border-border/50'>
 						<TabsTrigger
 							value='requests'
-							className='gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground'>
+							className='gap-2 rounded-lg px-4 py-2 text-sm font-medium data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm transition-all'>
 							<CalendarCheck className='h-4 w-4 shrink-0' />
 							<span className='truncate'>Leave Requests</span>
 							{stats.pending > 0 && (
-								<Badge
-									variant='secondary'
-									className='ml-1 h-5 min-w-5 px-1.5 data-[state=active]:bg-primary-foreground/20'>
+								<span className='ml-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-white/20 px-1.5 text-[11px] font-bold'>
 									{stats.pending}
-								</Badge>
+								</span>
 							)}
 						</TabsTrigger>
 						<TabsTrigger
 							value='allotment'
-							className='gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground'>
+							className='gap-2 rounded-lg px-4 py-2 text-sm font-medium data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm transition-all'>
 							<CalendarDays className='h-4 w-4 shrink-0' />
-							<span className='truncate'>
-								Allotment & Leave Types
-							</span>
+							<span className='truncate'>Allotment & Leave Types</span>
+						</TabsTrigger>
+						<TabsTrigger
+							value='report'
+							className='gap-2 rounded-lg px-4 py-2 text-sm font-medium data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm transition-all'>
+							<FileDown className='h-4 w-4 shrink-0' />
+							<span className='truncate'>Download Report</span>
 						</TabsTrigger>
 					</TabsList>
-					<TabsContent value='requests' className='mt-4 space-y-4'>
+					<TabsContent value='requests' className='space-y-5'>
+						{/* ── Stat Cards ── */}
 						<div className='grid gap-4 grid-cols-2 md:grid-cols-4'>
-							<StatCard
-								title='Pending Requests'
-								value={stats.pending}
-								icon={<Clock className='h-5 w-5' />}
-								className='border-l-4 border-l-warning'
-							/>
-							<StatCard
-								title='Approved'
-								value={stats.approved}
-								icon={<CheckCircle2 className='h-5 w-5' />}
-								className='border-l-4 border-l-success'
-							/>
-							<StatCard
-								title='Rejected'
-								value={stats.rejected}
-								icon={<XCircle className='h-5 w-5' />}
-								className='border-l-4 border-l-destructive'
-							/>
-							<StatCard
-								title='Total Requests'
-								value={stats.total}
-								icon={<CalendarDays className='h-5 w-5' />}
-							/>
+							{/* Pending */}
+							<div className='relative overflow-hidden rounded-2xl bg-gradient-to-br from-amber-500/10 to-amber-500/5 border border-border/50 p-5 shadow-sm hover:shadow-md transition-all group'>
+								<div className='flex items-start justify-between gap-3'>
+									<div>
+										<p className='text-xs font-semibold uppercase tracking-wider text-muted-foreground'>Pending</p>
+										<p className='text-4xl font-bold mt-2 tabular-nums text-amber-700 leading-none'>{stats.pending}</p>
+										<p className='text-[11px] text-muted-foreground mt-1.5'>Awaiting review</p>
+									</div>
+									<div className='h-11 w-11 rounded-xl bg-amber-500/15 flex items-center justify-center text-amber-600 group-hover:scale-110 transition-transform'><Clock className='h-5 w-5' /></div>
+								</div>
+								<div className='mt-4 h-1 w-full bg-black/5 rounded-full overflow-hidden'><div className='h-full bg-amber-500 rounded-full transition-all duration-700' style={{ width: `${stats.total > 0 ? (stats.pending / stats.total) * 100 : 0}%` }} /></div>
+							</div>
+							{/* Approved */}
+							<div className='relative overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-500/10 to-emerald-500/5 border border-border/50 p-5 shadow-sm hover:shadow-md transition-all group'>
+								<div className='flex items-start justify-between gap-3'>
+									<div>
+										<p className='text-xs font-semibold uppercase tracking-wider text-muted-foreground'>Approved</p>
+										<p className='text-4xl font-bold mt-2 tabular-nums text-emerald-700 leading-none'>{stats.approved}</p>
+										<p className='text-[11px] text-muted-foreground mt-1.5'>Granted leaves</p>
+									</div>
+									<div className='h-11 w-11 rounded-xl bg-emerald-500/15 flex items-center justify-center text-emerald-600 group-hover:scale-110 transition-transform'><CheckCircle2 className='h-5 w-5' /></div>
+								</div>
+								<div className='mt-4 h-1 w-full bg-black/5 rounded-full overflow-hidden'><div className='h-full bg-emerald-500 rounded-full transition-all duration-700' style={{ width: `${stats.total > 0 ? (stats.approved / stats.total) * 100 : 0}%` }} /></div>
+							</div>
+							{/* Rejected */}
+							<div className='relative overflow-hidden rounded-2xl bg-gradient-to-br from-red-500/10 to-red-500/5 border border-border/50 p-5 shadow-sm hover:shadow-md transition-all group'>
+								<div className='flex items-start justify-between gap-3'>
+									<div>
+										<p className='text-xs font-semibold uppercase tracking-wider text-muted-foreground'>Rejected</p>
+										<p className='text-4xl font-bold mt-2 tabular-nums text-red-700 leading-none'>{stats.rejected}</p>
+										<p className='text-[11px] text-muted-foreground mt-1.5'>Declined requests</p>
+									</div>
+									<div className='h-11 w-11 rounded-xl bg-red-500/15 flex items-center justify-center text-red-600 group-hover:scale-110 transition-transform'><XCircle className='h-5 w-5' /></div>
+								</div>
+								<div className='mt-4 h-1 w-full bg-black/5 rounded-full overflow-hidden'><div className='h-full bg-red-500 rounded-full transition-all duration-700' style={{ width: `${stats.total > 0 ? (stats.rejected / stats.total) * 100 : 0}%` }} /></div>
+							</div>
+							{/* Total */}
+							<div className='relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary/10 to-primary/5 border border-border/50 p-5 shadow-sm hover:shadow-md transition-all group'>
+								<div className='flex items-start justify-between gap-3'>
+									<div>
+										<p className='text-xs font-semibold uppercase tracking-wider text-muted-foreground'>Total</p>
+										<p className='text-4xl font-bold mt-2 tabular-nums text-primary leading-none'>{stats.total}</p>
+										<p className='text-[11px] text-muted-foreground mt-1.5'>All requests</p>
+									</div>
+									<div className='h-11 w-11 rounded-xl bg-primary/15 flex items-center justify-center text-primary group-hover:scale-110 transition-transform'><CalendarDays className='h-5 w-5' /></div>
+								</div>
+								<div className='mt-4 h-1 w-full bg-black/5 rounded-full overflow-hidden'><div className='h-full bg-primary rounded-full' style={{ width: '100%' }} /></div>
+							</div>
 						</div>
 
-						{/* Filters */}
-						<Card>
-							<CardContent className='flex flex-wrap items-center gap-4 p-4'>
-								<div className='relative flex-1 min-w-[200px]'>
-									<Search className='absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground' />
-									<Input
-										placeholder='Search employees...'
-										value={searchQuery}
-										onChange={(e) =>
-											setSearchQuery(e.target.value)
-										}
-										className='pl-9'
-									/>
-								</div>
-								<Select
-									value={statusFilter}
-									onValueChange={setStatusFilter}>
-									<SelectTrigger className='w-[150px]'>
-										<SelectValue placeholder='Filter status' />
-									</SelectTrigger>
-									<SelectContent>
-										<SelectItem value='all'>
-											All Status
-										</SelectItem>
-										<SelectItem value='pending'>
-											Pending
-										</SelectItem>
-										<SelectItem value='approved'>
-											Approved
-										</SelectItem>
-										<SelectItem value='rejected'>
-											Rejected
-										</SelectItem>
-									</SelectContent>
-								</Select>
-							</CardContent>
-						</Card>
+						{/* ── Filters ── */}
+						<div className='bg-card rounded-2xl border border-border/50 shadow-sm px-5 py-4 flex flex-wrap items-center gap-4'>
+							<div className='relative flex-1 min-w-[200px]'>
+								<Search className='absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground' />
+								<Input
+									placeholder='Search employees...'
+									value={searchQuery}
+									onChange={(e) => setSearchQuery(e.target.value)}
+									className='pl-9 rounded-xl h-10 bg-background border-border/70'
+								/>
+							</div>
+							<Select value={statusFilter} onValueChange={setStatusFilter}>
+								<SelectTrigger className='w-[150px] rounded-xl h-10'>
+									<SelectValue placeholder='Filter status' />
+								</SelectTrigger>
+								<SelectContent>
+									<SelectItem value='all'>All Status</SelectItem>
+									<SelectItem value='pending'>Pending</SelectItem>
+									<SelectItem value='approved'>Approved</SelectItem>
+									<SelectItem value='rejected'>Rejected</SelectItem>
+								</SelectContent>
+							</Select>
+						</div>
 
-						{/* Tabs */}
+						{/* ── Inner Tabs: Pending / All ── */}
 						<Tabs defaultValue='pending' className='space-y-4'>
-							<TabsList>
-								<TabsTrigger value='pending' className='gap-2'>
-									<Clock className='h-4 w-4' />
+							<TabsList className='h-auto bg-muted/40 p-1 rounded-xl gap-1 border border-border/50'>
+								<TabsTrigger value='pending' className='gap-1.5 rounded-lg px-4 py-1.5 text-sm data-[state=active]:bg-background data-[state=active]:shadow-sm'>
+									<Clock className='h-3.5 w-3.5' />
 									Pending ({stats.pending})
 								</TabsTrigger>
-								<TabsTrigger value='all' className='gap-2'>
-									<CalendarCheck className='h-4 w-4' />
+								<TabsTrigger value='all' className='gap-1.5 rounded-lg px-4 py-1.5 text-sm data-[state=active]:bg-background data-[state=active]:shadow-sm'>
+									<CalendarCheck className='h-3.5 w-3.5' />
 									All Requests
 								</TabsTrigger>
 							</TabsList>
 
 							<TabsContent value='pending'>
-								<Card>
-									<CardHeader>
-										<CardTitle className='flex items-center gap-2'>
-											<Calendar className='h-5 w-5' />
-											Pending Leave Requests
-										</CardTitle>
-									</CardHeader>
-									<CardContent>
-										{isLoading ? (
-											<div className='flex items-center justify-center py-8'>
-												<p className='text-muted-foreground'>
-													Loading...
-												</p>
-											</div>
-										) : (
-											renderLeaveTable(
-												getFilteredRequests("pending"),
-												true
-											)
-										)}
-									</CardContent>
-								</Card>
+								<div className='bg-card rounded-2xl border border-border/50 shadow-sm overflow-hidden'>
+									<div className='flex items-center gap-3 px-5 py-4 border-b border-border/50'>
+										<div className='h-8 w-8 rounded-lg bg-amber-500/15 flex items-center justify-center text-amber-600'><Calendar className='h-4 w-4' /></div>
+										<div>
+											<p className='font-semibold text-sm'>Pending Leave Requests</p>
+											<p className='text-xs text-muted-foreground'>{getFilteredRequests("pending").length} request{getFilteredRequests("pending").length !== 1 ? 's' : ''} waiting</p>
+										</div>
+									</div>
+									{isLoading ? (
+										<div className='flex items-center justify-center py-12'><div className='h-6 w-6 rounded-full border-2 border-primary/30 border-t-primary animate-spin' /></div>
+									) : renderLeaveTable(getFilteredRequests("pending"), true)}
+								</div>
 							</TabsContent>
 
 							<TabsContent value='all'>
-								<Card>
-									<CardHeader>
-										<CardTitle className='flex items-center gap-2'>
-											<Calendar className='h-5 w-5' />
-											All Leave Requests
-										</CardTitle>
-									</CardHeader>
-									<CardContent>
-										{isLoading ? (
-											<div className='flex items-center justify-center py-8'>
-												<p className='text-muted-foreground'>
-													Loading...
-												</p>
-											</div>
-										) : (
-											renderLeaveTable(
-												getFilteredRequests()
-											)
-										)}
-									</CardContent>
-								</Card>
+								<div className='bg-card rounded-2xl border border-border/50 shadow-sm overflow-hidden'>
+									<div className='flex items-center gap-3 px-5 py-4 border-b border-border/50'>
+										<div className='h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary'><Calendar className='h-4 w-4' /></div>
+										<div>
+											<p className='font-semibold text-sm'>All Leave Requests</p>
+											<p className='text-xs text-muted-foreground'>{getFilteredRequests().length} total record{getFilteredRequests().length !== 1 ? 's' : ''}</p>
+										</div>
+									</div>
+									{isLoading ? (
+										<div className='flex items-center justify-center py-12'><div className='h-6 w-6 rounded-full border-2 border-primary/30 border-t-primary animate-spin' /></div>
+									) : renderLeaveTable(getFilteredRequests())}
+								</div>
 							</TabsContent>
 						</Tabs>
 					</TabsContent>
 
-					<TabsContent value='allotment' className='mt-4 space-y-6'>
-						{/* Leave Types Management - MOVED TO TOP */}
-						<Card>
-							<CardHeader className='flex flex-row items-center justify-between'>
+					{/* ── Download Report Tab ── */}
+					<TabsContent value='report' className='space-y-5'>
+
+						{/* Hero banner */}
+						<div className='relative overflow-hidden rounded-2xl bg-gradient-to-r from-primary to-indigo-600 text-white px-6 py-5 shadow-md'>
+							<div className='pointer-events-none absolute -right-8 -top-8 h-40 w-40 rounded-full bg-white/5' />
+							<div className='pointer-events-none absolute right-10 bottom-0 h-24 w-24 rounded-full bg-white/5' />
+							<div className='relative flex items-center justify-between gap-4'>
 								<div>
-									<CardTitle className='text-base'>
-										Leave Types
-									</CardTitle>
-									<p className='text-xs text-muted-foreground'>
-										Configure leave types available to all
-										employees.
-									</p>
+									<div className='flex items-center gap-2 mb-1'>
+										<FileDown className='h-4 w-4 opacity-80' />
+										<span className='text-xs font-semibold uppercase tracking-wider opacity-75'>Leave Report Download</span>
+									</div>
+									<h2 className='text-xl font-bold'>Export Employee Leave Data</h2>
+									<p className='text-sm opacity-70 mt-0.5'>Filter by employee, status & date range · Download as CSV</p>
+								</div>
+								<div className='hidden sm:flex items-center gap-3'>
+									<div className='text-right'>
+										<p className='text-xs opacity-70'>Matched Records</p>
+										<p className='text-3xl font-bold tabular-nums'>{reportRows.length}</p>
+									</div>
+								</div>
+							</div>
+						</div>
+
+						{/* Filters card */}
+						<div className='bg-card rounded-2xl border border-border/50 shadow-sm overflow-hidden'>
+							<div className='flex items-center gap-3 px-5 py-4 border-b border-border/50'>
+								<div className='h-9 w-9 rounded-xl bg-primary/10 flex items-center justify-center text-primary'>
+									<Search className='h-4 w-4' />
+								</div>
+								<div>
+									<p className='font-semibold text-sm'>Filter Report</p>
+									<p className='text-xs text-muted-foreground'>Narrow down by employee, status or date range</p>
+								</div>
+							</div>
+							<div className='p-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4'>
+								{/* Employee search */}
+								<div className='space-y-1.5'>
+									<label className='text-xs font-semibold text-muted-foreground uppercase tracking-wide'>Employee</label>
+									<Select value={reportEmployeeId} onValueChange={setReportEmployeeId}>
+										<SelectTrigger className='h-10 rounded-xl'>
+											<SelectValue placeholder='All Employees' />
+										</SelectTrigger>
+										<SelectContent>
+											<SelectItem value='all'>All Employees</SelectItem>
+											{employees.map((emp) => (
+												<SelectItem key={emp.id} value={emp.id}>
+													{emp.first_name} {emp.last_name}
+												</SelectItem>
+											))}
+										</SelectContent>
+									</Select>
+								</div>
+								{/* Status */}
+								<div className='space-y-1.5'>
+									<label className='text-xs font-semibold text-muted-foreground uppercase tracking-wide'>Status</label>
+									<Select value={reportStatus} onValueChange={setReportStatus}>
+										<SelectTrigger className='h-10 rounded-xl'>
+											<SelectValue placeholder='All Status' />
+										</SelectTrigger>
+										<SelectContent>
+											<SelectItem value='all'>All Status</SelectItem>
+											<SelectItem value='pending'>Pending</SelectItem>
+											<SelectItem value='approved'>Approved</SelectItem>
+											<SelectItem value='rejected'>Rejected</SelectItem>
+										</SelectContent>
+									</Select>
+								</div>
+								{/* Date From */}
+								<div className='space-y-1.5'>
+									<label className='text-xs font-semibold text-muted-foreground uppercase tracking-wide'>From Date</label>
+									<Input
+										type='date'
+										value={reportDateFrom}
+										onChange={(e) => setReportDateFrom(e.target.value)}
+										className='h-10 rounded-xl'
+									/>
+								</div>
+								{/* Date To */}
+								<div className='space-y-1.5'>
+									<label className='text-xs font-semibold text-muted-foreground uppercase tracking-wide'>To Date</label>
+									<Input
+										type='date'
+										value={reportDateTo}
+										onChange={(e) => setReportDateTo(e.target.value)}
+										className='h-10 rounded-xl'
+									/>
+								</div>
+							</div>
+							{/* Reset + Name Search */}
+							<div className='px-5 pb-5 flex flex-wrap items-center gap-3'>
+								<div className='relative flex-1 min-w-[200px]'>
+									<Search className='absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground' />
+									<Input
+										placeholder='Search employee name...'
+										value={reportSearch}
+										onChange={(e) => setReportSearch(e.target.value)}
+										className='pl-9 h-10 rounded-xl'
+									/>
+								</div>
+								<button
+									type='button'
+									onClick={() => { setReportEmployeeId("all"); setReportStatus("all"); setReportDateFrom(""); setReportDateTo(""); setReportSearch(""); }}
+									className='h-10 px-4 rounded-xl text-xs font-semibold border border-border bg-background text-muted-foreground hover:bg-muted transition-colors cursor-pointer'>
+									Reset Filters
+								</button>
+							</div>
+						</div>
+
+						{/* Summary mini-stats */}
+						<div className='grid grid-cols-2 md:grid-cols-4 gap-4'>
+							{[
+								{ label: "Total", value: reportRows.length, color: "text-primary", bg: "from-primary/10 to-primary/5", bar: "bg-primary" },
+								{ label: "Approved", value: reportRows.filter((r) => r.status === "approved").length, color: "text-emerald-700", bg: "from-emerald-500/10 to-emerald-500/5", bar: "bg-emerald-500" },
+								{ label: "Pending", value: reportRows.filter((r) => r.status === "pending").length, color: "text-amber-700", bg: "from-amber-500/10 to-amber-500/5", bar: "bg-amber-500" },
+								{ label: "Rejected", value: reportRows.filter((r) => r.status === "rejected").length, color: "text-red-700", bg: "from-red-500/10 to-red-500/5", bar: "bg-red-500" },
+							].map((s) => (
+								<div key={s.label} className={`relative overflow-hidden rounded-2xl bg-gradient-to-br ${s.bg} border border-border/50 p-4 shadow-sm`}>
+									<p className='text-xs font-semibold uppercase tracking-wider text-muted-foreground'>{s.label}</p>
+									<p className={`text-3xl font-bold mt-1.5 tabular-nums leading-none ${s.color}`}>{s.value}</p>
+									<div className='mt-3 h-1 w-full bg-black/5 rounded-full overflow-hidden'>
+										<div className={`h-full ${s.bar} rounded-full transition-all duration-700`} style={{ width: `${reportRows.length > 0 ? (s.value / reportRows.length) * 100 : 0}%` }} />
+									</div>
+								</div>
+							))}
+						</div>
+
+						{/* Preview table + Download button */}
+						<div className='bg-card rounded-2xl border border-border/50 shadow-sm overflow-hidden'>
+							<div className='flex items-center justify-between gap-3 px-5 py-4 border-b border-border/50'>
+								<div className='flex items-center gap-3'>
+									<div className='h-9 w-9 rounded-xl bg-indigo-500/10 flex items-center justify-center text-indigo-600'>
+										<CalendarCheck className='h-4 w-4' />
+									</div>
+									<div>
+										<p className='font-semibold text-sm'>Report Preview</p>
+										<p className='text-xs text-muted-foreground'>{reportRows.length} record{reportRows.length !== 1 ? "s" : ""} matched · CSV will include all columns</p>
+									</div>
+								</div>
+								<button
+									type='button'
+									onClick={downloadCSV}
+									disabled={reportRows.length === 0}
+									className='flex items-center gap-2 px-5 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 active:scale-95 transition-all disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer shadow-sm'>
+									<Download className='h-4 w-4' />
+									Download CSV
+								</button>
+							</div>
+
+							{reportRows.length === 0 ? (
+								<div className='flex flex-col items-center justify-center py-16 text-center'>
+									<div className='h-14 w-14 rounded-2xl bg-muted/40 flex items-center justify-center mb-3'>
+										<FileDown className='h-7 w-7 text-muted-foreground/40' />
+									</div>
+									<p className='text-sm font-medium text-foreground'>No records match your filters</p>
+									<p className='text-xs text-muted-foreground mt-1 max-w-xs'>Try adjusting the employee, status, or date range to see results.</p>
+								</div>
+							) : (
+								<div className='overflow-x-auto'>
+									<Table>
+										<TableHeader>
+											<TableRow className='bg-muted/30'>
+												<TableHead className='font-semibold'>Employee</TableHead>
+												<TableHead className='font-semibold'>Leave Type</TableHead>
+												<TableHead className='font-semibold'>Duration</TableHead>
+												<TableHead className='font-semibold'>Days</TableHead>
+												<TableHead className='font-semibold'>Reason</TableHead>
+												<TableHead className='font-semibold'>Status</TableHead>
+												<TableHead className='font-semibold'>Applied On</TableHead>
+											</TableRow>
+										</TableHeader>
+										<TableBody>
+											{reportRows.map((req) => (
+												<TableRow
+													key={req.id}
+													className={`border-l-2 ${
+														req.status === "approved" ? "border-l-emerald-400"
+														: req.status === "rejected" ? "border-l-red-400"
+														: "border-l-amber-400"
+													}`}>
+													<TableCell>
+														<div className='flex items-center gap-2.5'>
+															<Avatar className='h-8 w-8 shrink-0'>
+																{req.employee?.avatar_url && (
+																	<AvatarImage src={req.employee.avatar_url} className='object-cover' alt='' />
+																)}
+																<AvatarFallback className='text-xs bg-muted'>
+																	{req.employee?.first_name?.[0]}{req.employee?.last_name?.[0]}
+																</AvatarFallback>
+															</Avatar>
+															<div>
+																<p className='font-medium text-sm'>{req.employee?.first_name} {req.employee?.last_name}</p>
+																<p className='text-xs text-muted-foreground'>{req.employee?.designation ?? req.employee?.email}</p>
+															</div>
+														</div>
+													</TableCell>
+													<TableCell>
+														<span className='inline-flex items-center px-2 py-0.5 rounded-full bg-muted text-xs font-medium border border-border/60'>
+															{(req.leave_type as { name?: string })?.name ?? "—"}
+														</span>
+													</TableCell>
+													<TableCell className='text-sm'>
+														<div className='flex flex-col'>
+															<span>{new Date(req.start_date).toLocaleDateString()}</span>
+															<span className='text-xs text-muted-foreground'>to {new Date(req.end_date).toLocaleDateString()}</span>
+														</div>
+													</TableCell>
+													<TableCell>
+														<span className='inline-flex px-2 py-0.5 rounded-md bg-muted/60 text-xs font-semibold border border-border/50'>
+															{formatLeaveDays(req.start_date, req.end_date, req.half_day)}
+														</span>
+													</TableCell>
+													<TableCell className='min-w-[200px] max-w-[300px] text-sm text-foreground'>
+														<ExpandableReason reason={req.reason || ""} />
+													</TableCell>
+													<TableCell>{getStatusBadge(req.status)}</TableCell>
+													<TableCell className='text-xs text-muted-foreground'>
+														{req.created_at ? new Date(req.created_at).toLocaleDateString() : "—"}
+													</TableCell>
+												</TableRow>
+											))}
+										</TableBody>
+									</Table>
+								</div>
+							)}
+						</div>
+					</TabsContent>
+
+					<TabsContent value='allotment' className='space-y-5'>
+						{/* ── Leave Types Card ── */}
+						<div className='bg-card rounded-2xl border border-border/50 shadow-sm overflow-hidden'>
+							<div className='flex items-center justify-between px-5 py-4 border-b border-border/50'>
+								<div className='flex items-center gap-3'>
+									<div className='h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary'><CalendarDays className='h-5 w-5' /></div>
+									<div>
+										<p className='font-semibold text-sm text-foreground'>Leave Types</p>
+										<p className='text-xs text-muted-foreground'>Configure leave types available to all employees.</p>
+									</div>
 								</div>
 								{canApproveLeave && (
-									<Button
-										size='sm'
-										onClick={openCreateLeaveType}>
+									<Button size='sm' className='rounded-xl gap-1.5 h-9 px-4' onClick={openCreateLeaveType}>
+										<CalendarDays className='h-3.5 w-3.5' />
 										Add Leave Type
 									</Button>
 								)}
-							</CardHeader>
-							<CardContent>
+							</div>
+							<div className='p-5'>
 								{leaveTypes.length === 0 ? (
-									<p className='text-sm text-muted-foreground'>
-										No leave types defined yet.
-									</p>
+									<div className='flex flex-col items-center justify-center py-10 text-center rounded-xl bg-muted/20'>
+										<CalendarDays className='h-10 w-10 text-muted-foreground/40 mb-3' />
+										<p className='text-sm font-medium'>No leave types defined yet.</p>
+									</div>
 								) : (
-									<div className='grid gap-3 grid-cols-2 md:grid-cols-3 lg:grid-cols-5'>
+									<div className='grid gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-5'>
 										{leaveTypes.map((type) => (
-											<Card
-												key={type.id}
-												className='overflow-hidden border border-border/50 hover:shadow-md transition-shadow'>
-												<CardContent className='p-4 space-y-2'>
-													<div className='text-center'>
-														<h4 className='font-semibold text-sm truncate'>
-															{type.name}
-														</h4>
-														<p className='mt-2 text-3xl font-bold text-primary'>
-															{type.default_days}
-														</p>
-														<p className='text-xs text-muted-foreground'>
-															days / year
-														</p>
-														{type.description && (
-															<p className='mt-2 text-[11px] text-muted-foreground line-clamp-2'>
-																{type.description}
-															</p>
-														)}
-													</div>
-													{canApproveLeave && (
-														<div className='flex justify-center gap-1.5 pt-2 border-t border-border/50'>
-															<Button
-																size='sm'
-																variant='outline'
-																className='h-7 text-xs'
-																onClick={() =>
-																	openEditLeaveType(
-																		type
-																	)
-																}>
-																Edit
-															</Button>
-															<Button
-																size='sm'
-																variant='ghost'
-																className='h-7 text-xs text-destructive hover:text-destructive'
-																onClick={() =>
-																	handleDeleteLeaveType(
-																		type
-																	)
-																}>
-																Delete
-															</Button>
-														</div>
+											<div key={type.id} className='relative overflow-hidden rounded-2xl border border-border/60 bg-background hover:shadow-md hover:border-primary/30 transition-all group flex flex-col'>
+												{/* Color accent bar */}
+												<div className='h-1 w-full bg-gradient-to-r from-primary to-indigo-500 rounded-t-2xl' />
+												<div className='p-4 flex-1 flex flex-col items-center text-center gap-1'>
+													<h4 className='font-semibold text-sm truncate w-full'>{type.name}</h4>
+													<p className='text-4xl font-bold text-primary mt-1 leading-none'>{type.default_days}</p>
+													<p className='text-xs text-muted-foreground'>days / year</p>
+													{type.description && (
+														<p className='mt-1.5 text-[11px] text-muted-foreground line-clamp-2'>{type.description}</p>
 													)}
-												</CardContent>
-											</Card>
+												</div>
+												{canApproveLeave && (
+													<div className='flex justify-center gap-1.5 px-3 py-2.5 border-t border-border/50 bg-muted/20'>
+														<button onClick={() => openEditLeaveType(type)} className='flex-1 text-xs font-semibold py-1.5 rounded-lg border border-border hover:bg-muted transition-colors cursor-pointer'>Edit</button>
+														<button onClick={() => handleDeleteLeaveType(type)} className='flex-1 text-xs font-semibold py-1.5 rounded-lg border border-red-200 text-red-600 hover:bg-red-50 transition-colors cursor-pointer'>Delete</button>
+													</div>
+												)}
+											</div>
 										))}
 									</div>
 								)}
-							</CardContent>
-						</Card>
+							</div>
+						</div>
 
 						{/* Total Leaves (Allotted by Employee) - MOVED TO BOTTOM */}
 						<Card>

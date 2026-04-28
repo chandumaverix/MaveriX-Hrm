@@ -154,7 +154,7 @@ export function UpcomingBirthdays() {
 						</p>
 					</div>
 				) : (
-					<ul className='space-y-2'>
+					<ul className='space-y-2 max-h-[370px] overflow-y-auto pr-1'>
 						{upcoming.map(
 							({ employee, displayLabel, diffDays }) => {
 								const isToday = diffDays === 0;

@@ -16,6 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
 	Dialog,
 	DialogContent,
@@ -397,8 +398,15 @@ export default function FinancePage() {
 					/>
 				</div>
 
-				{/* Filters */}
-				<Card>
+				<Tabs defaultValue="transactions" className="space-y-6">
+					<TabsList className="bg-muted/50 p-1 rounded-xl h-auto">
+						<TabsTrigger value="transactions" className="rounded-lg px-6 py-2.5 font-medium text-sm">Transactions</TabsTrigger>
+						<TabsTrigger value="documents" className="rounded-lg px-6 py-2.5 font-medium text-sm">Employee Documents</TabsTrigger>
+					</TabsList>
+
+					<TabsContent value="transactions" className="space-y-6">
+						{/* Filters */}
+						<Card className="rounded-2xl border-border/50 shadow-sm">
 					<CardContent className='flex flex-wrap items-center gap-4 p-4'>
 						<div className='relative flex-1 min-w-[200px]'>
 							<Search className='absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground' />
@@ -1020,12 +1028,17 @@ export default function FinancePage() {
 				</Card>
 
 				{/* Records Table */}
-				<Card>
-					<CardHeader>
-						<CardTitle className='flex items-center gap-2'>
-							<DollarSign className='h-5 w-5' />
-							Finance Records
-						</CardTitle>
+				<Card className="rounded-2xl border-border/50 shadow-sm overflow-hidden bg-card">
+					<CardHeader className="bg-muted/10 border-b border-border/50 pb-5">
+						<div className="flex items-center gap-3">
+							<div className="h-10 w-10 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-600">
+								<DollarSign className="h-5 w-5" />
+							</div>
+							<div>
+								<CardTitle className="text-lg">Finance Records</CardTitle>
+								<p className="text-xs text-muted-foreground mt-1">Review and manage all salary, bonus, and deduction records.</p>
+							</div>
+						</div>
 					</CardHeader>
 					<CardContent>
 						{isLoading ? (
@@ -1044,15 +1057,15 @@ export default function FinancePage() {
 							<div className='w-[300px] md:w-full overflow-x-auto'>
 								<Table>
 									<TableHeader>
-										<TableRow>
-											<TableHead>Employee</TableHead>
-											<TableHead>Type</TableHead>
-											<TableHead>Amount</TableHead>
-											<TableHead>Period</TableHead>
-											<TableHead>Description</TableHead>
-											<TableHead>Status</TableHead>
-											<TableHead>Slip</TableHead>
-											<TableHead>Action</TableHead>
+										<TableRow className="bg-muted/30">
+											<TableHead className="font-semibold px-4 h-11">Employee</TableHead>
+											<TableHead className="font-semibold px-4 h-11">Type</TableHead>
+											<TableHead className="font-semibold px-4 h-11">Amount</TableHead>
+											<TableHead className="font-semibold px-4 h-11">Period</TableHead>
+											<TableHead className="font-semibold px-4 h-11">Description</TableHead>
+											<TableHead className="font-semibold px-4 h-11">Status</TableHead>
+											<TableHead className="font-semibold px-4 h-11">Slip</TableHead>
+											<TableHead className="font-semibold px-4 h-11 text-right">Action</TableHead>
 										</TableRow>
 									</TableHeader>
 									<TableBody>
@@ -1306,12 +1319,13 @@ export default function FinancePage() {
 															</Badge>
 														)}
 												</TableCell>
-												<TableCell>
-													{record.status ===
-														"pending" && (
+												<TableCell className="text-right">
+													<div className="flex items-center justify-end gap-2 text-right">
+														{record.status === "pending" && (
 															<Button
 																size='sm'
 																variant='outline'
+																className='h-8 bg-background hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-200 transition-colors text-xs font-semibold rounded-lg'
 																onClick={() =>
 																	handleMarkPaid(
 																		record.id
@@ -1320,16 +1334,17 @@ export default function FinancePage() {
 																Mark Paid
 															</Button>
 														)}
-													<Button
-														size='sm'
-														variant='outline'
-														onClick={() => {
-															setRecordToDelete(record);
-															setIsDeleteDialogOpen(true);
-														}}
-														className='ml-2'>
-														<Trash2 className='h-4 w-4' />
-													</Button>
+														<Button
+															size='sm'
+															variant='outline'
+															className='h-8 w-8 p-0 bg-background hover:bg-red-50 hover:text-red-700 hover:border-red-200 transition-colors rounded-lg'
+															onClick={() => {
+																setRecordToDelete(record);
+																setIsDeleteDialogOpen(true);
+															}}>
+															<Trash2 className='h-3.5 w-3.5' />
+														</Button>
+													</div>
 												</TableCell>
 											</TableRow>
 										))}
@@ -1339,20 +1354,23 @@ export default function FinancePage() {
 						)}
 					</CardContent>
 				</Card>
+					</TabsContent>
 
+					<TabsContent value="documents" className="space-y-6">
 				{/* Employee Documents & Salary – all employees, documents + salary or docs only */}
-				<Card>
-					<CardHeader>
-						<CardTitle className='flex items-center gap-2'>
-							<FileText className='h-5 w-5' />
-							Employee Documents
-						</CardTitle>
-						<CardDescription>
-							View all employees’ Aadhar/PAN documents and latest
-							allotted salary (all statuses). One salary per
-							employee per month. After that, add
-							bonus/deduction/reimbursement.
-						</CardDescription>
+				<Card className="rounded-2xl border-border/50 shadow-sm overflow-hidden">
+					<CardHeader className="bg-muted/10 border-b border-border/50 pb-5">
+						<div className="flex items-center gap-3">
+							<div className="h-10 w-10 rounded-xl bg-indigo-500/10 flex items-center justify-center text-indigo-600">
+								<FileText className="h-5 w-5" />
+							</div>
+							<div>
+								<CardTitle className="text-lg">Employee Documents & Details</CardTitle>
+								<CardDescription className="mt-1">
+									View and manage employee identity documents and bank details for payroll processing.
+								</CardDescription>
+							</div>
+						</div>
 					</CardHeader>
 					<CardContent>
 						{filteredEmployeesForDocs.length === 0 ? (
@@ -1368,7 +1386,7 @@ export default function FinancePage() {
 									const panNo = emp.pan_number;
 
 									return (
-										<Card key={emp.id} className='overflow-hidden border border-border/50 hover:shadow-md transition-shadow'>
+										<Card key={emp.id} className='rounded-2xl overflow-hidden border border-border/60 hover:shadow-lg hover:border-indigo-500/20 transition-all duration-300 bg-card'>
 											<CardContent className='p-5 space-y-4'>
 												{/* Employee Header */}
 												<div className='flex items-center gap-3 pb-3 border-b border-border/50'>
@@ -1487,6 +1505,8 @@ export default function FinancePage() {
 						)}
 					</CardContent>
 				</Card>
+					</TabsContent>
+				</Tabs>
 			</div>
 		</div>
 	);

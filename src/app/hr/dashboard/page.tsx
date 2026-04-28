@@ -5,7 +5,6 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { DashboardHeader } from "@/components/dashboard/header";
 import { UpcomingBirthdays } from "@/components/dashboard/upcoming-birthdays";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -22,10 +21,10 @@ import {
 	ChevronRight,
 	Timer,
 	LogIn,
-	Plus,
 	Square,
-	Building2,
 	ArrowRight,
+	TrendingUp,
+	Sparkles,
 } from "lucide-react";
 import type {
 	Employee,
@@ -40,42 +39,7 @@ interface TeamWithDetails extends Team {
 	team_members?: { id: string; employee?: Employee }[];
 }
 
-const statCardColors = [
-	{ bg: "bg-teal-50 dark:bg-teal-950/30", iconBg: "bg-teal-500/15", icon: "text-teal-600 dark:text-teal-400" },
-	{ bg: "bg-indigo-50 dark:bg-indigo-950/30", iconBg: "bg-indigo-500/15", icon: "text-indigo-600 dark:text-indigo-400" },
-	{ bg: "bg-amber-50 dark:bg-amber-950/30", iconBg: "bg-amber-500/15", icon: "text-amber-600 dark:text-amber-400" },
-	{ bg: "bg-rose-50 dark:bg-rose-950/30", iconBg: "bg-rose-500/15", icon: "text-rose-600 dark:text-rose-400" },
-	{ bg: "bg-violet-50 dark:bg-violet-950/30", iconBg: "bg-violet-500/15", icon: "text-violet-600 dark:text-violet-400" },
-];
-
-function StatCard({
-	title,
-	value,
-	icon,
-	color,
-}: {
-	title: string;
-	value: number;
-	icon: React.ReactNode;
-	color: (typeof statCardColors)[number];
-}) {
-	return (
-		<Card className={`${color.bg} border-0 rounded-2xl shadow-sm hover:shadow-md transition-shadow overflow-hidden`}>
-			<CardContent className="p-5">
-				<div className="flex items-start justify-between gap-3">
-					<div className="min-w-0">
-						<p className="text-sm font-medium text-muted-foreground truncate">{title}</p>
-						<p className="text-2xl font-bold mt-1 text-foreground tabular-nums">{value}</p>
-					</div>
-					<div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${color.iconBg} ${color.icon}`}>
-						{icon}
-					</div>
-				</div>
-			</CardContent>
-		</Card>
-	);
-}
-
+// ── Helpers ─────────────────────────────────────────────────────────────────
 function formatTime(s: string | null) {
 	if (!s) return "–";
 	return new Date(s).toLocaleTimeString("en-US", {
@@ -98,10 +62,6 @@ function getElapsedHMS(clockInIso: string, toDate: Date) {
 	};
 }
 
-function formatCurrentTimeAMPM(d: Date) {
-	return d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true });
-}
-
 function getCurrentTimeParts(d: Date) {
 	const hours12 = d.getHours() % 12 || 12;
 	const ampm = d.getHours() < 12 ? "AM" : "PM";
@@ -112,18 +72,142 @@ function getCurrentTimeParts(d: Date) {
 	};
 }
 
+// ── Stat Card ────────────────────────────────────────────────────────────────
+const STAT_CONFIGS = [
+	{
+		key: "totalEmployees" as const,
+		label: "Total Employees",
+		sub: "Active",
+		icon: Users,
+		bg: "from-teal-500/10 to-teal-500/5",
+		iconBg: "bg-teal-500/15",
+		iconColor: "text-teal-600",
+		num: "text-teal-700",
+		bar: "bg-teal-500",
+	},
+	{
+		key: "clockedIn" as const,
+		label: "Clocked In",
+		sub: "Today",
+		icon: Clock,
+		bg: "from-indigo-500/10 to-indigo-500/5",
+		iconBg: "bg-indigo-500/15",
+		iconColor: "text-indigo-600",
+		num: "text-indigo-700",
+		bar: "bg-indigo-500",
+	},
+	{
+		key: "pendingLeaves" as const,
+		label: "Pending Leaves",
+		sub: "Awaiting review",
+		icon: Calendar,
+		bg: "from-amber-500/10 to-amber-500/5",
+		iconBg: "bg-amber-500/15",
+		iconColor: "text-amber-600",
+		num: "text-amber-700",
+		bar: "bg-amber-500",
+	},
+	{
+		key: "onLeave" as const,
+		label: "On Leave",
+		sub: "Today",
+		icon: UserPlus,
+		bg: "from-rose-500/10 to-rose-500/5",
+		iconBg: "bg-rose-500/15",
+		iconColor: "text-rose-600",
+		num: "text-rose-700",
+		bar: "bg-rose-500",
+	},
+	{
+		key: "weeklyOff" as const,
+		label: "Week Off",
+		sub: "Today",
+		icon: TrendingUp,
+		bg: "from-violet-500/10 to-violet-500/5",
+		iconBg: "bg-violet-500/15",
+		iconColor: "text-violet-600",
+		num: "text-violet-700",
+		bar: "bg-violet-500",
+	},
+] as const;
+
+type StatKey = (typeof STAT_CONFIGS)[number]["key"];
+
+function StatCard({
+	config,
+	value,
+	total,
+}: {
+	config: (typeof STAT_CONFIGS)[number];
+	value: number;
+	total: number;
+}) {
+	const Icon = config.icon;
+	const pct = total > 0 ? Math.min(100, Math.round((value / total) * 100)) : 0;
+	return (
+		<div
+			className={`relative overflow-hidden rounded-2xl bg-gradient-to-br ${config.bg} border border-border/50 p-5 shadow-sm hover:shadow-md transition-all duration-200 group`}
+		>
+			<div className="flex items-start justify-between gap-3">
+				<div className="min-w-0 flex-1">
+					<p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{config.label}</p>
+					<p className={`text-4xl font-bold mt-2 tabular-nums leading-none ${config.num}`}>{value}</p>
+					<p className="text-[11px] text-muted-foreground mt-1.5">{config.sub}</p>
+				</div>
+				<div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${config.iconBg} ${config.iconColor} group-hover:scale-110 transition-transform duration-200`}>
+					<Icon className="h-5 w-5" />
+				</div>
+			</div>
+			<div className="mt-4 h-1 w-full bg-black/5 rounded-full overflow-hidden">
+				<div className={`h-full ${config.bar} rounded-full transition-all duration-700`} style={{ width: `${pct}%` }} />
+			</div>
+		</div>
+	);
+}
+
+// ── Section Header Helper ────────────────────────────────────────────────────
+function SectionHeader({
+	icon,
+	iconBg,
+	iconColor,
+	title,
+	sub,
+	action,
+}: {
+	icon: React.ReactNode;
+	iconBg: string;
+	iconColor: string;
+	title: string;
+	sub: string;
+	action?: React.ReactNode;
+}) {
+	return (
+		<div className="flex items-center justify-between gap-3 px-5 pt-5 pb-4 border-b border-border/50">
+			<div className="flex items-center gap-3">
+				<div className={`h-10 w-10 rounded-xl flex items-center justify-center shrink-0 ${iconBg} ${iconColor}`}>
+					{icon}
+				</div>
+				<div>
+					<p className="font-semibold text-sm text-foreground">{title}</p>
+					<p className="text-xs text-muted-foreground mt-0.5">{sub}</p>
+				</div>
+			</div>
+			{action}
+		</div>
+	);
+}
+
+// ── Main Page ────────────────────────────────────────────────────────────────
 export default function HRDashboardPage() {
 	const { employee } = useUser();
-	const [stats, setStats] = useState({
+	const [stats, setStats] = useState<Record<StatKey, number>>({
 		totalEmployees: 0,
 		clockedIn: 0,
 		pendingLeaves: 0,
 		onLeave: 0,
 		weeklyOff: 0,
 	});
-	const [todayAttendance, setTodayAttendance] = useState<Attendance | null>(
-		null
-	);
+	const [todayAttendance, setTodayAttendance] = useState<Attendance | null>(null);
 	const [recentAttendance, setRecentAttendance] = useState<Attendance[]>([]);
 	const [calendarMonth, setCalendarMonth] = useState(() => new Date());
 	const [monthAttendance, setMonthAttendance] = useState<Attendance[]>([]);
@@ -138,48 +222,36 @@ export default function HRDashboardPage() {
 	const [todayActivities, setTodayActivities] = useState<
 		(Attendance & { employee?: Employee })[]
 	>([]);
-	const [festivalMap, setFestivalMap] = useState<Record<string, string[]>>(
-		{}
-	);
-	const [selectedFestivalDate, setSelectedFestivalDate] = useState<
-		string | null
-	>(null);
+	const [festivalMap, setFestivalMap] = useState<Record<string, string[]>>({});
+	const [selectedFestivalDate, setSelectedFestivalDate] = useState<string | null>(null);
 	const [now, setNow] = useState(() => new Date());
 
-	// Fetch festivals for the displayed calendar month
+	// Live clock tick
+	useEffect(() => {
+		const interval = setInterval(() => setNow(new Date()), 1000);
+		return () => clearInterval(interval);
+	}, []);
+
+	// Festivals
 	useEffect(() => {
 		const fetchFestivals = async () => {
 			const apiKey = process.env.NEXT_PUBLIC_GOOGLE_CALENDAR_API_KEY;
 			const calendarId = "en.indian#holiday@group.v.calendar.google.com";
 			if (!apiKey || !calendarId) return;
-
 			const year = calendarMonth.getFullYear();
 			const month = calendarMonth.getMonth();
 			const timeMin = new Date(year, month, 1).toISOString();
 			const timeMax = new Date(year, month + 1, 0).toISOString();
-
-			const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(
-				calendarId
-			)}/events?key=${apiKey}&timeMin=${timeMin}&timeMax=${timeMax}&singleEvents=true&orderBy=startTime`;
-
+			const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events?key=${apiKey}&timeMin=${timeMin}&timeMax=${timeMax}&singleEvents=true&orderBy=startTime`;
 			try {
 				const res = await fetch(url);
 				if (!res.ok) return;
 				const json = await res.json();
-				const items =
-					(json.items as Array<{
-						summary?: string;
-						start?: { date?: string; dateTime?: string };
-					}>) || [];
-
+				const items = (json.items as Array<{ summary?: string; start?: { date?: string; dateTime?: string } }>) || [];
 				const map: Record<string, string[]> = {};
 				for (const ev of items) {
 					const title = ev.summary || "Holiday";
-					const startDate =
-						ev.start?.date ||
-						(ev.start?.dateTime
-							? ev.start.dateTime.split("T")[0]
-							: undefined);
+					const startDate = ev.start?.date || (ev.start?.dateTime ? ev.start.dateTime.split("T")[0] : undefined);
 					if (!startDate) continue;
 					if (!map[startDate]) map[startDate] = [];
 					map[startDate].push(title);
@@ -189,23 +261,17 @@ export default function HRDashboardPage() {
 				// Calendar is optional; fail silently
 			}
 		};
-
 		fetchFestivals();
 	}, [calendarMonth]);
 
+	// Main data fetch
 	useEffect(() => {
-		const interval = setInterval(() => setNow(new Date()), 1000);
-		return () => clearInterval(interval);
-	}, []);
-
-	useEffect(() => {
-		const fetch = async () => {
+		const fetchAll = async () => {
 			if (!employee) return;
 			const supabase = createClient();
 			const today = new Date().toISOString().split("T")[0];
 			const dayOfWeek = new Date().getDay();
 
-			// HR's own attendance
 			const { data: myAtt } = await supabase
 				.from("attendance")
 				.select("*")
@@ -214,7 +280,6 @@ export default function HRDashboardPage() {
 				.single();
 			setTodayAttendance(myAtt as Attendance | null);
 
-			// HR's recent attendance (last 5 records, current month)
 			const curMonthStart = new Date().toISOString().slice(0, 8) + "01";
 			const { data: recentAtt } = await supabase
 				.from("attendance")
@@ -225,21 +290,8 @@ export default function HRDashboardPage() {
 				.limit(5);
 			setRecentAttendance((recentAtt as Attendance[]) || []);
 
-			// Calendar month attendance
-			const monthStart = new Date(
-				calendarMonth.getFullYear(),
-				calendarMonth.getMonth(),
-				1
-			)
-				.toISOString()
-				.split("T")[0];
-			const monthEnd = new Date(
-				calendarMonth.getFullYear(),
-				calendarMonth.getMonth() + 1,
-				0
-			)
-				.toISOString()
-				.split("T")[0];
+			const monthStart = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth(), 1).toISOString().split("T")[0];
+			const monthEnd = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() + 1, 0).toISOString().split("T")[0];
 			const { data: monthAtt } = await supabase
 				.from("attendance")
 				.select("*")
@@ -248,7 +300,6 @@ export default function HRDashboardPage() {
 				.lte("date", monthEnd);
 			setMonthAttendance((monthAtt as Attendance[]) || []);
 
-			// Org stats
 			const { count: empCount } = await supabase
 				.from("employees")
 				.select("*", { count: "exact", head: true })
@@ -291,9 +342,7 @@ export default function HRDashboardPage() {
 
 			const { data: teamsData } = await supabase
 				.from("teams")
-				.select(
-					"*, leader:employees!teams_leader_id_fkey(*), team_members(*, employee:employees(*))"
-				)
+				.select("*, leader:employees!teams_leader_id_fkey(*), team_members(*, employee:employees(*))")
 				.order("created_at", { ascending: false })
 				.limit(8);
 
@@ -311,16 +360,12 @@ export default function HRDashboardPage() {
 				onLeave: leaveCount || 0,
 				weeklyOff,
 			});
-			setPendingLeaves(
-				(pendingData as unknown as typeof pendingLeaves) || []
-			);
+			setPendingLeaves((pendingData as unknown as typeof pendingLeaves) || []);
 			setAnnouncements((announcementsData as Announcement[]) || []);
 			setTeams((teamsData as unknown as TeamWithDetails[]) || []);
-			setTodayActivities(
-				(activityData as unknown as typeof todayActivities) || []
-			);
+			setTodayActivities((activityData as unknown as typeof todayActivities) || []);
 		};
-		fetch();
+		fetchAll();
 	}, [employee?.id, calendarMonth]);
 
 	const handleClockIn = async () => {
@@ -346,13 +391,12 @@ export default function HRDashboardPage() {
 	const handleClockOut = async () => {
 		if (!todayAttendance || !employee) return;
 		const supabase = createClient();
-		const now = new Date();
+		const nowDate = new Date();
 		const clockIn = new Date(todayAttendance.clock_in!);
-		const totalHours =
-			(now.getTime() - clockIn.getTime()) / (1000 * 60 * 60);
+		const totalHours = (nowDate.getTime() - clockIn.getTime()) / (1000 * 60 * 60);
 		await supabase
 			.from("attendance")
-			.update({ clock_out: now.toISOString(), total_hours: totalHours })
+			.update({ clock_out: nowDate.toISOString(), total_hours: totalHours })
 			.eq("id", todayAttendance.id);
 		const { data } = await supabase
 			.from("attendance")
@@ -363,18 +407,13 @@ export default function HRDashboardPage() {
 		setTodayAttendance(data as Attendance);
 		setRecentAttendance((prev) => {
 			const updated = [...prev];
-			const idx = updated.findIndex(
-				(a) => a.date === new Date().toISOString().split("T")[0]
-			);
+			const idx = updated.findIndex((a) => a.date === new Date().toISOString().split("T")[0]);
 			if (idx >= 0 && data) updated[idx] = data as Attendance;
 			return updated;
 		});
 	};
 
-	const handleLeaveAction = async (
-		id: string,
-		status: "approved" | "rejected"
-	) => {
+	const handleLeaveAction = async (id: string, status: "approved" | "rejected") => {
 		const supabase = createClient();
 		await supabase
 			.from("leave_requests")
@@ -385,552 +424,471 @@ export default function HRDashboardPage() {
 			})
 			.eq("id", id);
 		setPendingLeaves((prev) => prev.filter((l) => l.id !== id));
-		setStats((s) => ({
-			...s,
-			pendingLeaves: Math.max(0, s.pendingLeaves - 1),
-		}));
+		setStats((s) => ({ ...s, pendingLeaves: Math.max(0, s.pendingLeaves - 1) }));
 	};
 
-	// Calendar grid (Sunday first, like employee dashboard)
+	// Calendar grid
 	const calYear = calendarMonth.getFullYear();
 	const calMonth = calendarMonth.getMonth();
 	const firstDay = new Date(calYear, calMonth, 1);
 	const lastDay = new Date(calYear, calMonth + 1, 0);
 	const monthDays: (Date | null)[] = [];
 	for (let i = 0; i < firstDay.getDay(); i++) monthDays.push(null);
-	for (let d = 1; d <= lastDay.getDate(); d++)
-		monthDays.push(new Date(calYear, calMonth, d));
+	for (let d = 1; d <= lastDay.getDate(); d++) monthDays.push(new Date(calYear, calMonth, d));
 	const monthAttendanceByDate: Record<string, Attendance> = {};
 	for (const a of monthAttendance) monthAttendanceByDate[a.date] = a;
 	const todayStr = new Date().toISOString().split("T")[0];
 
+	const hour = now.getHours();
+	const greeting = hour < 12 ? "Good Morning" : hour < 18 ? "Good Afternoon" : "Good Evening";
+
+	const isActive = !!todayAttendance?.clock_in && !todayAttendance.clock_out;
+	const isDone = !!todayAttendance?.clock_in && !!todayAttendance.clock_out;
+
+	const elapsed = isActive ? getElapsedHMS(todayAttendance!.clock_in!, now) : null;
+	const currentTime = getCurrentTimeParts(now);
+
 	return (
-		<div className="flex flex-col min-h-full bg-gradient-to-b from-muted/30 to-background">
+		<div className="flex flex-col min-h-full bg-background">
 			<DashboardHeader
 				title="HR Dashboard"
 				description={`Welcome back, ${employee?.first_name || "HR"}`}
 				searchPlaceholder="Search employees by name"
 			/>
 
-			<div className="flex-1 space-y-8 p-6">
-				{/* Top: Clock (reference design) & Recent Attendance | Calendar */}
-				<div className="grid gap-6 grid-cols-1 md:grid-cols-2">
-					<Card className="rounded-2xl bg-gradient-to-tr from-sky-50 to-violet-100">
-						<CardContent className="p-6 space-y-6">
-							{/* Greeting */}
+			<div className="flex-1 space-y-6 p-4 md:p-6 pb-20 md:pb-8">
 
-							<div>
-								<div className="flex items-center justify-start gap-2">
-									<p className="text-md text-gray-500 font-bold m-0 leading-none">
-										Hey 👋{employee ? `, ${employee.first_name}` : ""}
-									</p>
+				{/* ── Clock-In / Greeting Card + Calendar ── */}
+				<div className="grid gap-5 grid-cols-1 md:grid-cols-2">
 
-									<p className="text-sm border border-primary text-primary px-2 py-1 rounded-full leading-none flex items-center">
-										{new Date().toLocaleDateString("en-US", {
-											weekday: "short",
-											month: "short",
-											day: "numeric",
-										})}
+					{/* Clock Card */}
+					<div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary via-[#020286] to-indigo-700 text-white shadow-lg">
+						{/* Decorative blobs */}
+						<div className="pointer-events-none absolute -right-10 -top-10 h-48 w-48 rounded-full bg-white/5" />
+						<div className="pointer-events-none absolute right-10 bottom-0 h-28 w-28 rounded-full bg-white/5" />
+
+						<div className="relative p-6 space-y-5">
+							{/* Greeting row */}
+							<div className="flex items-start justify-between gap-3">
+								<div>
+									<div className="flex items-center gap-2 mb-1">
+										<Sparkles className="h-3.5 w-3.5 opacity-70" />
+										<span className="text-xs font-medium opacity-75 uppercase tracking-wider">HR Portal</span>
+									</div>
+									<h2 className="text-xl font-bold">{greeting}{employee ? `, ${employee.first_name}` : ""} 👋</h2>
+									<p className="text-sm opacity-70 mt-0.5">
+										{new Date().toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" })}
 									</p>
 								</div>
-
-
-								<h3 className="text-2xl mt-2 font-bold sm:text-4xl">
-									Good {new Date().getHours() < 12 ? "Morning" : new Date().getHours() < 18 ? "Afternoon" : "Evening"}
-								</h3>
-							</div>
-
-							{/* Status pill: Clocked In */}
-							{todayAttendance?.clock_in && !todayAttendance.clock_out && (
-								<div className="flex justify-center">
-									<span className="inline-flex items-center rounded-full bg-green-100 px-4 py-1.5 text-sm font-bold text-green-800 dark:bg-green-900/40 dark:text-green-300">
-										Clocked In
+								{isActive && (
+									<span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-400/20 border border-emerald-400/30 px-3 py-1.5 text-xs font-bold text-white shrink-0">
+										<span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse inline-block" />
+										Active
 									</span>
-								</div>
-							)}
-
-							{/* Timer: three boxes (HOURS / MINUTES / SECONDS) when clocked in; three-part current time when not */}
-							<div className="flex flex-col items-center gap-2">
-								{todayAttendance?.clock_in && !todayAttendance.clock_out ? (
-									<>
-										<div className="grid grid-cols-3 gap-3 w-full max-w-[320px]">
-											{(["hours", "minutes", "seconds"] as const).map((unit) => (
-												<div key={unit} className="flex flex-col items-center justify-center rounded-xl bg-white border border-border/50 py-5 px-3">
-													<span className="text-3xl sm:text-4xl md:text-5xl font-bold tabular-nums text-foreground">
-														{getElapsedHMS(todayAttendance.clock_in!, now)[unit]}
-													</span>
-													<span className="text-xs font-medium uppercase tracking-wider text-muted-foreground mt-1.5">
-														{unit === "hours" ? "Hours" : unit === "minutes" ? "Minutes" : "Seconds"}
-													</span>
-												</div>
-											))}
-										</div>
-										<p className="text-sm text-muted-foreground">
-											Clocked in: <span className="font-semibold text-foreground">{new Date(todayAttendance.clock_in).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}</span>
-										</p>
-									</>
-								) : todayAttendance?.clock_in && todayAttendance?.clock_out ? (
-									<>
-										<div className="grid grid-cols-3 gap-3 w-full max-w-[320px]">
-											{(["hours", "minutes", "ampm"] as const).map((unit) => (
-												<div key={unit} className="flex flex-col items-center justify-center rounded-xl bg-white border border-border/50 py-5 px-3">
-													<span className="text-3xl sm:text-4xl md:text-5xl font-bold tabular-nums text-foreground">
-														{getCurrentTimeParts(now)[unit]}
-													</span>
-													<span className="text-xs font-medium uppercase tracking-wider text-muted-foreground mt-1.5">
-														{unit === "hours" ? "Hours" : unit === "minutes" ? "Minutes" : "AM/PM"}
-													</span>
-												</div>
-											))}
-										</div>
-										<p className="text-sm text-muted-foreground">Current time</p>
-									</>
-								) : (
-									<>
-										<div className="grid grid-cols-3 gap-3 w-full max-w-[320px]">
-											{(["hours", "minutes", "ampm"] as const).map((unit) => (
-												<div key={unit} className="flex flex-col items-center justify-center rounded-xl bg-white border border-border/50 py-5 px-3">
-													<span className="text-3xl sm:text-4xl md:text-5xl font-bold tabular-nums text-foreground">
-														{getCurrentTimeParts(now)[unit]}
-													</span>
-													<span className="text-xs font-medium uppercase tracking-wider text-muted-foreground mt-1.5">
-														{unit === "hours" ? "Hours" : unit === "minutes" ? "Minutes" : "AM/PM"}
-													</span>
-												</div>
-											))}
-										</div>
-										<p className="text-sm text-muted-foreground">Current time</p>
-									</>
+								)}
+								{isDone && (
+									<span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 border border-white/20 px-3 py-1.5 text-xs font-bold text-white shrink-0">
+										<CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
+										Done
+									</span>
 								)}
 							</div>
 
-							{/* Primary action: Clock Out (red) / Clock In (blue) / Completed */}
-							<div className="flex justify-center">
-								{todayAttendance?.clock_in && !todayAttendance.clock_out ? (
-									<Button onClick={handleClockOut} className="gap-3 rounded-xl bg-red-600 hover:bg-red-700 text-white px-8 py-8 text-lg font-semibold w-[100%]">
-										<Square className="h-5 w-5" />
-										Clock Out
-									</Button>
-								) : todayAttendance ? (
-									<Badge className="bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300 border-0 rounded-lg gap-1 px-4 py-2">
-										<CheckCircle2 className="h-3.5 w-3.5" />
-										Completed
-									</Badge>
+							{/* Timer boxes */}
+							<div className="grid grid-cols-3 gap-3">
+								{isActive && elapsed ? (
+									(["hours", "minutes", "seconds"] as const).map((unit) => (
+										<div key={unit} className="flex flex-col items-center justify-center rounded-xl bg-white/10 border border-white/15 py-4 px-2 backdrop-blur-sm">
+											<span className="text-3xl sm:text-4xl font-bold tabular-nums">{elapsed[unit]}</span>
+											<span className="text-[10px] font-semibold uppercase tracking-wider opacity-60 mt-1">
+												{unit === "hours" ? "Hrs" : unit === "minutes" ? "Min" : "Sec"}
+											</span>
+										</div>
+									))
 								) : (
-									<Button onClick={handleClockIn} className="gap-3 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground px-8 py-8 text-lg font-semibold w-[100%]">
-										<Clock className="h-5 w-5" />
-										Clock In
-									</Button>
+									(["hours", "minutes", "ampm"] as const).map((unit) => (
+										<div key={unit} className="flex flex-col items-center justify-center rounded-xl bg-white/10 border border-white/15 py-4 px-2 backdrop-blur-sm">
+											<span className="text-3xl sm:text-4xl font-bold tabular-nums">{currentTime[unit]}</span>
+											<span className="text-[10px] font-semibold uppercase tracking-wider opacity-60 mt-1">
+												{unit === "hours" ? "Hrs" : unit === "minutes" ? "Min" : "AM/PM"}
+											</span>
+										</div>
+									))
 								)}
 							</div>
 
-							{/* Recent Attendance (unchanged functionality) */}
-							<div className="space-y-2 border-t border-border/50 pt-4">
-								<p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-									Today's Attendance
+							{/* Sub-caption */}
+							{isActive && todayAttendance?.clock_in && (
+								<p className="text-xs opacity-60 text-center">
+									Clocked in at {new Date(todayAttendance.clock_in).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}
 								</p>
+							)}
+							{(isDone || !isActive) && <p className="text-xs opacity-60 text-center">{isActive ? "" : "Current time"}</p>}
 
-								{recentAttendance.filter((att) => {
-									const today = new Date();
-									const attDate = new Date(att.date);
-
-									return (
-										attDate.getDate() === today.getDate() &&
-										attDate.getMonth() === today.getMonth() &&
-										attDate.getFullYear() === today.getFullYear()
-									);
-								}).length === 0 ? (
-									<p className="text-xs text-muted-foreground">
-										No attendance record for today.
-									</p>
-								) : (
-									<div className="space-y-2">
-										{recentAttendance
-											.filter((att) => {
-												const today = new Date();
-												const attDate = new Date(att.date);
-
-												return (
-													attDate.getDate() === today.getDate() &&
-													attDate.getMonth() === today.getMonth() &&
-													attDate.getFullYear() === today.getFullYear()
-												);
-											})
-											.map((att) => (
-												<div
-													key={att.id}
-													className="flex items-center justify-between rounded-xl border border-border/50 bg-white px-3 py-2.5"
-												>
-													<div className="flex gap-2">
-														<CheckCircle2 className="h-4 w-4 text-green-500" />
-														<p className="text-xs font-medium">
-															{new Date(att.date).toLocaleDateString("en-US", {
-																month: "short",
-																day: "numeric",
-															})}
-														</p>
-														<p className="text-[11px] text-muted-foreground">
-															{formatTime(att.clock_in)} – {formatTime(att.clock_out)}
-														</p>
-													</div>
-
-													<div className="flex gap-2 text-right">
-														<p className="text-xs font-medium capitalize">
-															Total
-														</p>
-														{att.total_hours != null && (
-															<p className="text-[11px] text-muted-foreground">
-																{att.total_hours.toFixed(2)} hrs
-															</p>
-														)}
-													</div>
-												</div>
-											))}
+							{/* CTA Button */}
+							<div className="flex justify-center">
+								{isActive ? (
+									<button
+										onClick={handleClockOut}
+										className="w-full flex items-center justify-center gap-2 rounded-xl bg-red-500 hover:bg-red-600 active:scale-95 text-white px-6 py-3.5 text-base font-bold transition-all duration-150 shadow-md cursor-pointer"
+									>
+										<Square className="h-4 w-4" />
+										Clock Out
+									</button>
+								) : isDone ? (
+									<div className="w-full flex items-center justify-center gap-2 rounded-xl bg-white/15 border border-white/20 px-6 py-3.5 text-base font-bold">
+										<CheckCircle2 className="h-4 w-4 text-emerald-400" />
+										Attendance Completed
 									</div>
+								) : (
+									<button
+										onClick={handleClockIn}
+										className="w-full flex items-center justify-center gap-2 rounded-xl bg-white text-primary hover:bg-white/90 active:scale-95 px-6 py-3.5 text-base font-bold transition-all duration-150 shadow-md cursor-pointer"
+									>
+										<Clock className="h-4 w-4" />
+										Clock In
+									</button>
 								)}
 							</div>
-						</CardContent>
-					</Card>
 
-					<Card className="rounded-2xl border-border/50 shadow-sm">
-						<CardHeader className="pb-2">
-							<CardTitle className="flex items-center justify-between text-base">
-								<span className="flex items-center gap-2">
-									<div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
-										<Calendar className="h-5 w-5" />
+							{/* Today's record */}
+							{recentAttendance.filter((att) => {
+								const t = new Date();
+								const d = new Date(att.date + "T12:00:00");
+								return d.getDate() === t.getDate() && d.getMonth() === t.getMonth() && d.getFullYear() === t.getFullYear();
+							}).map((att) => (
+								<div key={att.id} className="flex items-center justify-between rounded-xl bg-white/10 border border-white/15 px-4 py-3 text-sm">
+									<div className="flex items-center gap-2">
+										<CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />
+										<span className="font-medium opacity-90">
+											{new Date(att.date + "T12:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+										</span>
+										<span className="opacity-60 text-xs">{formatTime(att.clock_in)} – {formatTime(att.clock_out)}</span>
 									</div>
-									<span className="font-semibold">Calendar</span>
-								</span>
-								<div className="flex items-center gap-1">
-									<Button
-										variant='ghost'
-										size='icon'
-										className='h-8 w-8'
-										onClick={() =>
-											setCalendarMonth(
-												(d) =>
-													new Date(
-														d.getFullYear(),
-														d.getMonth() - 1
-													)
-											)
-										}>
-										<ChevronLeft className='h-4 w-4' />
-									</Button>
-									<span className='text-xs text-muted-foreground min-w-[100px] text-center'>
-										{calendarMonth.toLocaleDateString(
-											"en-US",
-											{ month: "long", year: "numeric" }
-										)}
-									</span>
-									<Button
-										variant='ghost'
-										size='icon'
-										className='h-8 w-8'
-										onClick={() =>
-											setCalendarMonth(
-												(d) =>
-													new Date(
-														d.getFullYear(),
-														d.getMonth() + 1
-													)
-											)
-										}>
-										<ChevronRight className='h-4 w-4' />
-									</Button>
+									{att.total_hours != null && (
+										<span className="opacity-80 text-xs font-semibold tabular-nums">{att.total_hours.toFixed(2)}h</span>
+									)}
 								</div>
-							</CardTitle>
-						</CardHeader>
-						<CardContent className='space-y-4'>
-							<div className='grid grid-cols-7 text-center text-[11px] font-medium text-muted-foreground'>
-								{[
-									"Sun",
-									"Mon",
-									"Tue",
-									"Wed",
-									"Thu",
-									"Fri",
-									"Sat",
-								].map((d) => (
-									<div key={d}>{d}</div>
+							))}
+						</div>
+					</div>
+
+					{/* Calendar Card */}
+					<div className="bg-card rounded-2xl border border-border/50 shadow-sm overflow-hidden">
+						<div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-border/50">
+							<div className="flex items-center gap-3">
+								<div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+									<Calendar className="h-5 w-5" />
+								</div>
+								<div>
+									<p className="font-semibold text-sm text-foreground">Attendance Calendar</p>
+									<p className="text-xs text-muted-foreground">{calendarMonth.toLocaleDateString("en-US", { month: "long", year: "numeric" })}</p>
+								</div>
+							</div>
+							<div className="flex items-center gap-1">
+								<button
+									onClick={() => setCalendarMonth((d) => new Date(d.getFullYear(), d.getMonth() - 1))}
+									className="h-8 w-8 rounded-lg flex items-center justify-center hover:bg-muted transition-colors cursor-pointer border border-border/50"
+								>
+									<ChevronLeft className="h-4 w-4" />
+								</button>
+								<button
+									onClick={() => setCalendarMonth((d) => new Date(d.getFullYear(), d.getMonth() + 1))}
+									className="h-8 w-8 rounded-lg flex items-center justify-center hover:bg-muted transition-colors cursor-pointer border border-border/50"
+								>
+									<ChevronRight className="h-4 w-4" />
+								</button>
+							</div>
+						</div>
+						<div className="p-4 space-y-3">
+							{/* Day headers */}
+							<div className="grid grid-cols-7 text-center text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+								{["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d) => (
+									<div key={d} className="py-1">{d}</div>
 								))}
 							</div>
-							<div className='grid grid-cols-7 gap-2 text-xs'>
+							{/* Day cells */}
+							<div className="grid grid-cols-7 gap-1.5">
 								{monthDays.map((day, idx) => {
 									if (!day) return <div key={idx} />;
-									const dateStr = `${calYear}-${String(
-										calMonth + 1
-									).padStart(2, "0")}-${String(
-										day.getDate()
-									).padStart(2, "0")}`;
+									const dateStr = `${calYear}-${String(calMonth + 1).padStart(2, "0")}-${String(day.getDate()).padStart(2, "0")}`;
 									const isToday = dateStr === todayStr;
 									const att = monthAttendanceByDate[dateStr];
 									const festivalTitles = festivalMap[dateStr];
-									const hasAttendance = !!att;
+									const statusColor =
+										att?.status === "present" ? "ring-1 ring-emerald-400 bg-emerald-50 text-emerald-800"
+										: att?.status === "late" ? "ring-1 ring-amber-400 bg-amber-50 text-amber-800"
+										: att?.status === "leave" ? "ring-1 ring-violet-400 bg-violet-50 text-violet-800"
+										: "bg-muted/60 text-foreground";
 									return (
 										<div
 											key={dateStr}
-											className={`relative flex h-12 flex-col items-center justify-center rounded-md  text-[11px] cursor-default ${isToday
-												? "bg-primary text-white font-semibold"
-												: "bg-gray-100"
-												} ${festivalTitles
-													? "cursor-pointer"
-													: ""
-												}`}
-											onClick={() => {
-												if (festivalTitles) {
-													setSelectedFestivalDate(
-														dateStr
-													);
-												}
-											}}>
+											onClick={() => festivalTitles && setSelectedFestivalDate(dateStr)}
+											className={`relative flex h-10 flex-col items-center justify-center rounded-lg text-[11px] font-medium transition-all duration-150 ${isToday ? "bg-primary text-white shadow-sm ring-2 ring-primary/30 scale-[1.05]" : statusColor} ${festivalTitles ? "cursor-pointer" : "cursor-default"}`}
+										>
 											<span>{day.getDate()}</span>
 											{festivalTitles && (
-												<span className='mt-0.5 absolute right-1 top-1 inline-flex rounded-full bg-pink-500 text-[9px] text-pink-600 w-2 h-2'>
-
+												<span className="absolute top-1 right-1 h-1.5 w-1.5 rounded-full bg-pink-500 inline-block" />
+											)}
+											{!festivalTitles && att && (
+												<span className={`text-[8px] leading-none mt-0.5 font-bold opacity-80`}>
+													{att.status === "present" ? "✓" : att.status === "late" ? "~" : att.status === "leave" ? "L" : ""}
 												</span>
 											)}
-											{!festivalTitles &&
-												hasAttendance && (
-													<span className='mt-0.5 inline-flex rounded-full bg-emerald-500/10 px-1.5 py-0.5 text-[9px] text-emerald-600'>
-														{att.status ===
-															"present"
-															? "Present"
-															: att.status ===
-																"late"
-																? "Late"
-																: att.status ===
-																	"leave"
-																	? "Leave"
-																	: att.status}
-													</span>
-												)}
 										</div>
 									);
 								})}
 							</div>
-							{selectedFestivalDate &&
-								festivalMap[selectedFestivalDate] && (
-									<div className='mt-3 rounded-md border border-border bg-muted/40 p-3 text-xs'>
-										<p className='mb-1 font-medium'>
-											Festivals on{" "}
-											{new Date(
-												selectedFestivalDate
-											).toLocaleDateString("en-US", {
-												month: "short",
-												day: "numeric",
-												year: "numeric",
-											})}
-										</p>
-										<ul className='list-disc space-y-0.5 pl-4'>
-											{festivalMap[
-												selectedFestivalDate
-											].map((title, idx) => (
-												<li key={idx}>{title}</li>
-											))}
-										</ul>
+							{/* Legend */}
+							<div className="flex flex-wrap items-center gap-3 pt-1 border-t border-border/40">
+								{[
+									{ label: "Present", cls: "bg-emerald-400" },
+									{ label: "Late", cls: "bg-amber-400" },
+									{ label: "Leave", cls: "bg-violet-400" },
+									{ label: "Holiday", cls: "bg-pink-500" },
+								].map((l) => (
+									<div key={l.label} className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+										<span className={`h-2 w-2 rounded-full ${l.cls} inline-block`} />
+										{l.label}
 									</div>
-								)}
-						</CardContent>
-					</Card>
-				</div>
-
-				{/* Stats */}
-				<div className='grid gap-4 grid-cols-2 lg:grid-cols-5'>
-					<StatCard
-						title='Total Employees & HR'
-						value={stats.totalEmployees}
-						icon={<Users className='h-6 w-6' />}
-						color={statCardColors[0]}
-					/>
-					<StatCard
-						title='Clocked In Today'
-						value={stats.clockedIn}
-						icon={<Clock className='h-6 w-6' />}
-						color={statCardColors[1]}
-					/>
-					<StatCard
-						title='Pending Leaves'
-						value={stats.pendingLeaves}
-						icon={<Calendar className='h-6 w-6' />}
-						color={statCardColors[2]}
-					/>
-					<StatCard
-						title='On Leave Today'
-						value={stats.onLeave}
-						icon={<UserPlus className='h-6 w-6' />}
-						color={statCardColors[3]}
-					/>
-					<StatCard
-						title='Weekly Off Today'
-						value={stats.weeklyOff}
-						icon={<Calendar className='h-6 w-6' />}
-						color={statCardColors[4]}
-					/>
-				</div>
-
-				{/* Announcements */}
-				<Card className="rounded-2xl border-border/50 shadow-sm">
-					<CardHeader className="flex flex-row items-center justify-between pb-2">
-						<div className="flex items-center gap-3">
-							<div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
-								<Megaphone className="h-5 w-5" />
+								))}
 							</div>
-							<div>
-								<CardTitle className="text-base font-semibold">Announcements</CardTitle>
-								<p className="text-sm text-muted-foreground mt-0.5">{announcements.length} announcement{announcements.length !== 1 ? "s" : ""}</p>
-							</div>
+							{/* Festival popup */}
+							{selectedFestivalDate && festivalMap[selectedFestivalDate] && (
+								<div
+									className="mt-2 rounded-xl border border-pink-200 bg-pink-50 p-3 text-xs cursor-pointer"
+									onClick={() => setSelectedFestivalDate(null)}
+								>
+									<p className="font-semibold text-pink-800 mb-1.5">
+										🎉 Holidays on {new Date(selectedFestivalDate + "T12:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+									</p>
+									<ul className="space-y-0.5 text-pink-700">
+										{festivalMap[selectedFestivalDate].map((title, idx) => (
+											<li key={idx} className="flex items-center gap-1.5">
+												<span className="h-1 w-1 rounded-full bg-pink-500 inline-block" />
+												{title}
+											</li>
+										))}
+									</ul>
+									<p className="text-pink-500/70 mt-2 text-[10px]">Tap to dismiss</p>
+								</div>
+							)}
 						</div>
-						<Button size="sm" variant="outline" className="rounded-lg" asChild>
-							<Link href="/hr/announcements">Manage</Link>
-						</Button>
-					</CardHeader>
-					<CardContent className="pt-0">
+					</div>
+				</div>
+
+				{/* ── Stats ── */}
+				<div className="grid gap-4 grid-cols-2 lg:grid-cols-5">
+					{STAT_CONFIGS.map((cfg) => (
+						<StatCard
+							key={cfg.key}
+							config={cfg}
+							value={stats[cfg.key]}
+							total={stats.totalEmployees || 1}
+						/>
+					))}
+				</div>
+
+				{/* ── Announcements ── */}
+				<div className="bg-card rounded-2xl border border-border/50 shadow-sm overflow-hidden">
+					<SectionHeader
+						icon={<Megaphone className="h-5 w-5" />}
+						iconBg="bg-primary/10"
+						iconColor="text-primary"
+						title="Announcements"
+						sub={`${announcements.length} announcement${announcements.length !== 1 ? "s" : ""}`}
+						action={
+							<Button size="sm" variant="outline" className="rounded-xl gap-1.5 h-8 text-xs" asChild>
+								<Link href="/hr/announcements">
+									Manage <ArrowRight className="h-3 w-3" />
+								</Link>
+							</Button>
+						}
+					/>
+					<div className="p-4">
 						{announcements.length === 0 ? (
-							<div className="flex flex-col items-center justify-center py-12 text-center rounded-xl bg-muted/30">
-								<Megaphone className="h-10 w-10 text-muted-foreground/50 mb-3" />
-								<p className="text-sm font-medium">No announcements</p>
+							<div className="flex flex-col items-center justify-center py-10 text-center rounded-xl bg-muted/30">
+								<div className="h-12 w-12 rounded-2xl bg-primary/10 flex items-center justify-center mb-3">
+									<Megaphone className="h-5 w-5 text-primary/50" />
+								</div>
+								<p className="text-sm font-medium">No announcements yet</p>
 								<p className="text-xs text-muted-foreground mt-1 max-w-[200px]">Create and manage from the announcements page</p>
-								<Button size="sm" className="mt-4 rounded-lg" asChild>
+								<Button size="sm" className="mt-4 rounded-xl" asChild>
 									<Link href="/hr/announcements">Go to Announcements</Link>
 								</Button>
 							</div>
 						) : (
-							<div className="space-y-2 max-h-[200px] overflow-y-auto pr-1">
-								{announcements.slice(0, 5).map((a) => (
-									<div key={a.id} className="flex gap-3 rounded-xl p-3 hover:bg-muted/40 transition-colors">
-										<div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-											<Megaphone className="h-4 w-4" />
+							<div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-2 max-h-[240px] overflow-y-auto pr-1">
+								{announcements.slice(0, 6).map((a) => (
+									<div key={a.id} className="flex gap-3 rounded-xl p-3 hover:bg-muted/40 transition-colors border border-border/40">
+										<div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+											<Megaphone className="h-3.5 w-3.5" />
 										</div>
 										<div className="flex-1 min-w-0">
-											<p className="text-sm font-medium line-clamp-1">{a.title || "Announcement"}</p>
+											<p className="text-sm font-semibold line-clamp-1">{a.title || "Announcement"}</p>
 											<p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{a.content}</p>
-											<p className="text-xs text-muted-foreground mt-1">{a.date}</p>
+											<p className="text-[10px] text-muted-foreground/60 mt-1 font-medium">{a.date}</p>
 										</div>
 									</div>
 								))}
 							</div>
 						)}
-					</CardContent>
-				</Card>
+					</div>
+				</div>
 
-				{/* Pending Approvals (if any) */}
+				{/* ── Pending Approvals ── */}
 				{pendingLeaves.length > 0 && (
-					<Card className="rounded-2xl border-border/50 shadow-sm">
-						<CardHeader className="pb-2">
-							<div className="flex items-center gap-3">
-								<div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500/15 text-amber-600 dark:text-amber-400">
-									<Clock className="h-5 w-5" />
-								</div>
-								<div>
-									<CardTitle className="text-base font-semibold">Pending Approvals</CardTitle>
-									<p className="text-sm text-muted-foreground mt-0.5">{pendingLeaves.length} employees waiting</p>
-								</div>
-							</div>
-						</CardHeader>
-						<CardContent className="pt-0">
-							<div className="flex flex-wrap gap-3">
+					<div className="bg-card rounded-2xl border border-border/50 shadow-sm overflow-hidden">
+						<SectionHeader
+							icon={<Timer className="h-5 w-5" />}
+							iconBg="bg-amber-500/15"
+							iconColor="text-amber-600"
+							title="Pending Approvals"
+							sub={`${pendingLeaves.length} employee${pendingLeaves.length !== 1 ? "s" : ""} waiting`}
+							action={
+								<Button size="sm" variant="outline" className="rounded-xl gap-1.5 h-8 text-xs" asChild>
+									<Link href="/hr/leave">
+										View all <ArrowRight className="h-3 w-3" />
+									</Link>
+								</Button>
+							}
+						/>
+						<div className="p-4">
+							<div className="grid sm:grid-cols-2 gap-2">
 								{pendingLeaves.map((leave) => (
-									<div key={leave.id} className="flex items-center justify-between rounded-xl border border-border/50 p-3 min-w-[240px] hover:border-amber-200 dark:hover:border-amber-800 transition-colors">
-										<div>
-											<p className="font-medium text-sm">{leave.employee?.first_name} {leave.employee?.last_name}</p>
-											<p className="text-xs text-muted-foreground">{(leave.leave_type as { name?: string })?.name ?? "Leave"} • {leave.start_date}</p>
+									<div
+										key={leave.id}
+										className="flex items-center justify-between rounded-xl border border-border/50 bg-background p-3 hover:border-amber-300/70 hover:bg-amber-50/30 transition-all duration-150"
+									>
+										<div className="min-w-0 flex-1">
+											<p className="font-semibold text-sm text-foreground truncate">
+												{leave.employee?.first_name} {leave.employee?.last_name}
+											</p>
+											<p className="text-xs text-muted-foreground mt-0.5">
+												{(leave.leave_type as { name?: string })?.name ?? "Leave"} · {leave.start_date}
+											</p>
 										</div>
-										<div className="flex gap-2">
-											<Button size="sm" variant="outline" className="rounded-lg" onClick={() => handleLeaveAction(leave.id, "rejected")}>Reject</Button>
-											<Button size="sm" className="rounded-lg bg-primary hover:bg-primary/90" onClick={() => handleLeaveAction(leave.id, "approved")}>Approve</Button>
+										<div className="flex gap-1.5 shrink-0 ml-3">
+											<button
+												onClick={() => handleLeaveAction(leave.id, "rejected")}
+												className="px-3 py-1.5 rounded-lg text-xs font-semibold border border-border bg-background text-muted-foreground hover:bg-red-50 hover:text-red-700 hover:border-red-200 transition-colors cursor-pointer"
+											>
+												Reject
+											</button>
+											<button
+												onClick={() => handleLeaveAction(leave.id, "approved")}
+												className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-600 text-white hover:bg-emerald-700 transition-colors cursor-pointer"
+											>
+												Approve
+											</button>
 										</div>
 									</div>
 								))}
 							</div>
-						</CardContent>
-					</Card>
+						</div>
+					</div>
 				)}
 
-				{/* Bottom: Recent Activity | Recent Teams | Upcoming Birthdays */}
-				<div className="grid gap-6 lg:grid-cols-3">
-					<Card className="rounded-2xl border-border/50 shadow-sm overflow-hidden bg-gradient-to-b from-sky-50/60 to-transparent dark:from-sky-950/20 dark:to-transparent">
-						<CardHeader className="pb-2">
-							<div className="flex items-center gap-3">
-								<div className="flex h-10 w-10 items-center justify-center rounded-xl bg-sky-500/15 text-sky-600 dark:text-sky-400">
-									<Activity className="h-5 w-5" />
-								</div>
-								<div>
-									<CardTitle className="text-base font-semibold">Today&apos;s Activity</CardTitle>
-									<p className="text-xs text-muted-foreground mt-0.5">{todayActivities.length} check-in{todayActivities.length !== 1 ? "s" : ""} today</p>
-								</div>
-							</div>
-						</CardHeader>
-						<CardContent className="pt-0">
+				{/* ── Activity | Teams | Birthdays ── */}
+				<div className="grid gap-5 lg:grid-cols-3 items-start">
+					{/* Today's Activity */}
+					<div className="bg-card rounded-2xl border border-border/50 shadow-sm overflow-hidden">
+						<SectionHeader
+							icon={<Activity className="h-5 w-5" />}
+							iconBg="bg-sky-500/15"
+							iconColor="text-sky-600"
+							title="Today's Activity"
+							sub={`${todayActivities.length} check-in${todayActivities.length !== 1 ? "s" : ""} today`}
+						/>
+						<div className="p-4">
 							{todayActivities.length === 0 ? (
 								<div className="flex flex-col items-center justify-center py-10 text-center rounded-xl bg-muted/20">
-									<div className="mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-sky-500/10 text-sky-500/70"><LogIn className="h-6 w-6" /></div>
+									<div className="h-12 w-12 rounded-2xl bg-sky-500/10 flex items-center justify-center mb-3">
+										<LogIn className="h-5 w-5 text-sky-500/70" />
+									</div>
 									<p className="text-sm font-medium">No activity yet</p>
-									<p className="text-xs text-muted-foreground mt-1 max-w-[180px]">Attendance check-ins will appear here</p>
+									<p className="text-xs text-muted-foreground mt-1 max-w-[160px]">Clock-ins will appear here</p>
 								</div>
 							) : (
-								<ul className="space-y-2 max-h-[240px] overflow-y-auto pr-1">
+								<ul className="space-y-1.5 max-h-[300px] overflow-y-auto pr-1">
 									{todayActivities.map((a) => (
-										<li key={a.id} className="flex items-center gap-3 rounded-xl border border-border/50 bg-card/80 p-3 transition-colors hover:bg-muted/30 dark:hover:bg-muted/20">
+										<li key={a.id} className="flex items-center gap-3 rounded-xl border border-border/40 bg-background/70 p-2.5 hover:bg-muted/30 transition-colors">
 											<Avatar className="h-9 w-9 shrink-0 border-2 border-background shadow-sm">
 												{a.employee?.avatar_url ? (
 													<AvatarImage className="object-cover" src={a.employee.avatar_url} alt={a.employee?.first_name} />
 												) : null}
-												<AvatarFallback className="text-xs font-medium bg-muted">{a.employee?.first_name?.[0]}{a.employee?.last_name?.[0]}</AvatarFallback>
+												<AvatarFallback className="text-xs font-semibold bg-muted">
+													{a.employee?.first_name?.[0]}{a.employee?.last_name?.[0]}
+												</AvatarFallback>
 											</Avatar>
 											<div className="min-w-0 flex-1">
-												<p className="text-sm font-medium truncate">{a.employee?.first_name} {a.employee?.last_name}</p>
-												<p className="text-xs text-muted-foreground flex items-center gap-1.5 mt-0.5">
-													<Clock className="h-3 w-3 shrink-0" />{formatTime(a.clock_in)}
-													{a.total_hours != null && <><span className="text-border">•</span><span>{a.total_hours}h</span></>}
+												<p className="text-sm font-semibold truncate">{a.employee?.first_name} {a.employee?.last_name}</p>
+												<p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
+													<Clock className="h-3 w-3 shrink-0" />
+													{formatTime(a.clock_in)}
+													{a.total_hours != null && (
+														<><span className="text-border">·</span><span>{a.total_hours}h</span></>
+													)}
 												</p>
 											</div>
-											<Badge variant={a.status === "late" ? "secondary" : "default"} className={a.status === "present" ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-0 shrink-0 rounded-md" : "bg-amber-500/15 text-amber-700 dark:text-amber-400 border-0 shrink-0 rounded-md"}>
+											<span className={`shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold ${a.status === "present" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-amber-50 text-amber-700 border border-amber-200"}`}>
 												{a.status === "present" ? "Present" : "Late"}
-											</Badge>
+											</span>
 										</li>
 									))}
 								</ul>
 							)}
-						</CardContent>
-					</Card>
+						</div>
+					</div>
 
-					<Card className="rounded-2xl border-border/50 shadow-sm">
-						<CardHeader className="pb-2">
-							<div className="flex items-center gap-3">
-								<div className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-500/15 text-violet-600 dark:text-violet-400">
-									<UserPlus className="h-5 w-5" />
-								</div>
-								<div>
-									<CardTitle className="text-base font-semibold">Recent Teams</CardTitle>
-									<p className="text-sm text-muted-foreground mt-0.5">{teams.length} teams • Active groups</p>
-								</div>
-							</div>
-						</CardHeader>
-						<CardContent className="pt-0">
+					{/* Recent Teams */}
+					<div className="bg-card rounded-2xl border border-border/50 shadow-sm overflow-hidden">
+						<SectionHeader
+							icon={<Users className="h-5 w-5" />}
+							iconBg="bg-violet-500/15"
+							iconColor="text-violet-600"
+							title="Recent Teams"
+							sub={`${teams.length} teams · Active groups`}
+							action={
+								<Button size="sm" variant="outline" className="rounded-xl gap-1.5 h-8 text-xs" asChild>
+									<Link href="/hr/teams">
+										View all <ArrowRight className="h-3 w-3" />
+									</Link>
+								</Button>
+							}
+						/>
+						<div className="p-4">
 							{teams.length === 0 ? (
-								<p className="text-sm text-muted-foreground text-center py-10 rounded-xl bg-muted/20">No teams yet</p>
+								<div className="flex flex-col items-center justify-center py-10 text-center rounded-xl bg-muted/20">
+									<p className="text-sm text-muted-foreground font-medium">No teams yet</p>
+								</div>
 							) : (
-								<ul className="space-y-2 max-h-[240px] overflow-y-auto pr-1">
+								<ul className="space-y-1.5 max-h-[300px] overflow-y-auto pr-1">
 									{teams.map((team) => (
-										<li key={team.id} className="flex items-center gap-3 rounded-xl border border-border/50 p-3 hover:bg-muted/30 transition-colors">
+										<li key={team.id} className="flex items-center gap-3 rounded-xl border border-border/40 p-2.5 hover:bg-muted/30 transition-colors">
 											<Avatar className="h-9 w-9 shrink-0">
 												{team.leader?.avatar_url ? (
 													<AvatarImage className="object-cover" src={team.leader.avatar_url} alt={team.leader?.first_name} />
 												) : null}
-												<AvatarFallback className="text-xs bg-violet-500/15 text-violet-600 dark:text-violet-400">{team.leader?.first_name?.[0]}{team.leader?.last_name?.[0]}{!team.leader && team.name?.[0]}</AvatarFallback>
+												<AvatarFallback className="text-xs font-semibold bg-violet-500/15 text-violet-600">
+													{team.leader?.first_name?.[0]}{team.leader?.last_name?.[0]}{!team.leader && team.name?.[0]}
+												</AvatarFallback>
 											</Avatar>
 											<div className="flex-1 min-w-0">
-												<p className="font-medium text-sm truncate">{team.name}</p>
+												<p className="font-semibold text-sm truncate">{team.name}</p>
 												<p className="text-xs text-muted-foreground">{team.team_members?.length || 0} members</p>
 											</div>
+											<span className="shrink-0 inline-flex items-center px-2 py-0.5 rounded-full bg-violet-50 border border-violet-200 text-[10px] font-bold text-violet-700">
+												{team.team_members?.length ?? 0}
+											</span>
 										</li>
 									))}
 								</ul>
 							)}
-						</CardContent>
-					</Card>
+						</div>
+					</div>
 
+					{/* Birthdays */}
 					<UpcomingBirthdays />
 				</div>
 			</div>

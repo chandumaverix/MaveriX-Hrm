@@ -52,6 +52,7 @@ import {
 	Loader2,
 	UserX,
 	UserCheck,
+	Download,
 } from "lucide-react";
 import type { Employee, UserRole } from "@/lib/types";
 import { createEmployeeWithAuth } from "./actions";
@@ -306,6 +307,69 @@ export default function EmployeesPage() {
 		});
 	};
 
+	const downloadEmployeesCSV = () => {
+		if (filteredEmployees.length === 0) return;
+		const escape = (v: string | number | null | undefined) => {
+			const s = String(v ?? "").replace(/"/g, '""');
+			return `"${s}"`;
+		};
+		const headers = [
+			"Employee ID",
+			"First Name",
+			"Last Name",
+			"Email",
+			"Phone",
+			"Designation",
+			"Department",
+			"Role",
+			"Date of Birth",
+			"Joining Date",
+			"Status",
+			"Address",
+			"Week Off Day",
+			"Bank Name",
+			"Bank Account Number",
+			"Bank IFSC",
+			"Bank Location",
+			"PAN Number",
+			"Aadhar Number"
+		];
+		
+		const weekDays = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+		
+		const rows = filteredEmployees.map((emp) => {
+			return [
+				escape(emp.employee_id),
+				escape(emp.first_name),
+				escape(emp.last_name),
+				escape(emp.email),
+				escape(emp.phone),
+				escape(emp.designation),
+				escape(emp.department),
+				escape(emp.role),
+				escape(emp.date_of_birth),
+				escape(emp.joining_date),
+				escape(emp.is_active ? "Active" : "Blocked"),
+				escape(emp.address),
+				escape(emp.week_off_day != null ? weekDays[emp.week_off_day] : ""),
+				escape(emp.bank_name),
+				escape(emp.bank_account_number),
+				escape(emp.bank_ifsc),
+				escape(emp.bank_location),
+				escape(emp.pan_number),
+				escape(emp.aadhar_number)
+			].join(",");
+		});
+		const csv = [headers.join(","), ...rows].join("\n");
+		const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+		const url = URL.createObjectURL(blob);
+		const a = document.createElement("a");
+		a.href = url;
+		a.download = `employees-export-${new Date().toISOString().split("T")[0]}.csv`;
+		a.click();
+		URL.revokeObjectURL(url);
+	};
+
 	const resetAddForm = () => {
 		resetForm();
 	};
@@ -402,6 +466,15 @@ export default function EmployeesPage() {
 								className='pl-9'
 							/>
 						</div>
+						<Button
+							variant="outline"
+							onClick={downloadEmployeesCSV}
+							disabled={filteredEmployees.length === 0}
+							className="gap-2"
+						>
+							<Download className="h-4 w-4" />
+							Export
+						</Button>
 						<Select
 							value={roleFilter}
 							onValueChange={setRoleFilter}>
