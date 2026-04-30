@@ -110,18 +110,19 @@ export default function AttendancePage() {
 			// Build lookup of what was fetched
 			const recordSet = new Set(rawRecords.map((r) => `${r.employee_id}_${r.date}`));
 
-			// Determine bounded date range (max 365 days window if unrestricted)
+			// Determine bounded date range
 			let startDateStr = reportDateFrom;
 			let endDateStr = reportDateTo || toLocalDateStr(new Date());
 
+			// If no start date provided, default to 90 days back instead of 30
 			if (!startDateStr) {
 				const d = new Date(endDateStr);
-				d.setDate(d.getDate() - 30);
+				d.setDate(d.getDate() - 90);
 				startDateStr = toLocalDateStr(d);
 			}
 
-			const sDate = new Date(startDateStr);
-			const eDate = new Date(endDateStr);
+			const sDate = new Date(startDateStr + "T00:00:00");
+			const eDate = new Date(endDateStr + "T23:59:59");
 
 			const targetEmployees = reportEmployeeId === "all"
 				? employees

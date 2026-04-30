@@ -87,6 +87,8 @@ export default function EmployeeDashboardPage() {
 	});
 	const [now, setNow] = useState(() => new Date());
 	const [isClockOutDialogOpen, setIsClockOutDialogOpen] = useState(false);
+	const [clockOutTimer, setClockOutTimer] = useState(10);
+	const [isClockOutButtonDisabled, setIsClockOutButtonDisabled] = useState(true);
 
 	useEffect(() => {
 		if (employee) {
@@ -301,7 +303,31 @@ export default function EmployeeDashboardPage() {
 
 	const confirmClockOut = () => {
 		setIsClockOutDialogOpen(true);
+		setClockOutTimer(10);
+		setIsClockOutButtonDisabled(true);
 	};
+
+	// Handle clock-out button countdown timer
+	useEffect(() => {
+		if (!isClockOutDialogOpen) {
+			setClockOutTimer(10);
+			setIsClockOutButtonDisabled(true);
+			return;
+		}
+
+		if (clockOutTimer > 0) {
+			const timer = setInterval(() => {
+				setClockOutTimer((prev) => {
+					if (prev <= 1) {
+						setIsClockOutButtonDisabled(false);
+						return 0;
+					}
+					return prev - 1;
+				});
+			}, 1000);
+			return () => clearInterval(timer);
+		}
+	}, [isClockOutDialogOpen, clockOutTimer]);
 
 	const formatTime = (timeString: string | null) => {
 		if (!timeString) return "-";
@@ -532,8 +558,12 @@ export default function EmployeeDashboardPage() {
 													<Button variant="outline" onClick={() => setIsClockOutDialogOpen(false)}>
 														Cancel
 													</Button>
-													<Button onClick={handleClockOut} className="bg-red-600 hover:bg-red-700">
-														Clock Out
+													<Button 
+														onClick={handleClockOut} 
+														disabled={isClockOutButtonDisabled}
+														className="bg-red-600 hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+													>
+														{isClockOutButtonDisabled ? `Clock Out in ${clockOutTimer}s` : 'Clock Out'}
 													</Button>
 												</DialogFooter>
 											</DialogContent>
