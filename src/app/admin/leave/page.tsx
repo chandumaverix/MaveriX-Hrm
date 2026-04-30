@@ -39,12 +39,14 @@ import {
 	FileDown,
 	Download,
 	User,
+	Minus,
 } from "lucide-react";
 import type {
 	Employee,
 	LeaveRequest,
 	LeaveType,
 	LeaveBalance,
+	LeaveDeduction,
 } from "@/lib/types";
 import { useUser } from "../../../contexts/user-context";
 import { cn } from "@/lib/utils";
@@ -148,6 +150,29 @@ export default function LeavePage() {
 	const [isSavingType, setIsSavingType] = useState(false);
 	const [typeError, setTypeError] = useState<string | null>(null);
 
+	// Leave deduction state
+	const [isDeductionOpen, setIsDeductionOpen] = useState(false);
+	const [deductionLoading, setDeductionLoading] = useState(false);
+	const [deductionError, setDeductionError] = useState<string | null>(null);
+	const [deductionForm, setDeductionForm] = useState<{
+		employee_id: string;
+		leave_type_id: string;
+		days_deducted: string;
+		deduction_date: string;
+		reason: string;
+	}>({
+		employee_id: "",
+		leave_type_id: "",
+		days_deducted: "",
+		deduction_date: new Date().toISOString().split("T")[0],
+		reason: "",
+	});
+	const [leaveDeductions, setLeaveDeductions] = useState<(LeaveDeduction & {
+		employee?: Employee;
+		leave_type?: LeaveType;
+		deductor?: Employee;
+	})[]>([]);
+
 	// ── Download Report state ──────────────────────────────────────────
 	const [reportEmployeeId, setReportEmployeeId] = useState<string>("all");
 	const [reportStatus, setReportStatus] = useState<string>("all");
@@ -166,6 +191,7 @@ export default function LeavePage() {
 		pending: 0,
 		approved: 0,
 		rejected: 0,
+		deducted: 0,
 		total: 0,
 	});
 
@@ -174,6 +200,7 @@ export default function LeavePage() {
 		fetchLeaveTypes();
 		fetchLeaveBalances();
 		fetchEmployees();
+		fetchLeaveDeductions();
 	}, []);
 
 	const fetchLeaveRequests = async () => {
@@ -205,12 +232,13 @@ export default function LeavePage() {
 		})) as LeaveRequestWithDetails[];
 		setLeaveRequests(requests);
 
-		setStats({
+		setStats((prev) => ({
 			pending: requests.filter((r) => r.status === "pending").length,
 			approved: requests.filter((r) => r.status === "approved").length,
 			rejected: requests.filter((r) => r.status === "rejected").length,
-			total: requests.length,
-		});
+			deducted: prev.deducted,
+			total: requests.length + prev.deducted,
+		}));
 
 		setIsLoading(false);
 	};
@@ -276,6 +304,31 @@ export default function LeavePage() {
 			.neq("role", "admin")
 			.order("first_name");
 		setEmployees((data as Employee[]) || []);
+	};
+
+	const fetchLeaveDeductions = async () => {
+		const supabase = createClient();
+		const { data } = await supabase
+			.from("leave_deductions")
+			.select("*, employee:employee_id!inner(id, first_name, last_name), leave_type:leave_types(*), deducted_by:deducted_by!inner(id, first_name, last_name)")
+			.order("deduction_date", { ascending: false });
+		const raw = (data || []) as Record<string, unknown>[];
+		const deductions = raw.map((row) => ({
+			...row,
+			employee: row.employee,
+			leave_type: row.leave_type,
+			deductor: row.deducted_by,
+		})) as (LeaveDeduction & {
+			employee?: Employee;
+			leave_type?: LeaveType;
+			deductor?: Employee;
+		})[];
+		setLeaveDeductions(deductions);
+		setStats((prev) => ({
+			...prev,
+			deducted: deductions.length,
+			total: prev.pending + prev.approved + prev.rejected + deductions.length,
+		}));
 	};
 
 	// Group leave balances by employee + year for one row per employee
@@ -524,6 +577,78 @@ export default function LeavePage() {
 		if (!error) {
 			await fetchLeaveBalances();
 		}
+	};
+
+	const openDeductionDialog = (employeeId?: string) => {
+		setDeductionForm({
+			employee_id: employeeId || "",
+			leave_type_id: "",
+			days_deducted: "",
+			deduction_date: new Date().toISOString().split("T")[0],
+			reason: "",
+		});
+		setDeductionError(null);
+		setIsDeductionOpen(true);
+	};
+
+	const handleDeductionLeave = async (e: React.FormEvent) => {
+		e.preventDefault();
+		const days = parseFloat(deductionForm.days_deducted);
+		if (!deductionForm.employee_id || !deductionForm.leave_type_id || !Number.isFinite(days) || days <= 0 || !deductionForm.reason.trim()) {
+			setDeductionError("Please fill all required fields with valid values.");
+			return;
+		}
+
+		setDeductionError(null);
+		setDeductionLoading(true);
+		const supabase = createClient();
+
+		// Insert deduction record
+		const { error: deductionError } = await supabase.from("leave_deductions").insert({
+			employee_id: deductionForm.employee_id,
+			leave_type_id: deductionForm.leave_type_id,
+			days_deducted: Math.round(days * 100) / 100,
+			deduction_date: deductionForm.deduction_date,
+			reason: deductionForm.reason.trim(),
+			deducted_by: currentUser?.id,
+		});
+
+		if (deductionError) {
+			setDeductionError(deductionError.message);
+			setDeductionLoading(false);
+			return;
+		}
+
+		// Update leave balance by increasing used_days
+		const year = new Date(deductionForm.deduction_date).getFullYear();
+		const { data: bal } = await supabase
+			.from("leave_balances")
+			.select("id, used_days")
+			.eq("employee_id", deductionForm.employee_id)
+			.eq("leave_type_id", deductionForm.leave_type_id)
+			.eq("year", year)
+			.single();
+
+		if (bal) {
+			const currentUsed = Number(bal.used_days) || 0;
+			const newUsed = Math.round((currentUsed + days) * 100) / 100;
+			await supabase
+				.from("leave_balances")
+				.update({ used_days: newUsed })
+				.eq("id", bal.id);
+		}
+
+		setDeductionLoading(false);
+		setIsDeductionOpen(false);
+		setDeductionForm({
+			employee_id: "",
+			leave_type_id: "",
+			days_deducted: "",
+			deduction_date: new Date().toISOString().split("T")[0],
+			reason: "",
+		});
+		await fetchLeaveDeductions();
+		await fetchLeaveBalances();
 	};
 
 	const handleLeaveAction = async (
@@ -1030,7 +1155,7 @@ export default function LeavePage() {
 					</TabsList>
 					<TabsContent value='requests' className='space-y-5'>
 						{/* ── Stat Cards ── */}
-						<div className='grid gap-4 grid-cols-2 md:grid-cols-4'>
+						<div className='grid gap-4 grid-cols-2 md:grid-cols-5'>
 							{/* Pending */}
 							<div className='relative overflow-hidden rounded-2xl bg-gradient-to-br from-amber-500/10 to-amber-500/5 border border-border/50 p-5 shadow-sm hover:shadow-md transition-all group'>
 								<div className='flex items-start justify-between gap-3'>
@@ -1066,6 +1191,18 @@ export default function LeavePage() {
 									<div className='h-11 w-11 rounded-xl bg-red-500/15 flex items-center justify-center text-red-600 group-hover:scale-110 transition-transform'><XCircle className='h-5 w-5' /></div>
 								</div>
 								<div className='mt-4 h-1 w-full bg-black/5 rounded-full overflow-hidden'><div className='h-full bg-red-500 rounded-full transition-all duration-700' style={{ width: `${stats.total > 0 ? (stats.rejected / stats.total) * 100 : 0}%` }} /></div>
+							</div>
+							{/* Deducted */}
+							<div className='relative overflow-hidden rounded-2xl bg-gradient-to-br from-orange-500/10 to-orange-500/5 border border-border/50 p-5 shadow-sm hover:shadow-md transition-all group'>
+								<div className='flex items-start justify-between gap-3'>
+									<div>
+										<p className='text-xs font-semibold uppercase tracking-wider text-muted-foreground'>Deducted</p>
+										<p className='text-4xl font-bold mt-2 tabular-nums text-orange-700 leading-none'>{stats.deducted}</p>
+										<p className='text-[11px] text-muted-foreground mt-1.5'>Leave deductions</p>
+									</div>
+									<div className='h-11 w-11 rounded-xl bg-orange-500/15 flex items-center justify-center text-orange-600 group-hover:scale-110 transition-transform'><Minus className='h-5 w-5' /></div>
+								</div>
+								<div className='mt-4 h-1 w-full bg-black/5 rounded-full overflow-hidden'><div className='h-full bg-orange-500 rounded-full transition-all duration-700' style={{ width: `${stats.total > 0 ? (stats.deducted / stats.total) * 100 : 0}%` }} /></div>
 							</div>
 							{/* Total */}
 							<div className='relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary/10 to-primary/5 border border-border/50 p-5 shadow-sm hover:shadow-md transition-all group'>
@@ -1105,7 +1242,7 @@ export default function LeavePage() {
 							</Select>
 						</div>
 
-						{/* ── Inner Tabs: Pending / All ── */}
+						{/* ── Inner Tabs: Pending / All / Deductions ── */}
 						<Tabs defaultValue='pending' className='space-y-4'>
 							<TabsList className='h-auto bg-muted/40 p-1 rounded-xl gap-1 border border-border/50'>
 								<TabsTrigger value='pending' className='gap-1.5 rounded-lg px-4 py-1.5 text-sm data-[state=active]:bg-background data-[state=active]:shadow-sm'>
@@ -1115,6 +1252,10 @@ export default function LeavePage() {
 								<TabsTrigger value='all' className='gap-1.5 rounded-lg px-4 py-1.5 text-sm data-[state=active]:bg-background data-[state=active]:shadow-sm'>
 									<CalendarCheck className='h-3.5 w-3.5' />
 									All Requests
+								</TabsTrigger>
+								<TabsTrigger value='deductions' className='gap-1.5 rounded-lg px-4 py-1.5 text-sm data-[state=active]:bg-background data-[state=active]:shadow-sm'>
+									<Minus className='h-3.5 w-3.5' />
+									Deductions ({stats.deducted})
 								</TabsTrigger>
 							</TabsList>
 
@@ -1145,6 +1286,87 @@ export default function LeavePage() {
 									{isLoading ? (
 										<div className='flex items-center justify-center py-12'><div className='h-6 w-6 rounded-full border-2 border-primary/30 border-t-primary animate-spin' /></div>
 									) : renderLeaveTable(getFilteredRequests())}
+								</div>
+							</TabsContent>
+
+							<TabsContent value='deductions'>
+								<div className='bg-card rounded-2xl border border-border/50 shadow-sm overflow-hidden'>
+									<div className='flex items-center justify-between px-5 py-4 border-b border-border/50'>
+										<div className='flex items-center gap-3'>
+											<div className='h-8 w-8 rounded-lg bg-orange-500/15 flex items-center justify-center text-orange-600'><Minus className='h-4 w-4' /></div>
+											<div>
+												<p className='font-semibold text-sm'>Leave Deductions</p>
+												<p className='text-xs text-muted-foreground'>{leaveDeductions.length} deduction{leaveDeductions.length !== 1 ? 's' : ''} recorded</p>
+											</div>
+										</div>
+										{canApproveLeave && (
+											<Button size='sm' className='rounded-xl gap-1.5 h-8 px-3' onClick={() => openDeductionDialog()}>
+												<Minus className='h-3.5 w-3.5' />
+												Deduct Leave
+											</Button>
+										)}
+									</div>
+									{leaveDeductions.length === 0 ? (
+										<div className='flex flex-col items-center justify-center py-12 text-center'>
+											<Minus className='h-10 w-10 text-muted-foreground/30 mb-3' />
+											<p className='text-sm font-medium text-muted-foreground'>No leave deductions recorded yet.</p>
+										</div>
+									) : (
+										<div className='overflow-x-auto'>
+											<Table>
+												<TableHeader>
+													<TableRow className='bg-muted/30'>
+														<TableHead className='font-semibold'>Employee</TableHead>
+														<TableHead className='font-semibold'>Leave Type</TableHead>
+														<TableHead className='font-semibold'>Days Deducted</TableHead>
+														<TableHead className='font-semibold'>Date</TableHead>
+														<TableHead className='font-semibold'>Reason</TableHead>
+														<TableHead className='font-semibold'>Deducted By</TableHead>
+													</TableRow>
+												</TableHeader>
+												<TableBody>
+													{leaveDeductions.map((deduction) => (
+														<TableRow key={deduction.id} className='hover:bg-muted/30 transition-colors'>
+															<TableCell>
+																<div className='flex items-center gap-2.5'>
+																	<Avatar className='h-8 w-8 shrink-0'>
+																		{deduction.employee?.avatar_url && (
+																			<AvatarImage src={deduction.employee.avatar_url} className='object-cover' alt='' />
+																		)}
+																		<AvatarFallback className='text-xs bg-muted'>
+																			{deduction.employee?.first_name?.[0]}{deduction.employee?.last_name?.[0]}
+																		</AvatarFallback>
+																	</Avatar>
+																	<div>
+																		<p className='font-medium text-sm'>{deduction.employee?.first_name} {deduction.employee?.last_name}</p>
+																	</div>
+																</div>
+															</TableCell>
+															<TableCell>
+																<span className='inline-flex items-center px-2 py-0.5 rounded-full bg-muted text-xs font-medium border border-border/60'>
+																	{deduction.leave_type?.name ?? "—"}
+																</span>
+															</TableCell>
+															<TableCell>
+																<span className='inline-flex px-2 py-0.5 rounded-md bg-red-50 text-red-700 text-xs font-semibold border border-red-200'>
+																	-{deduction.days_deducted}
+																</span>
+															</TableCell>
+															<TableCell className='text-sm'>
+																{new Date(deduction.deduction_date).toLocaleDateString()}
+															</TableCell>
+															<TableCell className='min-w-[200px] max-w-[300px] text-sm text-foreground'>
+																<ExpandableReason reason={deduction.reason || ""} />
+															</TableCell>
+															<TableCell className='text-xs text-muted-foreground'>
+																{deduction.deductor ? `${deduction.deductor.first_name} ${deduction.deductor.last_name}` : "—"}
+															</TableCell>
+														</TableRow>
+													))}
+												</TableBody>
+											</Table>
+										</div>
+									)}
 								</div>
 							</TabsContent>
 						</Tabs>
@@ -1624,6 +1846,17 @@ export default function LeavePage() {
 																	</Button>
 																	<Button
 																		size='sm'
+																		variant='outline'
+																		className='flex-1 h-7 text-xs'
+																		onClick={() =>
+																			openDeductionDialog(
+																				group.employee_id
+																			)
+																		}>
+																		Deduct
+																	</Button>
+																	<Button
+																		size='sm'
 																		variant='ghost'
 																		className='flex-1 h-7 text-xs text-destructive hover:text-destructive'
 																		onClick={() =>
@@ -2036,6 +2269,146 @@ export default function LeavePage() {
 											: typeForm.id
 												? "Update Type"
 												: "Create Type"}
+									</Button>
+								</div>
+							</form>
+						</DialogContent>
+					</Dialog>
+				)}
+
+				{/* Leave Deduction Dialog */}
+				{canApproveLeave && (
+					<Dialog open={isDeductionOpen} onOpenChange={setIsDeductionOpen}>
+						<DialogContent>
+							<DialogHeader>
+								<DialogTitle>Deduct Leave</DialogTitle>
+								<DialogDescription>
+									Deduct leave days from an employee's balance with a reason.
+								</DialogDescription>
+							</DialogHeader>
+							<form
+								onSubmit={handleDeductionLeave}
+								className='space-y-4'>
+								<div className='space-y-2'>
+									<Label>Employee</Label>
+									<Select
+										value={deductionForm.employee_id}
+										onValueChange={(v) =>
+											setDeductionForm((f) => ({ ...f, employee_id: v }))
+										}>
+										<SelectTrigger>
+											<SelectValue placeholder='Select employee' />
+										</SelectTrigger>
+										<SelectContent>
+											{employees.map((emp) => (
+												<SelectItem key={emp.id} value={emp.id}>
+													{emp.first_name} {emp.last_name}
+												</SelectItem>
+											))}
+										</SelectContent>
+									</Select>
+								</div>
+								<div className='space-y-2'>
+									<Label>Leave Type</Label>
+									<Select
+										value={deductionForm.leave_type_id}
+										onValueChange={(v) =>
+											setDeductionForm((f) => ({ ...f, leave_type_id: v }))
+										}
+										disabled={!deductionForm.employee_id}>
+										<SelectTrigger>
+											<SelectValue placeholder={deductionForm.employee_id ? 'Select leave type' : 'Select employee first'} />
+										</SelectTrigger>
+										<SelectContent>
+											{deductionForm.employee_id ? (
+												leaveTypes.map((type) => {
+													const balance = leaveBalances.find(
+														(b) => b.employee_id === deductionForm.employee_id && b.leave_type_id === type.id && b.year === new Date(deductionForm.deduction_date).getFullYear()
+													);
+													const remaining = balance ? Number(balance.total_days ?? 0) - Number(balance.used_days ?? 0) : 0;
+													return (
+														<SelectItem key={type.id} value={type.id}>
+															<div className='flex items-center justify-between w-full'>
+																<span>{type.name}</span>
+																<span className='text-xs text-muted-foreground ml-2'>
+																	{remaining.toFixed(1)} remaining
+																</span>
+															</div>
+														</SelectItem>
+													);
+												})
+											) : (
+												<div className='py-2 px-3 text-sm text-muted-foreground text-center'>
+													Select an employee first
+												</div>
+											)}
+										</SelectContent>
+									</Select>
+									{deductionForm.employee_id && deductionForm.leave_type_id && (() => {
+										const balance = leaveBalances.find(
+											(b) => b.employee_id === deductionForm.employee_id && b.leave_type_id === deductionForm.leave_type_id && b.year === new Date(deductionForm.deduction_date).getFullYear()
+										);
+										const remaining = balance ? Number(balance.total_days ?? 0) - Number(balance.used_days ?? 0) : 0;
+										return (
+											<p className='text-xs text-muted-foreground'>
+												Available balance: <span className='font-semibold text-foreground'>{remaining.toFixed(1)} days</span>
+											</p>
+										);
+									})()}
+								</div>
+								<div className='space-y-2'>
+									<Label>Days to Deduct</Label>
+									<Input
+										type='number'
+										min={0.5}
+										step={0.5}
+										value={deductionForm.days_deducted}
+										onChange={(e) =>
+											setDeductionForm((f) => ({ ...f, days_deducted: e.target.value }))
+										}
+										placeholder='e.g. 1.5'
+										required
+									/>
+								</div>
+								<div className='space-y-2'>
+									<Label>Deduction Date</Label>
+									<Input
+										type='date'
+										value={deductionForm.deduction_date}
+										onChange={(e) =>
+											setDeductionForm((f) => ({ ...f, deduction_date: e.target.value }))
+										}
+										required
+									/>
+								</div>
+								<div className='space-y-2'>
+									<Label>Reason</Label>
+									<Textarea
+										value={deductionForm.reason}
+										onChange={(e) =>
+											setDeductionForm((f) => ({ ...f, reason: e.target.value }))
+										}
+										placeholder='Reason for deduction...'
+										className='min-h-[96px]'
+										required
+									/>
+								</div>
+								{deductionError && (
+									<p className='text-sm text-destructive'>
+										{deductionError}
+									</p>
+								)}
+								<div className='flex justify-end gap-2'>
+									<Button
+										type='button'
+										variant='outline'
+										onClick={() => setIsDeductionOpen(false)}>
+										Cancel
+									</Button>
+									<Button
+										type='submit'
+										disabled={deductionLoading}>
+										{deductionLoading ? "Deducting..." : "Deduct"}
 									</Button>
 								</div>
 							</form>

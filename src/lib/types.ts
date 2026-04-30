@@ -182,3 +182,18 @@ export interface LateDeductionLog {
 	leave_type_id: string | null;
 	updated_at: string;
 }
+
+export interface LeaveDeduction {
+	id: string;
+	employee_id: string;
+	leave_type_id: string;
+	days_deducted: number;
+	deduction_date: string;
+	reason: string;
+	deducted_by: string | null;
+	created_at: string;
+	updated_at: string;
+	employee?: Employee;
+	leave_type?: LeaveType;
+	deductor?: Employee;
+}

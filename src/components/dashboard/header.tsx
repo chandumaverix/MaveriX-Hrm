@@ -258,7 +258,7 @@ export function DashboardHeader({
 			<Dialog
 				open={!!selectedEmployee}
 				onOpenChange={(open) => !open && setSelectedEmployee(null)}>
-				<DialogContent className='max-w-md p-0 overflow-hidden max-h-[90vh] overflow-y-auto'>
+				<DialogContent className='max-w-[400] p-0 overflow-hidden max-h-[90vh] overflow-y-auto'>
 					<DialogHeader className="sr-only">
 						<DialogTitle>Employee Details</DialogTitle>
 					</DialogHeader>
