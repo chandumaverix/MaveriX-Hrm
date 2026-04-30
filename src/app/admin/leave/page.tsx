@@ -155,6 +155,10 @@ export default function LeavePage() {
 	const [reportDateTo, setReportDateTo] = useState<string>("");
 	const [reportSearch, setReportSearch] = useState<string>("");
 
+	// ── Balance Export state ─────────────────────────────────────────────
+	const [balanceExportEmployeeId, setBalanceExportEmployeeId] = useState<string>("all");
+	const [balanceExportYear, setBalanceExportYear] = useState<string>(new Date().getFullYear().toString());
+
 	const canApproveLeave =
 		currentUser?.role === "admin" || currentUser?.role === "hr";
 
@@ -218,7 +222,31 @@ export default function LeavePage() {
 			.select("*")
 			.eq("is_active", true)
 			.order("created_at", { ascending: true });
-		setLeaveTypes(data || []);
+		
+		const types = (data || []) as LeaveType[];
+		
+		// If no leave types exist, create default ones
+		if (types.length === 0) {
+			const defaultTypes = [
+				{ name: "Casual Leave", default_days: 11, description: "Casual leave for personal matters" },
+				{ name: "Medical Leave", default_days: 5, description: "Medical leave for health reasons" },
+				{ name: "Halfday Leave", default_days: 24, description: "Half-day leave allowance" },
+			];
+			
+			for (const type of defaultTypes) {
+				await supabase.from("leave_types").insert(type);
+			}
+			
+			// Fetch again after inserting
+			const { data: newData } = await supabase
+				.from("leave_types")
+				.select("*")
+				.eq("is_active", true)
+				.order("created_at", { ascending: true });
+			setLeaveTypes(newData || []);
+		} else {
+			setLeaveTypes(types);
+		}
 	};
 
 	const fetchLeaveBalances = async () => {
@@ -663,33 +691,27 @@ export default function LeavePage() {
 		};
 		const headers = [
 			"Employee Name",
-			"Email",
-			"Designation",
+			"Employee ID",
 			"Leave Type",
 			"Start Date",
 			"End Date",
 			"Days",
-			"Half Day",
-			"Half Day Period",
 			"Status",
 			"Reason",
 			"Applied On",
 		];
-		const rows = reportRows.map((req) => [
-			escape(`${req.employee?.first_name ?? ""} ${req.employee?.last_name ?? ""}`),
-			escape(req.employee?.email ?? ""),
-			escape(req.employee?.designation ?? ""),
-			escape((req.leave_type as { name?: string })?.name ?? ""),
-			escape(req.start_date),
-			escape(req.end_date),
-			escape(formatLeaveDays(req.start_date, req.end_date, req.half_day)),
-			escape(req.half_day ? "Yes" : "No"),
-			escape(req.half_day_period === "first_half" ? "9am–1pm" : req.half_day_period === "second_half" ? "1pm–7pm" : ""),
-			escape(req.status),
-			escape(req.reason ?? ""),
-			escape(req.created_at ? new Date(req.created_at).toLocaleDateString() : ""),
-		].join(","));
-		const csv = [headers.join(","), ...rows].join("\n");
+		const rows = reportRows.map((r) => [
+			escape(r.employee?.first_name + " " + r.employee?.last_name),
+			escape(r.employee_id),
+			escape(r.leave_type?.name),
+			escape(r.start_date),
+			escape(r.end_date),
+			escape(formatLeaveDays(r.start_date, r.end_date, r.half_day)),
+			escape(r.status),
+			escape(r.reason),
+			escape(r.created_at?.split("T")[0]),
+		]);
+		const csv = [headers.join(","), ...rows.map((row) => row.join(","))].join("\n");
 		const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
 		const url = URL.createObjectURL(blob);
 		const a = document.createElement("a");
@@ -698,6 +720,102 @@ export default function LeavePage() {
 			? (employees.find((e) => e.id === reportEmployeeId)?.first_name ?? "employee")
 			: "all-employees";
 		a.download = `leave-report-${empName}-${new Date().toISOString().split("T")[0]}.csv`;
+		a.click();
+		URL.revokeObjectURL(url);
+	};
+
+	// ── Balance CSV download ─────────────────────────────────────────────
+	const downloadBalanceCSV = () => {
+		const filteredGroups = leaveBalanceGroups.filter((group) => {
+			if (balanceExportEmployeeId !== "all" && group.employee_id !== balanceExportEmployeeId) return false;
+			if (balanceExportYear && group.year !== parseInt(balanceExportYear)) return false;
+			return true;
+		});
+
+		if (filteredGroups.length === 0) return;
+
+		const escape = (v: string | number | null | undefined) => {
+			const s = String(v ?? "").replace(/"/g, '""');
+			return `"${s}"`;
+		};
+
+		// Get all unique leave types from balances to ensure we include all types even if inactive
+		const uniqueLeaveTypeIds = new Set<string>();
+		filteredGroups.forEach(group => {
+			group.balances.forEach(bal => {
+				if (bal.leave_type_id) {
+					uniqueLeaveTypeIds.add(bal.leave_type_id);
+				}
+			});
+		});
+
+		// Create a map of leave type ID to name for all types found in balances
+		const leaveTypeMap = new Map<string, { name: string; id: string }>();
+		uniqueLeaveTypeIds.forEach(typeId => {
+			const type = leaveTypes.find(t => t.id === typeId);
+			if (type) {
+				leaveTypeMap.set(typeId, { name: type.name, id: type.id });
+			} else {
+				// If type not found in active types, use the balance's leave_type name if available
+				const balanceWithType = filteredGroups
+					.flatMap(g => g.balances)
+					.find(b => b.leave_type_id === typeId);
+				if (balanceWithType?.leave_type) {
+					leaveTypeMap.set(typeId, { 
+						name: (balanceWithType.leave_type as LeaveType).name || `Unknown (${typeId})`, 
+						id: typeId 
+					});
+				} else {
+					leaveTypeMap.set(typeId, { name: `Unknown (${typeId})`, id: typeId });
+				}
+			}
+		});
+
+		// Sort leave types by name for consistent column order
+		const sortedLeaveTypes = Array.from(leaveTypeMap.values()).sort((a, b) => a.name.localeCompare(b.name));
+
+		// Build headers grouped by leave type: For each type, add Total, Used, Remaining
+		const headers = [
+			"Employee Name",
+			"Year",
+		];
+		sortedLeaveTypes.forEach((t) => {
+			headers.push(`${t.name} (Total)`, `${t.name} (Used)`, `${t.name} (Remaining)`);
+		});
+
+		const rows = filteredGroups.map((group) => {
+			const employeeName = group.employee
+				? `${group.employee.first_name} ${group.employee.last_name}`
+				: group.employee_id;
+			const baseRow = [
+				escape(employeeName),
+				escape(group.year),
+			];
+
+			// Add total, used, and remaining for each leave type (grouped by type)
+			for (const type of sortedLeaveTypes) {
+				const balance = group.balances.find((b) => {
+					// Match by leave_type_id from the balance record
+					return b.leave_type_id === type.id;
+				});
+				const total = balance?.total_days ?? 0;
+				const used = balance?.used_days ?? 0;
+				const remaining = total - used;
+				baseRow.push(escape(total), escape(used), escape(remaining));
+			}
+
+			return baseRow;
+		});
+
+		const csv = [headers.join(","), ...rows.map((row) => row.join(","))].join("\n");
+		const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+		const url = URL.createObjectURL(blob);
+		const a = document.createElement("a");
+		a.href = url;
+		const empName = balanceExportEmployeeId !== "all"
+			? (employees.find((e) => e.id === balanceExportEmployeeId)?.first_name ?? "employee")
+			: "all-employees";
+		a.download = `leave-balances-${empName}-${balanceExportYear}-${new Date().toISOString().split("T")[0]}.csv`;
 		a.click();
 		URL.revokeObjectURL(url);
 	};
@@ -1318,16 +1436,64 @@ export default function LeavePage() {
 								<CardTitle className='text-base'>
 									Total Leaves (Allotted by Employee)
 								</CardTitle>
-								{canApproveLeave && (
+								<div className='flex gap-2'>
 									<Button
 										size='sm'
-										onClick={() => openAllotDialog()}>
-										<CalendarDays className='mr-2 h-4 w-4' />
-										Allot Leaves
+										variant='outline'
+										onClick={downloadBalanceCSV}>
+										<Download className='mr-2 h-4 w-4' />
+										Export
 									</Button>
-								)}
+									{canApproveLeave && (
+										<Button
+											size='sm'
+											onClick={() => openAllotDialog()}>
+											<CalendarDays className='mr-2 h-4 w-4' />
+											Allot Leaves
+										</Button>
+									)}
+								</div>
 							</CardHeader>
 							<CardContent className='space-y-4'>
+								{/* Export Filters */}
+								<div className='flex gap-3'>
+									<div className='flex-1'>
+										<Select
+											value={balanceExportEmployeeId}
+											onValueChange={setBalanceExportEmployeeId}>
+											<SelectTrigger className='h-9'>
+												<SelectValue placeholder='All Employees' />
+											</SelectTrigger>
+											<SelectContent>
+												<SelectItem value='all'>All Employees</SelectItem>
+												{employees.map((emp) => (
+													<SelectItem key={emp.id} value={emp.id}>
+														{emp.first_name} {emp.last_name}
+													</SelectItem>
+												))}
+											</SelectContent>
+										</Select>
+									</div>
+									<div className='w-32'>
+										<Select
+											value={balanceExportYear}
+											onValueChange={setBalanceExportYear}>
+											<SelectTrigger className='h-9'>
+												<SelectValue placeholder='Year' />
+											</SelectTrigger>
+											<SelectContent>
+												{Array.from({ length: 5 }, (_, i) => {
+													const year = new Date().getFullYear() - i;
+													return (
+														<SelectItem key={year} value={year.toString()}>
+															{year}
+														</SelectItem>
+													);
+												})}
+											</SelectContent>
+										</Select>
+									</div>
+								</div>
 								{/* Search Box */}
 								{leaveBalanceGroups.length > 0 && (
 									<div className='relative'>
@@ -1389,7 +1555,7 @@ export default function LeavePage() {
 															{/* Allocated Leaves */}
 															<div className='space-y-1.5'>
 																<p className='text-[10px] uppercase tracking-wide text-muted-foreground font-medium'>Allocated Leaves</p>
-																<div className='space-y-1.5 flex flex-wrap gap-2'>
+																<div className='space-y-1.5'>
 																	{group.balances.map(
 																		(
 																			bal
@@ -1408,29 +1574,33 @@ export default function LeavePage() {
 																					key={
 																						bal.id
 																					}
-																					className='flex items-center justify-between py-1 px-3 rounded-full border gap-2'>
-																					<div className='flex-1 min-w-0'>
-																						<p className='text-xs font-medium truncate'>
+																					className='py-2 px-3 rounded-lg border border-border/50 bg-muted/30'>
+																					<div className='flex items-center justify-between mb-2'>
+																						<p className='text-xs font-semibold'>
 																							{typeName}
 																						</p>
-																						{/* <p className='text-[10px] text-muted-foreground'>
-																							{formatRemainingDays(
-																								remaining
-																							)}{" "}
-																							remaining
-																						</p> */}
+														</div>
+														<div className='grid grid-cols-3 gap-2 text-center'>
+															<div className='bg-background rounded-md py-1.5 px-2'>
+																<p className='text-[9px] uppercase tracking-wide text-muted-foreground'>Total</p>
+																<p className='text-sm font-bold text-foreground'>
+																	{formatRemainingDays(bal.total_days)}
+																</p>
+															</div>
+															<div className='bg-background rounded-md py-1.5 px-2'>
+																<p className='text-[9px] uppercase tracking-wide text-muted-foreground'>Used</p>
+																<p className='text-sm font-bold text-amber-600'>
+																	{formatRemainingDays(bal.used_days)}
+																</p>
+															</div>
+															<div className='bg-background rounded-md py-1.5 px-2'>
+																<p className='text-[9px] uppercase tracking-wide text-muted-foreground'>Remaining</p>
+																<p className='text-sm font-bold text-emerald-600'>
+																	{formatRemainingDays(remaining)}
+																</p>
+															</div>
+														</div>
 																					</div>
-																					<div className='text-right'>
-																						<p className='text-base font-bold text-primary'>
-																							{formatRemainingDays(
-																								remaining
-																							)}
-																						</p>
-																						{/* <p className='text-[9px] text-muted-foreground'>
-																							of {bal.total_days}
-																						</p> */}
-																					</div>
-																				</div>
 																			);
 																		}
 																	)}
