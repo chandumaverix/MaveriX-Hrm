@@ -18,6 +18,7 @@ import {
 	DialogTitle,
 	DialogTrigger,
 } from "@/components/ui/dialog";
+import { useSettings } from "@/contexts/settings-context";
 import { useUser } from "../../../contexts/user-context";
 import {
 	Clock,
@@ -64,6 +65,7 @@ function toLocalDateStr(d: Date): string {
 
 export default function EmployeeDashboardPage() {
 	const { employee } = useUser();
+	const { settings } = useSettings();
 	const [todayAttendance, setTodayAttendance] = useState<Attendance | null>(
 		null
 	);
@@ -267,123 +269,61 @@ export default function EmployeeDashboardPage() {
 
 	const handleClockIn = async () => {
 		if (!employee) return;
-		
 		setIsClockInLoading(true);
-		
 		try {
 			const supabase = createClient();
-			const today = toLocalDateStr(new Date());
 			const now = new Date();
+			const today = toLocalDateStr(now);
 			const nowISO = now.toISOString();
 
-			// Fetch settings to check max_clocking_time
-			const { data: settingsData, error: settingsError } = await supabase
-				.from("settings")
-				.select("max_clocking_time")
-				.limit(1)
-				.maybeSingle();
-
-			// Determine status based on max_clocking_time
 			let status: "present" | "late" = "present";
 			
-			if (settingsData?.max_clocking_time) {
+			if (settings?.max_clocking_time) {
 				try {
-					// Parse the max_clocking_time (supports: "10:00 AM", "10:00AM", "10:00", "22:00")
-					const maxTimeStr = settingsData.max_clocking_time.trim();
-					console.log("[Clock-In] Raw max time string:", maxTimeStr);
-					console.log("[Clock-In] Current time:", now.toLocaleTimeString());
-					
+					const maxTimeStr = settings.max_clocking_time.trim();
 					let hours = 0;
 					let minutes = 0;
 					let parsed = false;
 
-					// Try to extract AM/PM modifier
 					const upperStr = maxTimeStr.toUpperCase();
 					const hasAM = upperStr.includes("AM");
 					const hasPM = upperStr.includes("PM");
-					
-					// Remove AM/PM from string for parsing
 					let timeOnly = maxTimeStr.replace(/\s*(AM|PM)\s*/i, "").trim();
 					
-					console.log("[Clock-In] Time only (after removing AM/PM):", timeOnly);
-					console.log("[Clock-In] Has AM:", hasAM, "Has PM:", hasPM);
-					
-					// Parse time part (HH:MM or H:MM)
 					const timeParts = timeOnly.split(":");
 					if (timeParts.length >= 2) {
 						hours = parseInt(timeParts[0], 10);
 						minutes = parseInt(timeParts[1], 10);
 						
 						if (!isNaN(hours) && !isNaN(minutes)) {
-							// Convert 12-hour to 24-hour format
-							if (hasPM && hours !== 12) {
-								hours += 12;
-							} else if (hasAM && hours === 12) {
-								hours = 0;
-							}
-							
+							if (hasPM && hours !== 12) hours += 12;
+							else if (hasAM && hours === 12) hours = 0;
 							parsed = true;
-							console.log("[Clock-In] Parsed successfully - Hours:", hours, "Minutes:", minutes);
 						}
 					}
 					
-					if (!parsed) {
-						console.error("[Clock-In] Failed to parse time:", maxTimeStr);
-						console.error("[Clock-In] Time parts:", timeParts);
-					} else {
-						// Create max time for today
+					if (parsed) {
 						const maxTime = new Date(now);
 						maxTime.setHours(hours, minutes, 0, 0);
-						
-						console.log("[Clock-In] Max time:", maxTime.toLocaleTimeString());
-						console.log("[Clock-In] Current time:", now.toLocaleTimeString());
-						console.log("[Clock-In] Current timestamp:", now.getTime());
-						console.log("[Clock-In] Max timestamp:", maxTime.getTime());
-						console.log("[Clock-In] Is now > maxTime?", now.getTime() > maxTime.getTime());
-						
-						// If clocking in after max_time, mark as late
 						if (now.getTime() > maxTime.getTime()) {
 							status = "late";
-							console.log("[Clock-In] Status set to: LATE");
-						} else {
-							status = "present";
-							console.log("[Clock-In] Status set to: PRESENT");
 						}
 					}
-				} catch (parseError) {
-					console.error("[Clock-In] Error parsing time:", parseError);
-					status = "present";
-				}
-			} else {
-				console.log("[Clock-In] No max_clocking_time setting found");
-				console.log("[Clock-In] Settings data:", settingsData);
-				if (settingsError) {
-					console.log("[Clock-In] Settings error:", settingsError.message);
+				} catch (err) {
+					console.error("Error parsing max_clocking_time:", err);
 				}
 			}
 
-			console.log("[Clock-In] Final status:", status);
-			console.log("[Clock-In] Inserting attendance record...");
-
-			const { data: insertData, error: insertError } = await supabase
-				.from("attendance")
-				.insert({
-					employee_id: employee.id,
-					date: today,
-					clock_in: nowISO,
-					status: status,
-				})
-				.select();
-
-			if (insertError) {
-				console.error("[Clock-In] Insert error:", insertError);
-			} else {
-				console.log("[Clock-In] Insert successful:", insertData);
-			}
+			await supabase.from("attendance").insert({
+				employee_id: employee.id,
+				date: today,
+				clock_in: nowISO,
+				status: status,
+			});
 
 			await fetchData();
 		} catch (error) {
-			console.error("[Clock-In] Error:", error);
+			console.error("Clock in error:", error);
 		} finally {
 			setIsClockInLoading(false);
 		}
@@ -444,6 +384,7 @@ export default function EmployeeDashboardPage() {
 		return new Date(timeString).toLocaleTimeString("en-US", {
 			hour: "2-digit",
 			minute: "2-digit",
+			second: "2-digit",
 		});
 	};
 

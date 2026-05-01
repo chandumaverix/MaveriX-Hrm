@@ -95,7 +95,7 @@ export default function AttendancePage() {
 			.from("attendance")
 			.select("*, employee:employees(*)")
 			.eq("date", selectedDate)
-			.order("clock_in", { ascending: false });
+			.order("clock_in", { ascending: true });
 
 		const records = (data as unknown as AttendanceWithEmployee[]) || [];
 		setAttendanceRecords(records);
@@ -283,6 +283,13 @@ export default function AttendancePage() {
 			employee: emp,
 			_synthetic: true,
 		};
+	}).sort((a, b) => {
+		if (a.clock_in && b.clock_in) {
+			return new Date(a.clock_in).getTime() - new Date(b.clock_in).getTime();
+		}
+		if (a.clock_in) return -1;
+		if (b.clock_in) return 1;
+		return 0;
 	});
 
 	const stats = {
@@ -327,6 +334,7 @@ export default function AttendancePage() {
 		return new Date(timeString).toLocaleTimeString("en-US", {
 			hour: "2-digit",
 			minute: "2-digit",
+			second: "2-digit",
 		});
 	};
 

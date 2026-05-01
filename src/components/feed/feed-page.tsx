@@ -15,7 +15,18 @@ import {
 	DialogTitle,
 	DialogDescription,
 } from "@/components/ui/dialog";
-import { Send, Rss, Trash2 } from "lucide-react";
+import {
+	Send,
+	Rss,
+	Trash2,
+	MessageCircle,
+	Heart,
+	Share2,
+	MoreHorizontal,
+	Users,
+	Sparkles,
+	Loader2
+} from "lucide-react";
 import type { Post } from "@/lib/types";
 import type { Employee } from "@/lib/types";
 
@@ -82,7 +93,8 @@ export function FeedPage() {
 			return;
 		}
 		const afterAt = before.slice(lastAt + 1);
-		if (/\s/.test(afterAt)) {
+		// Allow spaces but don't open if it's just a space or too many spaces
+		if (afterAt.startsWith(" ") || afterAt.includes("  ")) {
 			setMentionOpen(false);
 			return;
 		}
@@ -152,35 +164,52 @@ export function FeedPage() {
 			}`.toUpperCase()
 		: "U";
 
+	// Simple regex to highlight @mentions
+	const formatPostContent = (content: string) => {
+		const parts = content.split(/(@\w+(?:\s\w+)?)/g);
+		return parts.map((part, i) => {
+			if (part.startsWith("@")) {
+				return (
+					<span key={i} className='inline-flex items-center rounded-md bg-primary/10 px-1.5 py-0.5 text-xs font-bold text-primary ring-1 ring-inset ring-primary/20 mx-0.5'>
+						{part}
+					</span>
+				);
+			}
+			return part;
+		});
+	};
+
 	return (
-		<div className='flex flex-col'>
-			<DashboardHeader title='Feed' description='Share updates' />
-			<div className='flex-1 space-y-6 p-6'>
-				<div className='mx-auto flex max-w-5xl flex-col gap-6'>
-					{/* Composer */}
-					<Card className='border-none bg-background shadow-sm p-0'>
-						<CardContent className='p-3'>
-							<div className='flex gap-4'>
-								<Avatar className='h-12 w-12 shrink-0'>
+		<div className='flex flex-col min-h-screen bg-[#f1f5f9] relative overflow-hidden'>
+			{/* Soft ambient background */}
+			<div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
+				<div className="absolute -top-[10%] -left-[10%] w-[40%] h-[40%] rounded-full bg-primary/5 blur-[100px]" />
+				<div className="absolute top-[20%] -right-[10%] w-[30%] h-[30%] rounded-full bg-blue-500/5 blur-[80px]" />
+			</div>
+
+			<DashboardHeader title='Social Feed' description='Global team conversation' />
+
+			<div className='flex-1 flex flex-col p-4 md:p-6 overflow-hidden max-w-4xl mx-auto w-full'>
+				{/* Top Composer Section */}
+				<div className="mb-8 w-full sticky top-0 z-10">
+					<Card className='border-none bg-white/80 backdrop-blur-lg shadow-xl shadow-slate-200/50 p-0 overflow-hidden rounded-[20px] ring-1 ring-white/20'>
+						<CardContent className='p-4'>
+							<div className='flex gap-3'>
+								<Avatar className='h-10 w-10 shrink-0 border-2 border-slate-50'>
 									{employee?.avatar_url ? (
 										<AvatarImage className="object-cover"
 											src={employee.avatar_url}
 											alt={`${employee.first_name} ${employee.last_name}`}
 										/>
 									) : null}
-									<AvatarFallback className='bg-primary text-primary-foreground'>
+									<AvatarFallback className='bg-primary/10 text-primary font-bold text-xs'>
 										{initials}
 									</AvatarFallback>
 								</Avatar>
 								<div className='flex-1 space-y-3 relative'>
-									<p className='text-sm font-medium text-foreground'>
-										{employee
-											? `${employee.first_name} ${employee.last_name}`
-											: "Share an update"}
-									</p>
 									<Textarea
 										ref={textareaRef}
-										placeholder="What's on your mind? Type @ to mention someone..."
+										placeholder="Share an update with the team..."
 										value={newPost}
 										onChange={(e) => {
 											const v = e.target.value;
@@ -235,13 +264,13 @@ export function FeedPage() {
 												setMentionOpen(false);
 											}
 										}}
-										className='min-h-[100px] resize-none rounded-2xl border-muted bg-muted/40 px-4 py-3 text-sm'
+										className='min-h-[60px] max-h-[200px] resize-none rounded-[16px] border-none bg-slate-50 px-4 py-3 text-sm focus-visible:ring-1 focus-visible:ring-primary/20'
 									/>
 									{mentionOpen &&
 										mentionCandidates.length > 0 && (
 											<div
 												ref={mentionListRef}
-												className='absolute left-0 right-0 top-full z-50 mt-1 max-h-[220px] overflow-auto rounded-lg border border-border bg-popover shadow-md'>
+												className='absolute left-0 right-0 top-full z-50 mt-1 max-h-[220px] overflow-auto rounded-xl border border-slate-100 bg-white shadow-2xl'>
 												{mentionCandidates.map(
 													(emp, i) => (
 														<button
@@ -252,280 +281,135 @@ export function FeedPage() {
 																	emp
 																)
 															}
-															className={`flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-muted focus:bg-muted focus:outline-none ${i ===
+															className={`flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-slate-50 transition-colors ${i ===
 																mentionIndex
-																? "bg-muted"
+																? "bg-slate-50"
 																: ""
 																}`}>
-															<Avatar className='h-7 w-7 shrink-0'>
+															<Avatar className='h-6 w-6 shrink-0'>
 																{emp?.avatar_url && (
-																<AvatarImage height={32} width={32} className="object-cover"
-																	src={emp.avatar_url}
-																	alt="Profile Pic"
-																/>
-															)}
-																<AvatarFallback className='text-xs'>
-																	{
-																		emp
-																			.first_name?.[0]
-																	}
-																	{
-																		emp
-																			.last_name?.[0]
-																	}
+																	<AvatarImage className="object-cover"
+																		src={emp.avatar_url}
+																	/>
+																)}
+																<AvatarFallback className='text-[10px] font-bold'>
+																	{emp.first_name?.[0]}{emp.last_name?.[0]}
 																</AvatarFallback>
 															</Avatar>
-															<div className='min-w-0'>
-																<p className='font-medium truncate'>
-																	{
-																		emp.first_name
-																	}{" "}
-																	{
-																		emp.last_name
-																	}
-																</p>
-																{(emp.designation ||
-																	(emp.role !==
-																		"employee" &&
-																		emp.role)) && (
-																		<p className='text-xs text-muted-foreground truncate'>
-																			{emp.role ===
-																				"employee"
-																				? emp.designation ||
-																				"—"
-																				: [
-																					emp.designation,
-																					emp.role,
-																				]
-																					.filter(
-																						Boolean
-																					)
-																					.join(
-																						" · "
-																					)}
-																		</p>
-																	)}
-															</div>
+															<p className='font-bold truncate text-slate-700'>
+																{emp.first_name} {emp.last_name}
+															</p>
 														</button>
 													)
 												)}
 											</div>
 										)}
-									<div className='flex justify-start'>
+									<div className='flex items-center justify-end'>
 										<Button
 											onClick={handlePost}
 											disabled={
 												!newPost.trim() || isPosting
 											}
-											className='gap-2 rounded-full bg-linear-to-r from-primary to-primary/80 px-6 shadow-sm'>
-											<Send className='h-4 w-4' />
-											Post
+											className='h-9 rounded-xl bg-primary px-6 shadow-md hover:shadow-lg transition-all text-xs font-bold gap-2'>
+											{isPosting ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className='h-3 w-3' />}
+											Broadcast
 										</Button>
 									</div>
 								</div>
 							</div>
 						</CardContent>
 					</Card>
+				</div>
 
-					{/* Posts List */}
-					<div className='space-y-4'>
-						{isLoading ? (
-							<p className='py-8 text-center text-sm text-muted-foreground'>
-								Loading feed...
+				{/* Conversation Feed */}
+				<div className='flex-1 space-y-8 pb-10'>
+					{isLoading ? (
+						<div className='flex flex-col items-center justify-center py-20 gap-4'>
+							<Loader2 className='h-8 w-8 animate-spin text-primary/40' />
+							<p className='text-xs font-bold text-slate-400 uppercase tracking-widest'>
+								Syncing Conversations...
 							</p>
-						) : posts.length === 0 ? (
-							<p className='py-8 text-center text-sm text-muted-foreground'>
-								No posts yet. Be the first to share something!
+						</div>
+					) : posts.length === 0 ? (
+						<div className='text-center py-20 bg-white/40 rounded-[32px] border-2 border-dashed border-slate-200'>
+							<Rss className="h-10 w-10 text-slate-300 mx-auto mb-3" />
+							<p className='text-sm font-bold text-slate-400'>
+								The feed is quiet today.
 							</p>
-						) : (
-							<div className='flex flex-col gap-4 md:flex-row md:flex-wrap'>
-								{posts.map((post) => {
-									const anyPost = post as any;
-									const createdAt = new Date(
-										anyPost.created_at
-									);
-									return (
-										<Card
-											key={post.id}
-											className='border-none bg-background shadow-sm md:w-[320px]'>
-											<CardContent className='p-5'>
-												<div className='flex flex-col gap-3'>
-													<div className='flex items-center justify-between gap-3'>
-														<div className='flex items-center gap-2 min-w-0'>
-															<Avatar className='h-8 w-8 shrink-0'>
-																{anyPost.author
-																	?.avatar_url ? (
-																	<AvatarImage
-																		src={
-																			anyPost
-																				.author
-																				.avatar_url
-																		}
-																		alt={`${anyPost.author.first_name} ${anyPost.author.last_name}`}
-																	/>
-																) : null}
-																<AvatarFallback className='bg-muted text-xs'>
-																	{
-																		anyPost
-																			.author
-																			?.first_name?.[0]
-																	}
-																	{
-																		anyPost
-																			.author
-																			?.last_name?.[0]
-																	}
-																</AvatarFallback>
-															</Avatar>
-															<div className='min-w-0'>
-																<p className='truncate text-sm font-semibold'>
-																	{
-																		anyPost
-																			.author
-																			?.first_name
-																	}{" "}
-																	{
-																		anyPost
-																			.author
-																			?.last_name
-																	}
-																</p>
-																<p className='text-[11px] text-muted-foreground'>
-																	{anyPost
-																		.author
-																		?.role ===
-																		"employee"
-																		? anyPost
-																			.author
-																			?.designation ||
-																		"—"
-																		: [
-																			anyPost
-																				.author
-																				?.designation,
-																			anyPost
-																				.author
-																				?.role,
-																		]
-																			.filter(
-																				Boolean
-																			)
-																			.join(
-																				" · "
-																			) ||
-																		"—"}{" "}
-																	·{" "}
-																	{createdAt.toLocaleDateString()}{" "}
-																	•{" "}
-																	{createdAt.toLocaleTimeString(
-																		[],
-																		{
-																			hour: "2-digit",
-																			minute: "2-digit",
-																		}
-																	)}
-																</p>
-															</div>
-														</div>
-														<div className='flex items-center gap-1 shrink-0'>
-															{canDeletePost(
-																post
-															) && (
-																	<Button
-																		size='icon'
-																		variant='ghost'
-																		className='h-8 w-8 text-muted-foreground hover:text-destructive'
-																		onClick={() =>
-																			handleDeletePost(
-																				post.id
-																			)
-																		}
-																		title='Delete post'>
-																		<Trash2 className='h-3.5 w-3.5' />
-																	</Button>
-																)}
-															<button
-																type='button'
-																onClick={() =>
-																	onViewFullPost(
-																		post
-																	)
-																}
-																className='text-[11px] text-primary hover:underline'>
-																View Full Post
-															</button>
-														</div>
-													</div>
-													<p className='mt-1 line-clamp-3 text-sm text-muted-foreground whitespace-pre-wrap'>
-														{anyPost.content}
-													</p>
+						</div>
+					) : (
+						<div className='flex flex-col gap-8'>
+							{[...posts].reverse().map((post) => {
+								const anyPost = post as any;
+								const createdAt = new Date(anyPost.created_at);
+								const isMe = anyPost.author_id === employee?.id;
+
+								return (
+									<div key={post.id} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'} group w-full`}>
+										<div className={`flex gap-3 max-w-[85%] md:max-w-[70%] ${isMe ? 'flex-row-reverse' : 'flex-row'}`}>
+											{/* Avatar */}
+											<Avatar className='h-9 w-9 shrink-0 border-2 border-white shadow-sm mt-1'>
+												{anyPost.author?.avatar_url ? (
+													<AvatarImage
+														src={anyPost.author.avatar_url}
+														className="object-cover"
+													/>
+												) : null}
+												<AvatarFallback className='bg-slate-200 text-slate-600 text-[10px] font-bold'>
+													{anyPost.author?.first_name?.[0]}{anyPost.author?.last_name?.[0]}
+												</AvatarFallback>
+											</Avatar>
+
+											{/* Message Content */}
+											<div className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
+												{/* Name & Time */}
+												<div className={`flex items-center gap-2 mb-1.5 px-1 ${isMe ? 'flex-row-reverse' : 'flex-row'}`}>
+													{canDeletePost(post) && (
+														<button
+															onClick={() => handleDeletePost(post.id)}
+															className="bg-white hover:bg-slate-50 text-destructive rounded-full shadow-sm p-1 border border-slate-100 transition-all active:scale-95"
+															title="Delete Update">
+															<Trash2 className="h-3 w-3" />
+														</button>
+													)}
+													<span className='text-[11px] font-black text-slate-800 tracking-tight'>
+														{anyPost.author?.first_name} {anyPost.author?.last_name}
+													</span>
+													<span className='text-[10px] font-bold text-slate-400 uppercase tracking-tighter'>
+														{createdAt.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} • {createdAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+													</span>
 												</div>
-											</CardContent>
-										</Card>
-									);
-								})}
-							</div>
-						)}
-					</div>
+
+												{/* Bubble */}
+												<div className={`relative px-4 py-3 rounded-[20px] shadow-sm ${isMe
+													? 'bg-primary text-white rounded-tr-none'
+													: 'bg-white text-slate-700 rounded-tl-none border border-slate-100'
+													}`}>
+													<div className={`text-[14px] leading-relaxed whitespace-pre-wrap font-medium ${isMe ? 'text-white' : 'text-slate-600'}`}>
+														{formatPostContent(anyPost.content)}
+													</div>
+												</div>
+											</div>
+										</div>
+									</div>
+								);
+							})}
+						</div>
+					)}
 				</div>
 			</div>
 
 			<Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-				<DialogContent className='max-w-lg'>
+				<DialogContent className='max-w-lg rounded-2xl'>
 					{selectedPost && (
 						<>
 							<DialogHeader>
-								<DialogTitle className='flex items-center justify-between gap-2'>
-									<span className='flex items-center gap-2'>
-										<Rss className='h-4 w-4 text-primary' />
-										Post from{" "}
-										<span className='font-semibold'>
-											{
-												(selectedPost as any).author
-													?.first_name
-											}{" "}
-											{
-												(selectedPost as any).author
-													?.last_name
-											}
-										</span>
-									</span>
-									{canDeletePost(selectedPost) && (
-										<Button
-											size='sm'
-											variant='ghost'
-											className='text-destructive hover:text-destructive'
-											onClick={() => {
-												handleDeletePost(
-													selectedPost.id
-												);
-												setDialogOpen(false);
-											}}>
-											<Trash2 className='h-4 w-4' />
-										</Button>
-									)}
+								<DialogTitle className='flex items-center justify-between gap-2 text-sm font-bold'>
+									Post Conversation
 								</DialogTitle>
-								<DialogDescription className='text-xs'>
-									{(selectedPost as any).author?.role ===
-										"employee"
-										? (selectedPost as any).author
-											?.designation || "—"
-										: [
-											(selectedPost as any).author
-												?.designation,
-											(selectedPost as any).author
-												?.role,
-										]
-											.filter(Boolean)
-											.join(" · ") || "—"}{" "}
-									·{" "}
-									{new Date(
-										(selectedPost as any).created_at
-									).toLocaleString()}
-								</DialogDescription>
 							</DialogHeader>
-							<div className='mt-3 text-sm text-muted-foreground whitespace-pre-wrap'>
-								{(selectedPost as any).content}
+							<div className='mt-4 p-4 bg-slate-50 rounded-xl text-sm text-slate-600 leading-relaxed whitespace-pre-wrap'>
+								{formatPostContent((selectedPost as any).content)}
 							</div>
 						</>
 					)}

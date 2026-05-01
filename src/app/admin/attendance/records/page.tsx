@@ -108,7 +108,7 @@ export default function AttendanceRecordsPage() {
 				.from("attendance")
 				.select("*, employee:employees(*)")
 				.order("date", { ascending: false })
-				.order("clock_in", { ascending: false });
+				.order("clock_in", { ascending: true });
 
 			// Apply filters
 			if (filterEmployeeId !== "all") {
@@ -185,7 +185,15 @@ export default function AttendanceRecordsPage() {
 			allRecords.sort((a, b) => {
 				const dateCompare = new Date(b.date).getTime() - new Date(a.date).getTime();
 				if (dateCompare !== 0) return dateCompare;
-				// If same date, sort by employee name
+				
+				// If same date, sort by clock-in ascending
+				if (a.clock_in && b.clock_in) {
+					return new Date(a.clock_in).getTime() - new Date(b.clock_in).getTime();
+				}
+				if (a.clock_in) return -1;
+				if (b.clock_in) return 1;
+
+				// Fallback to employee name
 				const nameA = `${a.employee?.first_name || ''} ${a.employee?.last_name || ''}`;
 				const nameB = `${b.employee?.first_name || ''} ${b.employee?.last_name || ''}`;
 				return nameA.localeCompare(nameB);
@@ -266,10 +274,10 @@ export default function AttendanceRecordsPage() {
 
 		const rows = filteredRecords.map((record) => {
 			const clockIn = record.clock_in
-				? new Date(record.clock_in).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+				? new Date(record.clock_in).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
 				: "-";
 			const clockOut = record.clock_out
-				? new Date(record.clock_out).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+				? new Date(record.clock_out).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
 				: "-";
 			const dayName = new Date(record.date + "T00:00:00").toLocaleDateString('en-US', { weekday: 'long' });
 
@@ -308,6 +316,7 @@ export default function AttendanceRecordsPage() {
 		return new Date(timeString).toLocaleTimeString("en-US", {
 			hour: "2-digit",
 			minute: "2-digit",
+			second: "2-digit",
 		});
 	};
 

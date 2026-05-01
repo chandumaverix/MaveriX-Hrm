@@ -25,7 +25,19 @@ import {
 	ArrowRight,
 	TrendingUp,
 	Sparkles,
+	Loader2,
+	XCircle,
 } from "lucide-react";
+import { useSettings } from "@/contexts/settings-context";
+import {
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogFooter,
+	DialogHeader,
+	DialogTitle,
+	DialogTrigger,
+} from "@/components/ui/dialog";
 import type {
 	Employee,
 	Announcement,
@@ -40,11 +52,16 @@ interface TeamWithDetails extends Team {
 }
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
+function toLocalDateStr(d: Date): string {
+	return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
 function formatTime(s: string | null) {
 	if (!s) return "–";
 	return new Date(s).toLocaleTimeString("en-US", {
 		hour: "2-digit",
 		minute: "2-digit",
+		second: "2-digit",
 	});
 }
 
@@ -200,6 +217,7 @@ function SectionHeader({
 // ── Main Page ────────────────────────────────────────────────────────────────
 export default function HRDashboardPage() {
 	const { employee } = useUser();
+	const { settings } = useSettings();
 	const [stats, setStats] = useState<Record<StatKey, number>>({
 		totalEmployees: 0,
 		clockedIn: 0,
@@ -225,6 +243,11 @@ export default function HRDashboardPage() {
 	const [festivalMap, setFestivalMap] = useState<Record<string, string[]>>({});
 	const [selectedFestivalDate, setSelectedFestivalDate] = useState<string | null>(null);
 	const [now, setNow] = useState(() => new Date());
+
+	const [isClockInLoading, setIsClockInLoading] = useState(false);
+	const [isClockOutDialogOpen, setIsClockOutDialogOpen] = useState(false);
+	const [clockOutTimer, setClockOutTimer] = useState(5);
+	const [isClockOutButtonDisabled, setIsClockOutButtonDisabled] = useState(true);
 
 	// Live clock tick
 	useEffect(() => {
@@ -370,22 +393,71 @@ export default function HRDashboardPage() {
 
 	const handleClockIn = async () => {
 		if (!employee) return;
-		const supabase = createClient();
-		const today = new Date().toISOString().split("T")[0];
-		await supabase.from("attendance").insert({
-			employee_id: employee.id,
-			date: today,
-			clock_in: new Date().toISOString(),
-			status: "present",
-		});
-		const { data } = await supabase
-			.from("attendance")
-			.select("*")
-			.eq("employee_id", employee.id)
-			.eq("date", today)
-			.single();
-		setTodayAttendance(data as Attendance);
-		setStats((s) => ({ ...s, clockedIn: s.clockedIn + 1 }));
+		setIsClockInLoading(true);
+		try {
+			const supabase = createClient();
+			const now = new Date();
+			const today = toLocalDateStr(now);
+			const nowISO = now.toISOString();
+
+			let status: "present" | "late" = "present";
+			
+			if (settings?.max_clocking_time) {
+				try {
+					const maxTimeStr = settings.max_clocking_time.trim();
+					let hours = 0;
+					let minutes = 0;
+					let parsed = false;
+
+					const upperStr = maxTimeStr.toUpperCase();
+					const hasAM = upperStr.includes("AM");
+					const hasPM = upperStr.includes("PM");
+					let timeOnly = maxTimeStr.replace(/\s*(AM|PM)\s*/i, "").trim();
+					
+					const timeParts = timeOnly.split(":");
+					if (timeParts.length >= 2) {
+						hours = parseInt(timeParts[0], 10);
+						minutes = parseInt(timeParts[1], 10);
+						
+						if (!isNaN(hours) && !isNaN(minutes)) {
+							if (hasPM && hours !== 12) hours += 12;
+							else if (hasAM && hours === 12) hours = 0;
+							parsed = true;
+						}
+					}
+					
+					if (parsed) {
+						const maxTime = new Date(now);
+						maxTime.setHours(hours, minutes, 0, 0);
+						if (now.getTime() > maxTime.getTime()) {
+							status = "late";
+						}
+					}
+				} catch (err) {
+					console.error("Error parsing max_clocking_time:", err);
+				}
+			}
+
+			await supabase.from("attendance").insert({
+				employee_id: employee.id,
+				date: today,
+				clock_in: nowISO,
+				status: status,
+			});
+			
+			const { data } = await supabase
+				.from("attendance")
+				.select("*")
+				.eq("employee_id", employee.id)
+				.eq("date", today)
+				.single();
+			setTodayAttendance(data as Attendance);
+			setStats((s) => ({ ...s, clockedIn: s.clockedIn + 1 }));
+		} catch (error) {
+			console.error("Clock in failed:", error);
+		} finally {
+			setIsClockInLoading(false);
+		}
 	};
 
 	const handleClockOut = async () => {
@@ -411,7 +483,35 @@ export default function HRDashboardPage() {
 			if (idx >= 0 && data) updated[idx] = data as Attendance;
 			return updated;
 		});
+		setIsClockOutDialogOpen(false);
 	};
+
+	const confirmClockOut = () => {
+		setIsClockOutDialogOpen(true);
+		setClockOutTimer(5);
+		setIsClockOutButtonDisabled(true);
+	};
+
+	useEffect(() => {
+		if (!isClockOutDialogOpen) {
+			setClockOutTimer(5);
+			setIsClockOutButtonDisabled(true);
+			return;
+		}
+
+		if (clockOutTimer > 0) {
+			const timer = setInterval(() => {
+				setClockOutTimer((prev) => {
+					if (prev <= 1) {
+						setIsClockOutButtonDisabled(false);
+						return 0;
+					}
+					return prev - 1;
+				});
+			}, 1000);
+			return () => clearInterval(timer);
+		}
+	}, [isClockOutDialogOpen, clockOutTimer]);
 
 	const handleLeaveAction = async (id: string, status: "approved" | "rejected") => {
 		const supabase = createClient();
@@ -528,13 +628,37 @@ export default function HRDashboardPage() {
 							{/* CTA Button */}
 							<div className="flex justify-center">
 								{isActive ? (
-									<button
-										onClick={handleClockOut}
-										className="w-full flex items-center justify-center gap-2 rounded-xl bg-red-500 hover:bg-red-600 active:scale-95 text-white px-6 py-3.5 text-base font-bold transition-all duration-150 shadow-md cursor-pointer"
-									>
-										<Square className="h-4 w-4" />
-										Clock Out
-									</button>
+									<Dialog open={isClockOutDialogOpen} onOpenChange={setIsClockOutDialogOpen}>
+										<DialogTrigger asChild>
+											<button
+												onClick={confirmClockOut}
+												className="w-full flex items-center justify-center gap-2 rounded-xl bg-red-500 hover:bg-red-600 active:scale-95 text-white px-6 py-3.5 text-base font-bold transition-all duration-150 shadow-md cursor-pointer"
+											>
+												<Square className="h-4 w-4" />
+												Clock Out
+											</button>
+										</DialogTrigger>
+										<DialogContent>
+											<DialogHeader>
+												<DialogTitle>Confirm Clock Out</DialogTitle>
+												<DialogDescription>
+													Are you sure you want to clock out? This action will record your departure time and calculate total hours worked.
+												</DialogDescription>
+											</DialogHeader>
+											<DialogFooter>
+												<Button variant="outline" onClick={() => setIsClockOutDialogOpen(false)}>
+													Cancel
+												</Button>
+												<Button 
+													onClick={handleClockOut} 
+													disabled={isClockOutButtonDisabled}
+													className="bg-red-600 hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+												>
+													{isClockOutButtonDisabled ? `Clock Out in ${clockOutTimer}s` : 'Clock Out'}
+												</Button>
+											</DialogFooter>
+										</DialogContent>
+									</Dialog>
 								) : isDone ? (
 									<div className="w-full flex items-center justify-center gap-2 rounded-xl bg-white/15 border border-white/20 px-6 py-3.5 text-base font-bold">
 										<CheckCircle2 className="h-4 w-4 text-emerald-400" />
@@ -543,10 +667,15 @@ export default function HRDashboardPage() {
 								) : (
 									<button
 										onClick={handleClockIn}
-										className="w-full flex items-center justify-center gap-2 rounded-xl bg-white text-primary hover:bg-white/90 active:scale-95 px-6 py-3.5 text-base font-bold transition-all duration-150 shadow-md cursor-pointer"
+										disabled={isClockInLoading}
+										className="w-full flex items-center justify-center gap-2 rounded-xl bg-white text-primary hover:bg-white/90 active:scale-95 px-6 py-3.5 text-base font-bold transition-all duration-150 shadow-md cursor-pointer disabled:opacity-70 disabled:cursor-not-allowed"
 									>
-										<Clock className="h-4 w-4" />
-										Clock In
+										{isClockInLoading ? (
+											<Loader2 className="h-4 w-4 animate-spin" />
+										) : (
+											<Clock className="h-4 w-4" />
+										)}
+										{isClockInLoading ? "Clocking In..." : "Clock In"}
 									</button>
 								)}
 							</div>
