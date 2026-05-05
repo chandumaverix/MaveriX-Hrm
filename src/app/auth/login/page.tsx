@@ -14,6 +14,7 @@ import {
 
 import { createClient } from "@/lib/supabase/client";
 import { useUser } from "@/contexts/user-context";
+import { logActivity } from "@/lib/activityLogger";
 import { Button } from "@/components/ui/button";
 import {
 	Card,
@@ -56,6 +57,12 @@ export default function LoginPage() {
 				.select("role")
 				.eq("id", authData.user.id)
 				.maybeSingle();
+
+			await logActivity({
+				action: 'Logged In',
+				category: 'auth',
+				description: 'User successfully authenticated'
+			}, supabase);
 
 			const path =
 				employee?.role === "admin"

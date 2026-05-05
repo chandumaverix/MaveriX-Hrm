@@ -34,11 +34,9 @@ import {
 	TicketIcon,
 	Loader2,
 } from "lucide-react";
-import type {
-	Attendance,
-	LeaveBalance,
-	LeaveType,
-} from "@/lib/types";
+import type { Attendance, LeaveBalance, LeaveType } from "@/lib/types";
+import { determineAttendanceStatus } from "@/lib/utils";
+import { toast } from "react-hot-toast";
 interface LeaveBalanceWithType extends LeaveBalance {
 	leave_type?: LeaveType;
 }
@@ -59,7 +57,7 @@ interface MinimalTeamMember {
 function toLocalDateStr(d: Date): string {
 	return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(
 		2,
-		"0"
+		"0",
 	)}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
@@ -67,17 +65,17 @@ export default function EmployeeDashboardPage() {
 	const { employee } = useUser();
 	const { settings } = useSettings();
 	const [todayAttendance, setTodayAttendance] = useState<Attendance | null>(
-		null
+		null,
 	);
 	const [leaveBalances, setLeaveBalances] = useState<LeaveBalanceWithType[]>(
-		[]
+		[],
 	);
 	const [recentAttendance, setRecentAttendance] = useState<Attendance[]>([]);
 	const [monthAttendance, setMonthAttendance] = useState<Attendance[]>([]);
 	const [teamMembers, setTeamMembers] = useState<MinimalTeamMember[]>([]);
 	const [isTeamLoading, setIsTeamLoading] = useState(false);
 	const [festivalMap, setFestivalMap] = useState<Record<string, string[]>>(
-		{}
+		{},
 	);
 	const [selectedFestivalDate, setSelectedFestivalDate] = useState<
 		string | null
@@ -91,7 +89,8 @@ export default function EmployeeDashboardPage() {
 	const [now, setNow] = useState(() => new Date());
 	const [isClockOutDialogOpen, setIsClockOutDialogOpen] = useState(false);
 	const [clockOutTimer, setClockOutTimer] = useState(10);
-	const [isClockOutButtonDisabled, setIsClockOutButtonDisabled] = useState(true);
+	const [isClockOutButtonDisabled, setIsClockOutButtonDisabled] =
+		useState(true);
 	const [isClockInLoading, setIsClockInLoading] = useState(false);
 
 	useEffect(() => {
@@ -130,12 +129,12 @@ export default function EmployeeDashboardPage() {
 			.eq("year", currentYear);
 
 		setLeaveBalances(
-			(leaveBalanceData as unknown as LeaveBalanceWithType[]) || []
+			(leaveBalanceData as unknown as LeaveBalanceWithType[]) || [],
 		);
 
 		// Fetch attendance for this month (for stats, recent list, calendar)
 		const monthStart = toLocalDateStr(
-			new Date(currentYear, new Date().getMonth(), 1)
+			new Date(currentYear, new Date().getMonth(), 1),
 		);
 		const { data: monthAttendanceData } = await supabase
 			.from("attendance")
@@ -148,14 +147,14 @@ export default function EmployeeDashboardPage() {
 			(monthAttendanceData as Attendance[]) || [];
 
 		const daysWorked = monthAttendanceTyped.filter((a) =>
-			["present", "late"].includes(a.status)
+			["present", "late"].includes(a.status),
 		).length;
 
 		setMonthAttendance(monthAttendanceTyped);
 		setRecentAttendance(
 			[...monthAttendanceTyped]
 				.sort((a, b) => b.date.localeCompare(a.date))
-				.slice(0, 5)
+				.slice(0, 5),
 		);
 
 		// Fetch pending leave requests
@@ -181,12 +180,12 @@ export default function EmployeeDashboardPage() {
 
 		// Fetch minimal team info (first team only, up to a few members + leader)
 		setIsTeamLoading(true);
-		
+
 		// First, check if employee is a team leader
 		const { data: leaderTeams } = await supabase
 			.from("teams")
 			.select(
-				"id, leader_id, leader:employees!teams_leader_id_fkey(id, first_name, last_name, avatar_url, designation, email)"
+				"id, leader_id, leader:employees!teams_leader_id_fkey(id, first_name, last_name, avatar_url, designation, email)",
 			)
 			.eq("leader_id", employee.id)
 			.limit(1);
@@ -205,15 +204,15 @@ export default function EmployeeDashboardPage() {
 				.select("team_id")
 				.eq("employee_id", employee.id)
 				.limit(1);
-			
+
 			teamId = membershipData?.[0]?.team_id as string | undefined;
-			
+
 			// Fetch team data for regular members
 			if (teamId) {
 				const { data } = await supabase
 					.from("teams")
 					.select(
-						"leader_id, leader:employees!teams_leader_id_fkey(id, first_name, last_name, avatar_url, designation, email)"
+						"leader_id, leader:employees!teams_leader_id_fkey(id, first_name, last_name, avatar_url, designation, email)",
 					)
 					.eq("id", teamId)
 					.maybeSingle();
@@ -228,25 +227,31 @@ export default function EmployeeDashboardPage() {
 			const { data: teamMembersData } = await supabase
 				.from("team_members")
 				.select(
-					"id, employee:employees(id, first_name, last_name, avatar_url, designation, email)"
+					"id, employee:employees(id, first_name, last_name, avatar_url, designation, email)",
 				)
 				.eq("team_id", teamId)
 				.limit(10);
 
-			const mapped: MinimalTeamMember[] = (teamMembersData || []).map((m: any) => ({
-				id: m.id,
-				employee_id: m.employee.id,
-				first_name: m.employee.first_name,
-				last_name: m.employee.last_name,
-				designation: m.employee.designation,
-				avatar_url: m.employee.avatar_url,
-				email: m.employee.email,
-				isSelf: m.employee.id === employee.id,
-				isLeader: m.employee.id === leaderId,
-			}));
+			const mapped: MinimalTeamMember[] = (teamMembersData || []).map(
+				(m: any) => ({
+					id: m.id,
+					employee_id: m.employee.id,
+					first_name: m.employee.first_name,
+					last_name: m.employee.last_name,
+					designation: m.employee.designation,
+					avatar_url: m.employee.avatar_url,
+					email: m.employee.email,
+					isSelf: m.employee.id === employee.id,
+					isLeader: m.employee.id === leaderId,
+				}),
+			);
 
 			// Add leader to the list if not already present
-			if (leaderId && leaderEmp && !mapped.some((x) => x.employee_id === leaderId)) {
+			if (
+				leaderId &&
+				leaderEmp &&
+				!mapped.some((x) => x.employee_id === leaderId)
+			) {
 				mapped.unshift({
 					id: `leader-${leaderId}`,
 					employee_id: leaderId,
@@ -266,64 +271,53 @@ export default function EmployeeDashboardPage() {
 		setIsTeamLoading(false);
 	};
 
-
 	const handleClockIn = async () => {
 		if (!employee) return;
 		setIsClockInLoading(true);
+
 		try {
 			const supabase = createClient();
 			const now = new Date();
 			const today = toLocalDateStr(now);
 			const nowISO = now.toISOString();
 
-			let status: "present" | "late" = "present";
-			
-			if (settings?.max_clocking_time) {
-				try {
-					const maxTimeStr = settings.max_clocking_time.trim();
-					let hours = 0;
-					let minutes = 0;
-					let parsed = false;
+			// ── 1. Duplicate clock-in guard
+			const { data: existing, error: fetchError } = await supabase
+				.from("attendance")
+				.select("id")
+				.eq("employee_id", employee.id)
+				.eq("date", today)
+				.maybeSingle();
 
-					const upperStr = maxTimeStr.toUpperCase();
-					const hasAM = upperStr.includes("AM");
-					const hasPM = upperStr.includes("PM");
-					let timeOnly = maxTimeStr.replace(/\s*(AM|PM)\s*/i, "").trim();
-					
-					const timeParts = timeOnly.split(":");
-					if (timeParts.length >= 2) {
-						hours = parseInt(timeParts[0], 10);
-						minutes = parseInt(timeParts[1], 10);
-						
-						if (!isNaN(hours) && !isNaN(minutes)) {
-							if (hasPM && hours !== 12) hours += 12;
-							else if (hasAM && hours === 12) hours = 0;
-							parsed = true;
-						}
-					}
-					
-					if (parsed) {
-						const maxTime = new Date(now);
-						maxTime.setHours(hours, minutes, 0, 0);
-						if (now.getTime() > maxTime.getTime()) {
-							status = "late";
-						}
-					}
-				} catch (err) {
-					console.error("Error parsing max_clocking_time:", err);
-				}
+			if (fetchError) throw fetchError;
+			if (existing) {
+				console.warn("Already clocked in today");
+				return;
 			}
 
-			await supabase.from("attendance").insert({
-				employee_id: employee.id,
-				date: today,
-				clock_in: nowISO,
-				status: status,
-			});
+			// ── 2. Robust late-status determination
+			const status = determineAttendanceStatus(
+				now,
+				settings?.max_clocking_time,
+			);
+
+			// ── 3. Insert attendance record
+			const { error: insertError } = await supabase
+				.from("attendance")
+				.insert({
+					employee_id: employee.id,
+					date: today,
+					clock_in: nowISO,
+					status,
+				});
+
+			if (insertError) throw insertError;
 
 			await fetchData();
 		} catch (error) {
 			console.error("Clock in error:", error);
+			toast.error("Clock in failed. Please try again.");
+			// TODO: surface this error to the user via toast/alert
 		} finally {
 			setIsClockInLoading(false);
 		}
@@ -402,7 +396,6 @@ export default function EmployeeDashboardPage() {
 		};
 	};
 
-
 	const getCurrentTimeParts = (d: Date) => {
 		const hours12 = d.getHours() % 12 || 12;
 		const ampm = d.getHours() < 12 ? "AM" : "PM";
@@ -455,7 +448,7 @@ export default function EmployeeDashboardPage() {
 			const timeMax = new Date(year, month + 1, 0).toISOString();
 
 			const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(
-				calendarId
+				calendarId,
 			)}/events?key=${apiKey}&timeMin=${timeMin}&timeMax=${timeMax}&singleEvents=true&orderBy=startTime`;
 
 			try {
@@ -492,159 +485,259 @@ export default function EmployeeDashboardPage() {
 	const todayStr = toLocalDateStr(new Date());
 
 	return (
-		<div className="flex flex-col min-h-full bg-gradient-to-b from-muted/30 to-background">
-			<DashboardHeader title="My Dashboard" />
+		<div className='flex flex-col min-h-full bg-gradient-to-b from-muted/30 to-background'>
+			<DashboardHeader title='My Dashboard' />
 
-			<div className="flex-1 space-y-8 p-4">
+			<div className='flex-1 space-y-8 p-4'>
 				{/* Top row: Clock & Today summary */}
-				<div className="grid gap-6 grid-cols-1 md:grid-cols-2">
-					<Card className="rounded-2xl border border-border/60 bg-gradient-to-tr from-sky-50 to-violet-100">
-						<CardContent className="p-6 space-y-6">
+				<div className='grid gap-6 grid-cols-1 md:grid-cols-2'>
+					<Card className='rounded-2xl border border-border/60 bg-gradient-to-tr from-sky-50 to-violet-100'>
+						<CardContent className='p-6 space-y-6'>
 							{/* Greeting */}
 							<div>
-								<div className="flex items-center justify-start gap-2">
-									<p className="text-md text-gray-500 font-bold m-0 leading-none">
-										Hey 👋{employee ? `, ${employee.first_name}` : ""}
+								<div className='flex items-center justify-start gap-2'>
+									<p className='text-md text-gray-500 font-bold m-0 leading-none'>
+										Hey 👋
+										{employee
+											? `, ${employee.first_name}`
+											: ""}
 									</p>
 
-									<p className="text-sm border border-primary text-primary px-2 py-1 rounded-full leading-none flex items-center">
-										{new Date().toLocaleDateString("en-US", {
-											weekday: "short",
-											month: "short",
-											day: "numeric",
-										})}
+									<p className='text-sm border border-primary text-primary px-2 py-1 rounded-full leading-none flex items-center'>
+										{new Date().toLocaleDateString(
+											"en-US",
+											{
+												weekday: "short",
+												month: "short",
+												day: "numeric",
+											},
+										)}
 									</p>
 								</div>
 
-
-								<h3 className="text-2xl mt-2 font-bold sm:text-4xl">
-									Good {new Date().getHours() < 12 ? "Morning" : new Date().getHours() < 18 ? "Afternoon" : "Evening"}
+								<h3 className='text-2xl mt-2 font-bold sm:text-4xl'>
+									Good{" "}
+									{new Date().getHours() < 12
+										? "Morning"
+										: new Date().getHours() < 18
+											? "Afternoon"
+											: "Evening"}
 								</h3>
 								{/* <p className="text-sm text-muted-foreground">{employee?.designation || "—"}</p> */}
 							</div>
 
 							{/* Status pill: Clocked In (light green) */}
-							{todayAttendance?.clock_in && !todayAttendance.clock_out && (
-								<div className="flex justify-center">
-									<span className="inline-flex items-center rounded-full bg-green-100 px-4 py-1.5 text-sm font-bold text-green-800 dark:bg-green-900/40 dark:text-green-300">
-										Clocked In
-									</span>
-								</div>
-							)}
+							{todayAttendance?.clock_in &&
+								!todayAttendance.clock_out && (
+									<div className='flex justify-center'>
+										<span className='inline-flex items-center rounded-full bg-green-100 px-4 py-1.5 text-sm font-bold text-green-800 dark:bg-green-900/40 dark:text-green-300'>
+											Clocked In
+										</span>
+									</div>
+								)}
 
 							{/* Timer: three boxes (HOURS / MINUTES / SECONDS) when clocked in; three-part current time when not */}
-							<div className="flex flex-col items-center gap-2">
-								{todayAttendance?.clock_in && !todayAttendance.clock_out ? (
+							<div className='flex flex-col items-center gap-2'>
+								{todayAttendance?.clock_in &&
+								!todayAttendance.clock_out ? (
 									<>
-										<div className="grid grid-cols-3 gap-3 w-full max-w-[320px]">
-											{(["hours", "minutes", "seconds"] as const).map((unit) => (
-												<div key={unit} className="flex flex-col items-center justify-center rounded-xl bg-white border border-border/50 py-5 px-3">
-													<span className="text-3xl sm:text-4xl md:text-5xl font-bold tabular-nums text-foreground">
-														{getElapsedHMS(todayAttendance.clock_in!, now)[unit]}
+										<div className='grid grid-cols-3 gap-3 w-full max-w-[320px]'>
+											{(
+												[
+													"hours",
+													"minutes",
+													"seconds",
+												] as const
+											).map((unit) => (
+												<div
+													key={unit}
+													className='flex flex-col items-center justify-center rounded-xl bg-white border border-border/50 py-5 px-3'>
+													<span className='text-3xl sm:text-4xl md:text-5xl font-bold tabular-nums text-foreground'>
+														{
+															getElapsedHMS(
+																todayAttendance.clock_in!,
+																now,
+															)[unit]
+														}
 													</span>
-													<span className="text-xs font-medium uppercase tracking-wider text-muted-foreground mt-1.5">
-														{unit === "hours" ? "Hours" : unit === "minutes" ? "Minutes" : "Seconds"}
+													<span className='text-xs font-medium uppercase tracking-wider text-muted-foreground mt-1.5'>
+														{unit === "hours"
+															? "Hours"
+															: unit === "minutes"
+																? "Minutes"
+																: "Seconds"}
 													</span>
 												</div>
 											))}
 										</div>
-										<p className="text-sm text-muted-foreground">
-											Clocked in: <span className="font-semibold text-foreground">{new Date(todayAttendance.clock_in).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}</span>
+										<p className='text-sm text-muted-foreground'>
+											Clocked in:{" "}
+											<span className='font-semibold text-foreground'>
+												{new Date(
+													todayAttendance.clock_in,
+												).toLocaleDateString("en-US", {
+													weekday: "short",
+													month: "short",
+													day: "numeric",
+													hour: "2-digit",
+													minute: "2-digit",
+												})}
+											</span>
 										</p>
 									</>
-								) : todayAttendance?.clock_in && todayAttendance?.clock_out ? (
+								) : todayAttendance?.clock_in &&
+								  todayAttendance?.clock_out ? (
 									<>
-										<div className="grid grid-cols-3 gap-3 w-full max-w-[320px]">
-											{(["hours", "minutes", "ampm"] as const).map((unit) => (
-												<div key={unit} className="flex flex-col items-center justify-center rounded-xl bg-white border border-border/50 py-5 px-3">
-													<span className="text-3xl sm:text-4xl md:text-5xl font-bold tabular-nums text-foreground">
-														{getCurrentTimeParts(now)[unit]}
+										<div className='grid grid-cols-3 gap-3 w-full max-w-[320px]'>
+											{(
+												[
+													"hours",
+													"minutes",
+													"ampm",
+												] as const
+											).map((unit) => (
+												<div
+													key={unit}
+													className='flex flex-col items-center justify-center rounded-xl bg-white border border-border/50 py-5 px-3'>
+													<span className='text-3xl sm:text-4xl md:text-5xl font-bold tabular-nums text-foreground'>
+														{
+															getCurrentTimeParts(
+																now,
+															)[unit]
+														}
 													</span>
-													<span className="text-xs font-medium uppercase tracking-wider text-muted-foreground mt-1.5">
-														{unit === "hours" ? "Hours" : unit === "minutes" ? "Minutes" : "AM/PM"}
+													<span className='text-xs font-medium uppercase tracking-wider text-muted-foreground mt-1.5'>
+														{unit === "hours"
+															? "Hours"
+															: unit === "minutes"
+																? "Minutes"
+																: "AM/PM"}
 													</span>
 												</div>
 											))}
 										</div>
-										<p className="text-sm text-muted-foreground">Current time</p>
+										<p className='text-sm text-muted-foreground'>
+											Current time
+										</p>
 									</>
 								) : (
 									<>
-										<div className="grid grid-cols-3 gap-3 w-full max-w-[320px]">
-											{(["hours", "minutes", "ampm"] as const).map((unit) => (
-												<div key={unit} className="flex flex-col items-center justify-center rounded-xl bg-white border border-border/50 py-5 px-3">
-													<span className="text-3xl sm:text-4xl md:text-5xl font-bold tabular-nums text-foreground">
-														{getCurrentTimeParts(now)[unit]}
+										<div className='grid grid-cols-3 gap-3 w-full max-w-[320px]'>
+											{(
+												[
+													"hours",
+													"minutes",
+													"ampm",
+												] as const
+											).map((unit) => (
+												<div
+													key={unit}
+													className='flex flex-col items-center justify-center rounded-xl bg-white border border-border/50 py-5 px-3'>
+													<span className='text-3xl sm:text-4xl md:text-5xl font-bold tabular-nums text-foreground'>
+														{
+															getCurrentTimeParts(
+																now,
+															)[unit]
+														}
 													</span>
-													<span className="text-xs font-medium uppercase tracking-wider text-muted-foreground mt-1.5">
-														{unit === "hours" ? "Hours" : unit === "minutes" ? "Minutes" : "AM/PM"}
+													<span className='text-xs font-medium uppercase tracking-wider text-muted-foreground mt-1.5'>
+														{unit === "hours"
+															? "Hours"
+															: unit === "minutes"
+																? "Minutes"
+																: "AM/PM"}
 													</span>
 												</div>
 											))}
 										</div>
-										<p className="text-sm text-muted-foreground">Current time</p>
+										<p className='text-sm text-muted-foreground'>
+											Current time
+										</p>
 									</>
 								)}
 							</div>
 
 							{/* Primary action: Clock Out (red) / Clock In (blue) / Completed badge */}
-							<div className="flex justify-center">
-								{todayAttendance?.clock_in && !todayAttendance.clock_out ? (
+							<div className='flex justify-center'>
+								{todayAttendance?.clock_in &&
+								!todayAttendance.clock_out ? (
 									<>
-										<Dialog open={isClockOutDialogOpen} onOpenChange={setIsClockOutDialogOpen}>
+										<Dialog
+											open={isClockOutDialogOpen}
+											onOpenChange={
+												setIsClockOutDialogOpen
+											}>
 											<DialogTrigger asChild>
-												<Button onClick={confirmClockOut} className="gap-3 rounded-xl bg-red-600 hover:bg-red-700 text-white px-8 py-8 text-lg font-semibold w-[100%]">
-													<Square className="h-5 w-5" />
+												<Button
+													onClick={confirmClockOut}
+													className='gap-3 rounded-xl bg-red-600 hover:bg-red-700 text-white px-8 py-8 text-lg font-semibold w-[100%]'>
+													<Square className='h-5 w-5' />
 													Clock Out
 												</Button>
 											</DialogTrigger>
 											<DialogContent>
 												<DialogHeader>
-													<DialogTitle>Confirm Clock Out</DialogTitle>
+													<DialogTitle>
+														Confirm Clock Out
+													</DialogTitle>
 													<DialogDescription>
-														Are you sure you want to clock out? This action will record your departure time and calculate total hours worked.
+														Are you sure you want to
+														clock out? This action
+														will record your
+														departure time and
+														calculate total hours
+														worked.
 													</DialogDescription>
 												</DialogHeader>
 												<DialogFooter>
-													<Button variant="outline" onClick={() => setIsClockOutDialogOpen(false)}>
+													<Button
+														variant='outline'
+														onClick={() =>
+															setIsClockOutDialogOpen(
+																false,
+															)
+														}>
 														Cancel
 													</Button>
-													<Button 
-														onClick={handleClockOut} 
-														disabled={isClockOutButtonDisabled}
-														className="bg-red-600 hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
-													>
-														{isClockOutButtonDisabled ? `Clock Out in ${clockOutTimer}s` : 'Clock Out'}
+													<Button
+														onClick={handleClockOut}
+														disabled={
+															isClockOutButtonDisabled
+														}
+														className='bg-red-600 hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed'>
+														{isClockOutButtonDisabled
+															? `Clock Out in ${clockOutTimer}s`
+															: "Clock Out"}
 													</Button>
 												</DialogFooter>
 											</DialogContent>
 										</Dialog>
 									</>
 								) : todayAttendance ? (
-									<Badge className="bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300 border-0 rounded-lg gap-1 px-4 py-2">
-										<CheckCircle2 className="h-3.5 w-3.5" />
+									<Badge className='bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300 border-0 rounded-lg gap-1 px-4 py-2'>
+										<CheckCircle2 className='h-3.5 w-3.5' />
 										Completed
 									</Badge>
 								) : (
-									<Button 
-										onClick={handleClockIn} 
+									<Button
+										onClick={handleClockIn}
 										disabled={isClockInLoading}
-										className="gap-3 rounded-xl bg-blue-600 hover:bg-primary/90 text-primary-foreground px-8 py-8 text-lg font-semibold w-[100%] disabled:opacity-70 disabled:cursor-not-allowed"
-									>
+										className='gap-3 rounded-xl bg-blue-600 hover:bg-primary/90 text-primary-foreground px-8 py-8 text-lg font-semibold w-[100%] disabled:opacity-70 disabled:cursor-not-allowed'>
 										{isClockInLoading ? (
-											<Loader2 className="h-5 w-5 animate-spin" />
+											<Loader2 className='h-5 w-5 animate-spin' />
 										) : (
-											<Clock className="h-5 w-5" />
+											<Clock className='h-5 w-5' />
 										)}
-										{isClockInLoading ? "Clocking In..." : "Clock In"}
+										{isClockInLoading
+											? "Clocking In..."
+											: "Clock In"}
 									</Button>
 								)}
 							</div>
 
-
 							{/* Recent Attendance (unchanged functionality) */}
-							<div className="space-y-2 border-t border-border/50 pt-4">
-								<p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+							<div className='space-y-2 border-t border-border/50 pt-4'>
+								<p className='text-xs font-medium text-muted-foreground uppercase tracking-wide'>
 									Today's Attendance
 								</p>
 
@@ -654,51 +747,72 @@ export default function EmployeeDashboardPage() {
 
 									return (
 										attDate.getDate() === today.getDate() &&
-										attDate.getMonth() === today.getMonth() &&
-										attDate.getFullYear() === today.getFullYear()
+										attDate.getMonth() ===
+											today.getMonth() &&
+										attDate.getFullYear() ===
+											today.getFullYear()
 									);
 								}).length === 0 ? (
-									<p className="text-xs text-muted-foreground">
+									<p className='text-xs text-muted-foreground'>
 										No attendance record for today.
 									</p>
 								) : (
-									<div className="space-y-2">
+									<div className='space-y-2'>
 										{recentAttendance
 											.filter((att) => {
 												const today = new Date();
-												const attDate = new Date(att.date);
+												const attDate = new Date(
+													att.date,
+												);
 
 												return (
-													attDate.getDate() === today.getDate() &&
-													attDate.getMonth() === today.getMonth() &&
-													attDate.getFullYear() === today.getFullYear()
+													attDate.getDate() ===
+														today.getDate() &&
+													attDate.getMonth() ===
+														today.getMonth() &&
+													attDate.getFullYear() ===
+														today.getFullYear()
 												);
 											})
 											.map((att) => (
 												<div
 													key={att.id}
-													className="flex items-center justify-between rounded-xl border border-border/50 bg-white px-3 py-2.5"
-												>
-													<div className="flex gap-2">
-														<CheckCircle2 className="h-4 w-4 text-green-500" />
-														<p className="text-xs font-medium">
-															{new Date(att.date).toLocaleDateString("en-US", {
-																month: "short",
-																day: "numeric",
-															})}
+													className='flex items-center justify-between rounded-xl border border-border/50 bg-white px-3 py-2.5'>
+													<div className='flex gap-2'>
+														<CheckCircle2 className='h-4 w-4 text-green-500' />
+														<p className='text-xs font-medium'>
+															{new Date(
+																att.date,
+															).toLocaleDateString(
+																"en-US",
+																{
+																	month: "short",
+																	day: "numeric",
+																},
+															)}
 														</p>
-														<p className="text-[11px] text-muted-foreground">
-															{formatTime(att.clock_in)} – {formatTime(att.clock_out)}
+														<p className='text-[11px] text-muted-foreground'>
+															{formatTime(
+																att.clock_in,
+															)}{" "}
+															–{" "}
+															{formatTime(
+																att.clock_out,
+															)}
 														</p>
 													</div>
 
-													<div className="flex gap-2 text-right">
-														<p className="text-xs font-medium capitalize">
+													<div className='flex gap-2 text-right'>
+														<p className='text-xs font-medium capitalize'>
 															Total
 														</p>
-														{att.total_hours != null && (
-															<p className="text-[11px] text-muted-foreground">
-																{att.total_hours.toFixed(2)} hrs
+														{att.total_hours !=
+															null && (
+															<p className='text-[11px] text-muted-foreground'>
+																{att.total_hours.toFixed(
+																	2,
+																)}{" "}
+																hrs
 															</p>
 														)}
 													</div>
@@ -707,21 +821,22 @@ export default function EmployeeDashboardPage() {
 									</div>
 								)}
 							</div>
-
 						</CardContent>
 					</Card>
 
 					{/* Calendar with holidays / attendance highlights */}
-					<Card className="rounded-2xl border-border/50 shadow-sm">
-						<CardHeader className="pb-2">
-							<CardTitle className="flex items-center justify-between text-base">
-								<span className="flex items-center gap-2">
-									<div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
-										<Calendar className="h-5 w-5" />
+					<Card className='rounded-2xl border-border/50 shadow-sm'>
+						<CardHeader className='pb-2'>
+							<CardTitle className='flex items-center justify-between text-base'>
+								<span className='flex items-center gap-2'>
+									<div className='flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary'>
+										<Calendar className='h-5 w-5' />
 									</div>
-									<span className="font-semibold">Calendar</span>
+									<span className='font-semibold'>
+										Calendar
+									</span>
 								</span>
-								<span className="text-xs text-muted-foreground">
+								<span className='text-xs text-muted-foreground'>
 									{new Date().toLocaleDateString("en-US", {
 										month: "long",
 										year: "numeric",
@@ -757,31 +872,30 @@ export default function EmployeeDashboardPage() {
 									return (
 										<div
 											key={dateStr}
-											className={`relative flex h-12 flex-col items-center justify-center rounded-md text-[11px] ${isToday
-												? "bg-primary text-white font-semibold"
-												: "bg-gray-100"
-												}`}
+											className={`relative flex h-12 flex-col items-center justify-center rounded-md text-[11px] ${
+												isToday
+													? "bg-primary text-white font-semibold"
+													: "bg-gray-100"
+											}`}
 											onClick={() => {
 												if (festivalTitles) {
 													setSelectedFestivalDate(
-														dateStr
+														dateStr,
 													);
 												}
 											}}>
 											<span>{day.getDate()}</span>
 											{festivalTitles && (
-												<span className='mt-0.5 absolute right-1 top-1 inline-flex rounded-full bg-pink-500 text-[9px] text-pink-600 w-2 h-2'>
-
-												</span>
+												<span className='mt-0.5 absolute right-1 top-1 inline-flex rounded-full bg-pink-500 text-[9px] text-pink-600 w-2 h-2'></span>
 											)}
 											{!festivalTitles &&
 												hasAttendance && (
 													<span className='mt-0.5 inline-flex rounded-full bg-emerald-500/10 px-1.5 py-0.5 text-[9px] text-emerald-600'>
 														{att.status ===
-															"present"
+														"present"
 															? "Present"
 															: att.status ===
-																"late"
+																  "late"
 																? "Late"
 																: "Leave"}
 													</span>
@@ -796,7 +910,7 @@ export default function EmployeeDashboardPage() {
 										<p className='mb-1 font-medium'>
 											Festivals on{" "}
 											{new Date(
-												selectedFestivalDate
+												selectedFestivalDate,
 											).toLocaleDateString("en-US", {
 												month: "short",
 												day: "numeric",
@@ -845,46 +959,77 @@ export default function EmployeeDashboardPage() {
 				</div>
 
 				{/* Bottom row: Team, Birthdays, Profile */}
-				<div className="grid gap-6 lg:grid-cols-3">
+				<div className='grid gap-6 lg:grid-cols-3'>
 					{/* Team card */}
-					<Card className="rounded-2xl border-border/50 shadow-sm">
-						<CardHeader className="pb-2">
-							<div className="flex items-center gap-3">
-								<div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-500/15 text-indigo-600 dark:text-indigo-400">
-									<Users className="h-5 w-5" />
+					<Card className='rounded-2xl border-border/50 shadow-sm'>
+						<CardHeader className='pb-2'>
+							<div className='flex items-center gap-3'>
+								<div className='flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-500/15 text-indigo-600 dark:text-indigo-400'>
+									<Users className='h-5 w-5' />
 								</div>
-								<CardTitle className="text-base font-semibold">My Team</CardTitle>
+								<CardTitle className='text-base font-semibold'>
+									My Team
+								</CardTitle>
 							</div>
 						</CardHeader>
-						<CardContent className="pt-0 space-y-2">
+						<CardContent className='pt-0 space-y-2'>
 							{isTeamLoading ? (
-								<p className="text-sm text-muted-foreground">Loading team...</p>
+								<p className='text-sm text-muted-foreground'>
+									Loading team...
+								</p>
 							) : teamMembers.length === 0 ? (
-								<p className="text-sm text-muted-foreground rounded-xl bg-muted/20 py-8 text-center">You are not assigned to any team yet.</p>
+								<p className='text-sm text-muted-foreground rounded-xl bg-muted/20 py-8 text-center'>
+									You are not assigned to any team yet.
+								</p>
 							) : (
-								<div className="space-y-2 max-h-88 overflow-y-auto pr-1">
+								<div className='space-y-2 max-h-88 overflow-y-auto pr-1'>
 									{teamMembers.map((m) => (
 										<div
 											key={m.id}
-											className={`flex items-center gap-3 border-b px-3 py-2.5 transition-colors ${m.isSelf ? "border-primary/50 bg-primary/5 rounded-xl" : "border-border/50 bg-card/60 hover:bg-muted/30"
-												}`}>
-											<Avatar className="h-8 w-8 shrink-0">
+											className={`flex items-center gap-3 border-b px-3 py-2.5 transition-colors ${
+												m.isSelf
+													? "border-primary/50 bg-primary/5 rounded-xl"
+													: "border-border/50 bg-card/60 hover:bg-muted/30"
+											}`}>
+											<Avatar className='h-8 w-8 shrink-0'>
 												{m.avatar_url ? (
-													<AvatarImage className="object-cover"
+													<AvatarImage
+														className='object-cover'
 														src={m.avatar_url}
 														alt={`${m.first_name} ${m.last_name}`}
 													/>
 												) : null}
-												<AvatarFallback className="text-xs bg-indigo-500/15 text-indigo-600 dark:text-indigo-400">{m.first_name[0]}{m.last_name[0]}</AvatarFallback>
+												<AvatarFallback className='text-xs bg-indigo-500/15 text-indigo-600 dark:text-indigo-400'>
+													{m.first_name[0]}
+													{m.last_name[0]}
+												</AvatarFallback>
 											</Avatar>
-											<div className="flex-1 min-w-0">
-												<p className="text-sm font-medium truncate">{m.first_name} {m.last_name}</p>
-												<p className="text-[11px] text-muted-foreground truncate">{m.designation || "—"}</p>
-												<p className="text-[11px] text-muted-foreground truncate">{m.email}</p>
+											<div className='flex-1 min-w-0'>
+												<p className='text-sm font-medium truncate'>
+													{m.first_name} {m.last_name}
+												</p>
+												<p className='text-[11px] text-muted-foreground truncate'>
+													{m.designation || "—"}
+												</p>
+												<p className='text-[11px] text-muted-foreground truncate'>
+													{m.email}
+												</p>
 											</div>
-											<div className="flex gap-1 shrink-0">
-												{m.isLeader && <Badge variant="secondary" className="text-[10px] rounded-md">Leader</Badge>}
-												{m.isSelf && <Badge variant="secondary" className="text-[10px] rounded-md">You</Badge>}
+											<div className='flex gap-1 shrink-0'>
+												{m.isLeader && (
+													<Badge
+														variant='secondary'
+														className='text-[10px] rounded-md'>
+														Leader
+													</Badge>
+												)}
+												{m.isSelf && (
+													<Badge
+														variant='secondary'
+														className='text-[10px] rounded-md'>
+														You
+													</Badge>
+												)}
 											</div>
 										</div>
 									))}
@@ -897,7 +1042,7 @@ export default function EmployeeDashboardPage() {
 					<UpcomingBirthdays />
 
 					{/* Profile summary card */}
-					<Card className="rounded-2xl border-border/50 shadow-sm overflow-hidden bg-gradient-to-tl from-fuchsia-100 to-blue-100 dark:from-violet-950/20 profile-card-image">
+					<Card className='rounded-2xl border-border/50 shadow-sm overflow-hidden bg-gradient-to-tl from-fuchsia-100 to-blue-100 dark:from-violet-950/20 profile-card-image'>
 						<CardContent className='pt-0 space-y-4'>
 							{employee ? (
 								<>
@@ -905,7 +1050,8 @@ export default function EmployeeDashboardPage() {
 									<div className='flex items-center gap-4 pb-4 border-b border-border/50'>
 										<Avatar className='h-16 w-16 border-3 border-white'>
 											{employee.avatar_url ? (
-												<AvatarImage className="object-cover"
+												<AvatarImage
+													className='object-cover'
 													src={employee.avatar_url}
 													alt={`${employee.first_name} ${employee.last_name}`}
 												/>
@@ -917,10 +1063,12 @@ export default function EmployeeDashboardPage() {
 										</Avatar>
 										<div className='flex-1 min-w-0'>
 											<h3 className='font-bold text-lg leading-tight truncate'>
-												{employee.first_name} {employee.last_name}
+												{employee.first_name}{" "}
+												{employee.last_name}
 											</h3>
 											<p className='text-xs text-muted-foreground mt-0.5 font-medium'>
-												ID: {employee.employee_id || "—"}
+												ID:{" "}
+												{employee.employee_id || "—"}
 											</p>
 										</div>
 									</div>
@@ -934,8 +1082,12 @@ export default function EmployeeDashboardPage() {
 													<Mail className='h-4 w-4' />
 												</div>
 												<div className='flex-1 min-w-0'>
-													<p className='text-[10px] uppercase tracking-wide text-muted-foreground font-medium mb-0.5'>Email</p>
-													<p className='text-sm font-medium truncate'>{employee.email}</p>
+													<p className='text-[10px] uppercase tracking-wide text-muted-foreground font-medium mb-0.5'>
+														Email
+													</p>
+													<p className='text-sm font-medium truncate'>
+														{employee.email}
+													</p>
 												</div>
 											</div>
 										)}
@@ -947,8 +1099,12 @@ export default function EmployeeDashboardPage() {
 													<Building2 className='h-4 w-4' />
 												</div>
 												<div className='flex-1 min-w-0'>
-													<p className='text-[10px] uppercase tracking-wide text-muted-foreground font-medium mb-0.5'>Designation</p>
-													<p className='text-sm font-medium truncate'>{employee.designation}</p>
+													<p className='text-[10px] uppercase tracking-wide text-muted-foreground font-medium mb-0.5'>
+														Designation
+													</p>
+													<p className='text-sm font-medium truncate'>
+														{employee.designation}
+													</p>
 												</div>
 											</div>
 										)}
@@ -957,13 +1113,26 @@ export default function EmployeeDashboardPage() {
 										{employee.phone && (
 											<div className='flex items-start gap-3'>
 												<div className='flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary shrink-0'>
-													<svg className='h-4 w-4' fill='none' viewBox='0 0 24 24' stroke='currentColor'>
-														<path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z' />
+													<svg
+														className='h-4 w-4'
+														fill='none'
+														viewBox='0 0 24 24'
+														stroke='currentColor'>
+														<path
+															strokeLinecap='round'
+															strokeLinejoin='round'
+															strokeWidth={2}
+															d='M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z'
+														/>
 													</svg>
 												</div>
 												<div className='flex-1 min-w-0'>
-													<p className='text-[10px] uppercase tracking-wide text-muted-foreground font-medium mb-0.5'>Mobile No</p>
-													<p className='text-sm font-medium truncate'>{employee.phone}</p>
+													<p className='text-[10px] uppercase tracking-wide text-muted-foreground font-medium mb-0.5'>
+														Mobile No
+													</p>
+													<p className='text-sm font-medium truncate'>
+														{employee.phone}
+													</p>
 												</div>
 											</div>
 										)}
@@ -975,13 +1144,20 @@ export default function EmployeeDashboardPage() {
 													<CalendarCheck className='h-4 w-4' />
 												</div>
 												<div className='flex-1 min-w-0'>
-													<p className='text-[10px] uppercase tracking-wide text-muted-foreground font-medium mb-0.5'>Joining Date</p>
+													<p className='text-[10px] uppercase tracking-wide text-muted-foreground font-medium mb-0.5'>
+														Joining Date
+													</p>
 													<p className='text-sm font-medium'>
-														{new Date(employee.joining_date).toLocaleDateString("en-IN", {
-															day: "numeric",
-															month: "short",
-															year: "numeric",
-														})}
+														{new Date(
+															employee.joining_date,
+														).toLocaleDateString(
+															"en-IN",
+															{
+																day: "numeric",
+																month: "short",
+																year: "numeric",
+															},
+														)}
 													</p>
 												</div>
 											</div>
@@ -994,9 +1170,14 @@ export default function EmployeeDashboardPage() {
 											<Globe className='h-4 w-4' />
 										</div>
 										<div className='flex-1 min-w-0'>
-											<p className='text-[10px] uppercase tracking-wide text-muted-foreground font-medium mb-0.5'>Website</p>
+											<p className='text-[10px] uppercase tracking-wide text-muted-foreground font-medium mb-0.5'>
+												Website
+											</p>
 											<p className='text-sm font-medium'>
-												<a href="https://mavericksmedia.org/" target="_blank" rel="noopener noreferrer">
+												<a
+													href='https://mavericksmedia.org/'
+													target='_blank'
+													rel='noopener noreferrer'>
 													mavericksmedia.org
 												</a>
 											</p>
