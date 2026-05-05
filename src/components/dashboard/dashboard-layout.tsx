@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { DashboardSidebar, MobileBottomNav } from "./sidebar";
 import { AnnouncementProvider } from "@/components/announcement/announcement-provider";
 import { BirthdayProvider } from "@/components/birthday/birthday-provider";
+import { AnniversaryProvider } from "@/components/anniversary/anniversary-provider";
 import { SettingsProvider } from "@/contexts/settings-context";
 import { useUser } from "../../contexts/user-context";
 import { Loader2, Lock } from "lucide-react";
@@ -67,9 +68,11 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
 			<div className='flex min-h-screen bg-background'>
 				<DashboardSidebar />
 				<main className='min-h-screen flex-1 pb-16 md:ml-64 md:pb-0 flex flex-col'>
-					<BirthdayProvider>
-						<AnnouncementProvider>{children}</AnnouncementProvider>
-					</BirthdayProvider>
+					<AnniversaryProvider>
+						<BirthdayProvider>
+							<AnnouncementProvider>{children}</AnnouncementProvider>
+						</BirthdayProvider>
+					</AnniversaryProvider>
 				</main>
 				<MobileBottomNav />
 			</div>

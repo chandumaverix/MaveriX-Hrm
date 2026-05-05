@@ -771,6 +771,7 @@ export default function EmployeesPage() {
 											<TableHead>Employee ID</TableHead>
 											<TableHead>Contact</TableHead>
 											<TableHead>Designation</TableHead>
+											<TableHead>Joining Date</TableHead>
 											<TableHead>Week Off</TableHead>
 											<TableHead>Role</TableHead>
 									<TableHead>Account Status</TableHead>
@@ -834,6 +835,11 @@ export default function EmployeesPage() {
 												<TableCell>
 													{employee.designation ||
 														"-"}
+												</TableCell>
+												<TableCell className='text-sm'>
+													{employee.joining_date
+														? new Date(employee.joining_date).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })
+														: "—"}
 												</TableCell>
 												<TableCell className='text-sm'>
 													{employee.week_off_day !=

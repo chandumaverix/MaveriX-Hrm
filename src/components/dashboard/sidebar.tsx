@@ -52,6 +52,11 @@ const adminNavItems: NavItem[] = [
 		icon: <Users className='h-5 w-5' />,
 	},
 	{
+		label: "Joining",
+		href: "/admin/joining",
+		icon: <UserPlus className='h-5 w-5' />,
+	},
+	{
 		label: "Teams",
 		href: "/admin/teams",
 		icon: <UsersRound className='h-5 w-5' />,
@@ -135,6 +140,11 @@ const hrManagementItems: NavItem[] = [
 		icon: <Users className='h-5 w-5' />,
 	},
 	{
+		label: "Joining",
+		href: "/hr/joining",
+		icon: <UserPlus className='h-5 w-5' />,
+	},
+	{
 		label: "Teams",
 		href: "/hr/teams",
 		icon: <UsersRound className='h-5 w-5' />,
@@ -158,6 +168,11 @@ const hrManagementItems: NavItem[] = [
 		label: "Resignations",
 		href: "/hr/resignations",
 		icon: <UserMinus className='h-5 w-5' />,
+	},
+	{
+		label: "Settings",
+		href: "/hr/settings",
+		icon: <Settings className='h-5 w-5' />,
 	},
 ];
 
