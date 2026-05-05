@@ -20,7 +20,7 @@ export function BirthdayBar({ birthdayEmployees }: BirthdayBarProps) {
 			: `${birthdayEmployees.length} birthdays today`;
 
 	return (
-		<div className='sticky top-0 z-40 flex items-center justify-center gap-3 border-b border-pink-200 dark:border-pink-800 bg-linear-to-r from-pink-50 to-rose-50 dark:from-pink-950/50 dark:to-rose-950/50 px-4 py-2.5 text-pink-900 dark:text-pink-100'>
+		<div className='relative shrink-0 w-full z-40 flex items-center justify-center gap-3 border-b border-pink-200 dark:border-pink-800 bg-linear-to-r from-pink-50 to-rose-50 dark:from-pink-950/50 dark:to-rose-950/50 px-4 py-2.5 text-pink-900 dark:text-pink-100'>
 			<Gift className='h-4 w-4 shrink-0 text-pink-600 dark:text-pink-400' />
 			<div className='flex flex-wrap items-center justify-center gap-2'>
 				{birthdayEmployees.map((emp) => (
