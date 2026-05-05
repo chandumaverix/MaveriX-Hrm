@@ -14,6 +14,7 @@ import {
 	setStoredAuth,
 	clearStoredAuth,
 } from "@/lib/auth-storage";
+import { logActivity } from "@/lib/activityLogger";
 import type { Employee } from "@/lib/types";
 import type { User } from "@supabase/supabase-js";
 
@@ -80,8 +81,17 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 	}, [fetchEmployee, persistAuth]);
 
 	const signOut = useCallback(async () => {
-		clearStoredAuth();
 		const supabase = createClient();
+		try {
+			await logActivity({
+				action: 'Logged Out',
+				category: 'auth',
+				description: 'User securely logged out'
+			}, supabase);
+		} catch (e) {
+			console.error("Failed to log logout activity", e);
+		}
+		clearStoredAuth();
 		await supabase.auth.signOut();
 		setUser(null);
 		setEmployee(null);
