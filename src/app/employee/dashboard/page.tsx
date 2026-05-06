@@ -300,13 +300,13 @@ export default function EmployeeDashboardPage() {
 					OFFICE_LOCATION.lat,
 					OFFICE_LOCATION.lng,
 				);
-				const withinRadius = distance <= 100; // 100 meters
+				const withinRadius = distance <= 50; // 50 meters
 
 				setIsLocationAllowed(withinRadius);
 				setLocationMessage(
 					withinRadius
 						? null
-						: "You must be within 100 meters of the office to clock in.",
+						: "You must be within 50 meters of the office to clock in.",
 				);
 				setIsCheckingLocation(false);
 			},
