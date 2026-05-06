@@ -1,7 +1,33 @@
 import { NextRequest } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
+const IST_OFFSET_MINUTES = 330; // Asia/Kolkata (UTC+05:30), no DST
+
 export async function POST(request: NextRequest) {
+	const requestMeta = {
+		method: request.method,
+		url: request.url,
+		userAgent: request.headers.get("user-agent"),
+		hasAuthorizationHeader: Boolean(request.headers.get("authorization")),
+		timestamp: new Date().toISOString(),
+	};
+
+	const hasSupabaseUrl = Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL);
+	const hasServiceRoleKey = Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY);
+	if (!hasSupabaseUrl || !hasServiceRoleKey) {
+		console.error("[AutoClockOut] Missing required environment variables", {
+			hasSupabaseUrl,
+			hasServiceRoleKey,
+		});
+		return Response.json(
+			{
+				error: "Missing required environment variables",
+				debug: { ...requestMeta, hasSupabaseUrl, hasServiceRoleKey },
+			},
+			{ status: 500 },
+		);
+	}
+
 	const supabase = createClient(
 		process.env.NEXT_PUBLIC_SUPABASE_URL!,
 		process.env.SUPABASE_SERVICE_ROLE_KEY!,
@@ -16,8 +42,20 @@ export async function POST(request: NextRequest) {
 			.single();
 
 		if (settingsError || !settings?.auto_clock_out_time) {
+			console.warn("[AutoClockOut] Settings missing or invalid", {
+				settingsError,
+				auto_clock_out_time: settings?.auto_clock_out_time ?? null,
+			});
 			return Response.json(
-				{ message: "Auto clock-out time not configured" },
+				{
+					message: "Auto clock-out time not configured",
+					debug: {
+						...requestMeta,
+						settingsError,
+						auto_clock_out_time:
+							settings?.auto_clock_out_time ?? null,
+					},
+				},
 				{ status: 200 },
 			);
 		}
@@ -25,29 +63,44 @@ export async function POST(request: NextRequest) {
 		// ── 2. Parse the stored time (e.g. "7:30 PM", "7:30PM", "19:30") ────────
 		const parsed = parseTime(settings.auto_clock_out_time);
 		if (!parsed) {
-			console.error(
-				"Invalid auto_clock_out_time:",
-				settings.auto_clock_out_time,
-			);
+			console.error("[AutoClockOut] Invalid auto_clock_out_time", {
+				raw: settings.auto_clock_out_time,
+			});
 			return Response.json(
-				{ error: "Invalid auto clock-out time format" },
+				{
+					error: "Invalid auto clock-out time format",
+					debug: {
+						...requestMeta,
+						auto_clock_out_time: settings.auto_clock_out_time,
+					},
+				},
 				{ status: 400 },
 			);
 		}
 
-		// ── 3. Build clock-out datetime (in IST / server local time) ─────────────
-		// We use today's date + the configured H:M as the clock-out timestamp.
-		// The cron job is responsible for calling this at the right time.
-		const now = new Date();
-		const todayStr = toLocalDateStr(now); // "YYYY-MM-DD"
-
-		const clockOutDateTime = new Date(now);
-		clockOutDateTime.setHours(parsed.hours, parsed.minutes, 0, 0);
+		// ── 3. Build clock-out datetime using IST explicitly (Vercel runs in UTC) ─
+		const now = new Date(); // UTC-based timestamp
+		const istNow = getIstNow(now);
+		const todayStr = toLocalDateStr(istNow); // IST date string
+		const clockOutDateTime = buildIstTimeAsUtcDate(
+			istNow,
+			parsed.hours,
+			parsed.minutes,
+		);
 
 		// Safety guard: if cron fires early (clock hasn't reached the set time yet)
 		if (now < clockOutDateTime) {
 			return Response.json(
-				{ message: "Auto clock-out time not reached yet" },
+				{
+					message: "Auto clock-out time not reached yet",
+					debug: {
+						...requestMeta,
+						now: now.toISOString(),
+						nowIST: istNow.toISOString(),
+						clockOutDateTime: clockOutDateTime.toISOString(),
+						todayStr,
+					},
+				},
 				{ status: 200 },
 			);
 		}
@@ -61,16 +114,25 @@ export async function POST(request: NextRequest) {
 			.is("clock_out", null);
 
 		if (attendanceError) {
-			console.error("Error fetching attendance:", attendanceError);
+			console.error(
+				"[AutoClockOut] Error fetching attendance",
+				attendanceError,
+			);
 			return Response.json(
-				{ error: "Failed to fetch attendance records" },
+				{
+					error: "Failed to fetch attendance records",
+					debug: { ...requestMeta, todayStr, attendanceError },
+				},
 				{ status: 500 },
 			);
 		}
 
 		if (!unclosedRecords?.length) {
 			return Response.json(
-				{ message: "No unclosed attendance records found" },
+				{
+					message: "No unclosed attendance records found",
+					debug: { ...requestMeta, todayStr, count: 0 },
+				},
 				{ status: 200 },
 			);
 		}
@@ -114,29 +176,50 @@ export async function POST(request: NextRequest) {
 
 		const failed = results.filter((r) => r.error);
 		if (failed.length > 0) {
-			console.error("Auto clock-out update errors:", failed.map((r) => r.error));
+			console.error(
+				"[AutoClockOut] Update errors",
+				failed.map((r) => r.error),
+			);
 			return Response.json(
-				{ error: "Failed to update attendance records" },
+				{
+					error: "Failed to update attendance records",
+					debug: {
+						...requestMeta,
+						todayStr,
+						attempted: updates.length,
+						failed: failed.length,
+						errors: failed.map((r) => r.error),
+					},
+				},
 				{ status: 500 },
 			);
 		}
-
-		console.log(
-			`[AutoClockOut] ${updates.length} records closed at ${clockOutISO}`,
-		);
 
 		return Response.json(
 			{
 				message: `Auto clock-out complete`,
 				processedCount: updates.length,
 				clockOutTime: clockOutISO,
+				debug: {
+					...requestMeta,
+					todayStr,
+					unclosedCount: unclosedRecords.length,
+					processedCount: updates.length,
+				},
 			},
 			{ status: 200 },
 		);
 	} catch (error) {
-		console.error("Unexpected error in auto clock-out:", error);
+		console.error("[AutoClockOut] Unexpected error", error);
 		return Response.json(
-			{ error: "Internal server error" },
+			{
+				error: "Internal server error",
+				debug: {
+					...requestMeta,
+					error:
+						error instanceof Error ? error.message : String(error),
+				},
+			},
 			{ status: 500 },
 		);
 	}
@@ -170,8 +253,34 @@ function parseTime(raw: string): { hours: number; minutes: number } | null {
 /** Returns "YYYY-MM-DD" in local time (avoids UTC date shift) */
 function toLocalDateStr(date: Date): string {
 	return [
-		date.getFullYear(),
-		String(date.getMonth() + 1).padStart(2, "0"),
-		String(date.getDate()).padStart(2, "0"),
+		date.getUTCFullYear(),
+		String(date.getUTCMonth() + 1).padStart(2, "0"),
+		String(date.getUTCDate()).padStart(2, "0"),
 	].join("-");
+}
+
+/** Converts a UTC Date to an IST-shifted Date (use UTC getters on returned value). */
+function getIstNow(utcNow: Date): Date {
+	return new Date(utcNow.getTime() + IST_OFFSET_MINUTES * 60_000);
+}
+
+/**
+ * Builds a UTC Date for "today in IST at HH:mm".
+ * Example: IST 17:00 becomes UTC 11:30.
+ */
+function buildIstTimeAsUtcDate(
+	istNow: Date,
+	hours: number,
+	minutes: number,
+): Date {
+	const utcMs = Date.UTC(
+		istNow.getUTCFullYear(),
+		istNow.getUTCMonth(),
+		istNow.getUTCDate(),
+		hours,
+		minutes,
+		0,
+		0,
+	);
+	return new Date(utcMs - IST_OFFSET_MINUTES * 60_000);
 }
