@@ -1,53 +1,7 @@
-CREATE TABLE IF NOT EXISTS activity_logs (
-  id            UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  user_id       UUID REFERENCES auth.users(id) ON DELETE SET NULL,
-  user_name     TEXT NOT NULL,
-  user_role     TEXT NOT NULL CHECK (user_role IN ('admin', 'hr', 'employee')),
-  action        TEXT NOT NULL,
-  category      TEXT NOT NULL CHECK (category IN (
-    'auth', 'employee', 'leave', 'payroll', 'role',
-    'document', 'attendance', 'announcement', 'resignation', 'finance', 'settings', 'team'
-  )),
-  description   TEXT NOT NULL,
-  metadata      JSONB DEFAULT '{}',
-  ip_address    TEXT,
-  created_at    TIMESTAMPTZ DEFAULT NOW()
-);
+-- ============================================================
+-- Run this in Supabase SQL Editor to deploy the updated trigger
+-- ============================================================
 
-CREATE INDEX IF NOT EXISTS idx_activity_logs_user_id    ON activity_logs(user_id);
-CREATE INDEX IF NOT EXISTS idx_activity_logs_category   ON activity_logs(category);
-CREATE INDEX IF NOT EXISTS idx_activity_logs_created_at ON activity_logs(created_at DESC);
-CREATE INDEX IF NOT EXISTS idx_activity_logs_user_role  ON activity_logs(user_role);
-
-ALTER TABLE activity_logs ENABLE ROW LEVEL SECURITY;
-
--- Everyone can see everything
-DROP POLICY IF EXISTS "view_all_logs" ON activity_logs;
-CREATE POLICY "view_all_logs" ON activity_logs FOR SELECT
-  USING (auth.uid() IS NOT NULL);
-
--- Anyone authenticated can insert
-DROP POLICY IF EXISTS "insert_own_logs" ON activity_logs;
-CREATE POLICY "insert_own_logs" ON activity_logs FOR INSERT
-  WITH CHECK (auth.uid() IS NOT NULL);
-
--- 007_activity_triggers.sql
--- Drop trigger if it exists
-DROP TRIGGER IF EXISTS tr_log_activity_employees ON public.employees;
-DROP TRIGGER IF EXISTS tr_log_activity_attendance ON public.attendance;
-DROP TRIGGER IF EXISTS tr_log_activity_leave_requests ON public.leave_requests;
-DROP TRIGGER IF EXISTS tr_log_activity_resignations ON public.resignations;
-DROP TRIGGER IF EXISTS tr_log_activity_finance_records ON public.finance_records;
-DROP TRIGGER IF EXISTS tr_log_activity_teams ON public.teams;
-DROP TRIGGER IF EXISTS tr_log_activity_announcements ON public.announcements;
-DROP TRIGGER IF EXISTS tr_log_activity_posts ON public.posts;
-DROP TRIGGER IF EXISTS tr_log_activity_late_deductions_log ON public.late_deductions_log;
-DROP TRIGGER IF EXISTS tr_log_activity_leave_balances ON public.leave_balances;
-DROP TRIGGER IF EXISTS tr_log_activity_leave_types ON public.leave_types;
-DROP TRIGGER IF EXISTS tr_log_activity_settings ON public.settings;
-DROP TRIGGER IF EXISTS tr_log_activity_team_members ON public.team_members;
-
--- Create the smart logger function
 CREATE OR REPLACE FUNCTION public.smart_activity_logger()
 RETURNS trigger AS $$
 DECLARE
@@ -93,7 +47,7 @@ BEGIN
     END IF;
   END IF;
 
-  -- Still no user context? Cannot log without throwing FK error or leaving it blank
+  -- Still no user context?
   IF v_user_id IS NULL THEN
     IF TG_OP = 'DELETE' THEN RETURN OLD; ELSE RETURN NEW; END IF;
   END IF;
@@ -109,9 +63,7 @@ BEGIN
   -- ---------------------------------------------------------------------------
   IF TG_OP = 'UPDATE' AND v_old_record IS NOT NULL THEN
     FOR v_key IN SELECT jsonb_object_keys(v_record) LOOP
-      -- Skip internal columns
       IF v_key = ANY(v_skip_cols) THEN CONTINUE; END IF;
-      -- Compare old vs new, record only changed fields
       IF (v_old_record->v_key)::text IS DISTINCT FROM (v_record->v_key)::text THEN
         v_changes := v_changes || jsonb_build_object(
           'field', v_key,
@@ -279,9 +231,7 @@ BEGIN
 
   END IF;
 
-  -- ---------------------------------------------------------------------------
-  -- Generic fallback (only triggers if specific logic missed it)
-  -- ---------------------------------------------------------------------------
+  -- Generic fallback
   IF v_action IS NULL THEN
     IF TG_OP = 'INSERT' THEN
       v_action := 'Created Record';
@@ -295,9 +245,7 @@ BEGIN
     END IF;
   END IF;
 
-  -- ---------------------------------------------------------------------------
   -- Build final metadata payload
-  -- ---------------------------------------------------------------------------
   v_metadata := jsonb_build_object(
     'table', TG_TABLE_NAME,
     'operation', TG_OP,
@@ -305,7 +253,7 @@ BEGIN
     'changes', v_changes
   );
 
-  -- Only insert if we have minimum valid data
+  -- Insert log
   IF v_action IS NOT NULL THEN
     INSERT INTO public.activity_logs (user_id, user_name, user_role, action, category, description, metadata, created_at)
     VALUES (v_user_id, COALESCE(v_user_name, 'System'), COALESCE(v_user_role, 'admin'), v_action, v_category, v_description, v_metadata, NOW());
@@ -317,22 +265,6 @@ BEGIN
     RETURN NEW;
   END IF;
 EXCEPTION WHEN OTHERS THEN
-  -- Catch any errors so the trigger doesn't break the main transaction
   IF TG_OP = 'DELETE' THEN RETURN OLD; ELSE RETURN NEW; END IF;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
-
--- Attach triggers to tables
-CREATE TRIGGER tr_log_activity_employees AFTER INSERT OR UPDATE OR DELETE ON public.employees FOR EACH ROW EXECUTE FUNCTION public.smart_activity_logger();
-CREATE TRIGGER tr_log_activity_attendance AFTER INSERT OR UPDATE OR DELETE ON public.attendance FOR EACH ROW EXECUTE FUNCTION public.smart_activity_logger();
-CREATE TRIGGER tr_log_activity_leave_requests AFTER INSERT OR UPDATE OR DELETE ON public.leave_requests FOR EACH ROW EXECUTE FUNCTION public.smart_activity_logger();
-CREATE TRIGGER tr_log_activity_resignations AFTER INSERT OR UPDATE OR DELETE ON public.resignations FOR EACH ROW EXECUTE FUNCTION public.smart_activity_logger();
-CREATE TRIGGER tr_log_activity_finance_records AFTER INSERT OR UPDATE OR DELETE ON public.finance_records FOR EACH ROW EXECUTE FUNCTION public.smart_activity_logger();
-CREATE TRIGGER tr_log_activity_teams AFTER INSERT OR UPDATE OR DELETE ON public.teams FOR EACH ROW EXECUTE FUNCTION public.smart_activity_logger();
-CREATE TRIGGER tr_log_activity_announcements AFTER INSERT OR UPDATE OR DELETE ON public.announcements FOR EACH ROW EXECUTE FUNCTION public.smart_activity_logger();
-CREATE TRIGGER tr_log_activity_posts AFTER INSERT OR UPDATE OR DELETE ON public.posts FOR EACH ROW EXECUTE FUNCTION public.smart_activity_logger();
-CREATE TRIGGER tr_log_activity_late_deductions_log AFTER INSERT OR UPDATE OR DELETE ON public.late_deductions_log FOR EACH ROW EXECUTE FUNCTION public.smart_activity_logger();
-CREATE TRIGGER tr_log_activity_leave_balances AFTER INSERT OR UPDATE OR DELETE ON public.leave_balances FOR EACH ROW EXECUTE FUNCTION public.smart_activity_logger();
-CREATE TRIGGER tr_log_activity_leave_types AFTER INSERT OR UPDATE OR DELETE ON public.leave_types FOR EACH ROW EXECUTE FUNCTION public.smart_activity_logger();
-CREATE TRIGGER tr_log_activity_settings AFTER INSERT OR UPDATE OR DELETE ON public.settings FOR EACH ROW EXECUTE FUNCTION public.smart_activity_logger();
-CREATE TRIGGER tr_log_activity_team_members AFTER INSERT OR UPDATE OR DELETE ON public.team_members FOR EACH ROW EXECUTE FUNCTION public.smart_activity_logger();
