@@ -4,6 +4,7 @@ import { createClient } from "@supabase/supabase-js";
 export async function POST(request: NextRequest) {
 	const requestMeta = {
 		method: request.method,
+		url: request.url,
 		userAgent: request.headers.get("user-agent"),
 		hasAuthorizationHeader: Boolean(request.headers.get("authorization")),
 		timestamp: new Date().toISOString(),
