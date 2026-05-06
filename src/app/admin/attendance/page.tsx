@@ -855,13 +855,20 @@ export default function AttendancePage() {
 
 													{/* Status */}
 													<td className='px-4 py-3.5'>
-														<span
-															className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${cfg.pill}`}>
+														<div className="flex flex-wrap items-center gap-1.5">
 															<span
-																className={`h-1.5 w-1.5 rounded-full ${cfg.dot} inline-block`}
-															/>
-															{cfg.label}
-														</span>
+																className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${cfg.pill}`}>
+																<span
+																	className={`h-1.5 w-1.5 rounded-full ${cfg.dot} inline-block`}
+																/>
+																{cfg.label}
+															</span>
+															{record.is_wfh && (
+																<span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-blue-50 text-blue-600 border border-blue-200">
+																	WFH
+																</span>
+															)}
+														</div>
 													</td>
 
 													{/* Clock In */}

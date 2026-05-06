@@ -282,6 +282,12 @@ export default function EmployeeDashboardPage() {
 		if (!employee) return;
 		if (todayAttendance?.clock_in) return; // already clocked in, skip
 
+		if (employee.is_wfh) {
+			setIsLocationAllowed(true);
+			setLocationMessage(null);
+			return;
+		}
+
 		if (typeof window === "undefined" || !("geolocation" in navigator)) {
 			setIsLocationAllowed(false);
 			setLocationMessage(
@@ -371,6 +377,7 @@ export default function EmployeeDashboardPage() {
 					date: today,
 					clock_in: nowISO,
 					status,
+					is_wfh: employee.is_wfh || false,
 				});
 
 			if (insertError) throw insertError;
@@ -595,6 +602,11 @@ export default function EmployeeDashboardPage() {
 											},
 										)}
 									</p>
+									{employee?.is_wfh && (
+										<p className='text-sm bg-primary/10 border border-primary text-primary px-2 py-1 rounded-full leading-none flex items-center font-medium'>
+											WFH
+										</p>
+									)}
 								</div>
 
 								<h3 className='text-2xl mt-2 font-bold sm:text-4xl'>
