@@ -2,147 +2,176 @@ import { NextRequest } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
 export async function POST(request: NextRequest) {
-  try {
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    );
+	const supabase = createClient(
+		process.env.NEXT_PUBLIC_SUPABASE_URL!,
+		process.env.SUPABASE_SERVICE_ROLE_KEY!,
+	);
 
-    // Get current date in YYYY-MM-DD format (local date to match attendance records)
-    const today = new Date();
-    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+	try {
+		// ── 1. Fetch settings ────────────────────────────────────────────────────
+		const { data: settings, error: settingsError } = await supabase
+			.from("settings")
+			.select("auto_clock_out_time")
+			.limit(1)
+			.single();
 
-    // Get settings to check auto_clock_out_time
-    const { data: settings, error: settingsError } = await supabase
-      .from("settings")
-      .select("auto_clock_out_time")
-      .limit(1)
-      .single();
+		if (settingsError || !settings?.auto_clock_out_time) {
+			return Response.json(
+				{ message: "Auto clock-out time not configured" },
+				{ status: 200 },
+			);
+		}
 
-    if (settingsError) {
-      console.error("Error fetching settings:", settingsError);
-      return Response.json({ error: "Failed to fetch settings" }, { status: 500 });
-    }
+		// ── 2. Parse the stored time (e.g. "7:30 PM", "7:30PM", "19:30") ────────
+		const parsed = parseTime(settings.auto_clock_out_time);
+		if (!parsed) {
+			console.error(
+				"Invalid auto_clock_out_time:",
+				settings.auto_clock_out_time,
+			);
+			return Response.json(
+				{ error: "Invalid auto clock-out time format" },
+				{ status: 400 },
+			);
+		}
 
-    const autoClockOutTime = settings?.auto_clock_out_time;
-    if (!autoClockOutTime) {
-      return Response.json({ message: "Auto clock-out time not configured" }, { status: 200 });
-    }
+		// ── 3. Build clock-out datetime (in IST / server local time) ─────────────
+		// We use today's date + the configured H:M as the clock-out timestamp.
+		// The cron job is responsible for calling this at the right time.
+		const now = new Date();
+		const todayStr = toLocalDateStr(now); // "YYYY-MM-DD"
 
-    // Parse time with comprehensive format support
-    const parsedTime = parseTime(autoClockOutTime);
-    if (!parsedTime) {
-      return Response.json({ error: "Invalid auto clock-out time format" }, { status: 400 });
-    }
+		const clockOutDateTime = new Date(now);
+		clockOutDateTime.setHours(parsed.hours, parsed.minutes, 0, 0);
 
-    const { hours, minutes } = parsedTime;
+		// Safety guard: if cron fires early (clock hasn't reached the set time yet)
+		if (now < clockOutDateTime) {
+			return Response.json(
+				{ message: "Auto clock-out time not reached yet" },
+				{ status: 200 },
+			);
+		}
 
-    // Check if current time is after the auto clock-out time
-    const autoClockOutDateTime = new Date();
-    autoClockOutDateTime.setHours(hours, minutes, 0, 0);
-    
-    if (new Date() < autoClockOutDateTime) {
-      return Response.json({ message: "Auto clock-out time not reached yet" }, { status: 200 });
-    }
+		// ── 4. Fetch all unclosed records for today in one query ─────────────────
+		const { data: unclosedRecords, error: attendanceError } = await supabase
+			.from("attendance")
+			.select("id, clock_in")
+			.eq("date", todayStr)
+			.not("clock_in", "is", null)
+			.is("clock_out", null);
 
-    // Get attendance records that need auto clock-out
-    const { data: unclosedRecords, error: attendanceError } = await supabase
-      .from("attendance")
-      .select("id, clock_in")
-      .eq("date", todayStr)
-      .not("clock_in", "is", null)
-      .is("clock_out", null);
+		if (attendanceError) {
+			console.error("Error fetching attendance:", attendanceError);
+			return Response.json(
+				{ error: "Failed to fetch attendance records" },
+				{ status: 500 },
+			);
+		}
 
-    if (attendanceError) {
-      console.error("Error fetching attendance records:", attendanceError);
-      return Response.json({ error: "Failed to fetch attendance records" }, { status: 500 });
-    }
+		if (!unclosedRecords?.length) {
+			return Response.json(
+				{ message: "No unclosed attendance records found" },
+				{ status: 200 },
+			);
+		}
 
-    if (!unclosedRecords || unclosedRecords.length === 0) {
-      return Response.json({ message: "No unclosed attendance records to process" }, { status: 200 });
-    }
+		// ── 5. Compute total_hours per record, then bulk update ──────────────────
+		const clockOutISO = clockOutDateTime.toISOString();
 
-    // Process each unclosed record
-    let processedCount = 0;
-    const clockOutTime = autoClockOutDateTime.toISOString();
-    
-    for (const record of unclosedRecords) {
-      if (!record.clock_in) continue;
-      
-      try {
-        const clockIn = new Date(record.clock_in);
-        const totalHours = (autoClockOutDateTime.getTime() - clockIn.getTime()) / (1000 * 60 * 60);
-        
-        if (totalHours >= 0) {
-          const { error: updateError } = await supabase
-            .from("attendance")
-            .update({
-              clock_out: clockOutTime,
-              total_hours: parseFloat(totalHours.toFixed(2)),
-            })
-            .eq("id", record.id);
+		const updates = unclosedRecords
+			.filter((r) => r.id && r.clock_in) // skip malformed rows
+			.map((record) => {
+				const clockIn = new Date(record.clock_in);
+				const totalHours = Math.max(
+					0,
+					parseFloat(
+						(
+							(clockOutDateTime.getTime() - clockIn.getTime()) /
+							3_600_000
+						).toFixed(2),
+					),
+				);
+				return {
+					id: record.id,
+					clock_out: clockOutISO,
+					total_hours: totalHours,
+				};
+			});
 
-          if (!updateError) {
-            processedCount++;
-          }
-        }
-      } catch (recordError) {
-        console.error(`Error processing record ${record.id}:`, recordError);
-        continue;
-      }
-    }
+		// IMPORTANT: use update-by-id, not upsert.
+		// Upsert with partial payload can try inserting rows and fail on required columns.
+		const results = await Promise.all(
+			updates.map((u) =>
+				supabase
+					.from("attendance")
+					.update({
+						clock_out: u.clock_out,
+						total_hours: u.total_hours,
+					})
+					.eq("id", u.id),
+			),
+		);
 
-    return Response.json({ 
-      message: `Successfully processed ${processedCount} attendance records`,
-      processedCount 
-    }, { status: 200 });
+		const failed = results.filter((r) => r.error);
+		if (failed.length > 0) {
+			console.error("Auto clock-out update errors:", failed.map((r) => r.error));
+			return Response.json(
+				{ error: "Failed to update attendance records" },
+				{ status: 500 },
+			);
+		}
 
-  } catch (error) {
-    console.error("Unexpected error in auto clock-out API:", error);
-    return Response.json({ error: "Internal server error" }, { status: 500 });
-  }
+		console.log(
+			`[AutoClockOut] ${updates.length} records closed at ${clockOutISO}`,
+		);
+
+		return Response.json(
+			{
+				message: `Auto clock-out complete`,
+				processedCount: updates.length,
+				clockOutTime: clockOutISO,
+			},
+			{ status: 200 },
+		);
+	} catch (error) {
+		console.error("Unexpected error in auto clock-out:", error);
+		return Response.json(
+			{ error: "Internal server error" },
+			{ status: 500 },
+		);
+	}
 }
 
-// Helper function to parse time in various formats
-function parseTime(timeString: string): { hours: number; minutes: number } | null {
-  if (!timeString) return null;
-  
-  const cleanTime = timeString.trim().toLowerCase();
-  
-  // Handle 12-hour format with AM/PM
-  if (cleanTime.includes('am') || cleanTime.includes('pm')) {
-    const [timePart, period] = cleanTime.split(/\s+/);
-    const [hourStr, minuteStr] = timePart.split(':');
-    
-    let hours = parseInt(hourStr, 10) || 0;
-    const minutes = parseInt(minuteStr, 10) || 0;
-    
-    // Convert to 24-hour format
-    if (period === 'pm' && hours !== 12) {
-      hours += 12;
-    } else if (period === 'am' && hours === 12) {
-      hours = 0;
-    }
-    
-    return validateTime(hours, minutes) ? { hours, minutes } : null;
-  }
-  
-  // Handle 24-hour format (HH:MM)
-  if (cleanTime.includes(':')) {
-    const [hourStr, minuteStr] = cleanTime.split(':');
-    const hours = parseInt(hourStr, 10);
-    const minutes = parseInt(minuteStr, 10) || 0;
-    
-    return validateTime(hours, minutes) ? { hours, minutes } : null;
-  }
-  
-  // Handle simple numeric format (hours only)
-  const hours = parseInt(cleanTime, 10);
-  return validateTime(hours, 0) ? { hours, minutes: 0 } : null;
+// ── Helpers ──────────────────────────────────────────────────────────────────
+
+/** Parses "7:30 PM", "7:30PM", "19:30", "7:30 pm" → { hours, minutes } */
+function parseTime(raw: string): { hours: number; minutes: number } | null {
+	if (!raw?.trim()) return null;
+
+	// Normalise: collapse whitespace, uppercase
+	const s = raw.trim().toUpperCase().replace(/\s+/g, " ");
+
+	// Regex handles: "7:30 PM", "7:30PM", "19:30", "07:30"
+	const match = s.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)?$/);
+	if (!match) return null;
+
+	let hours = parseInt(match[1], 10);
+	const minutes = parseInt(match[2], 10);
+	const meridiem = match[3]; // "AM" | "PM" | undefined
+
+	if (meridiem === "PM" && hours !== 12) hours += 12;
+	else if (meridiem === "AM" && hours === 12) hours = 0;
+
+	if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) return null;
+
+	return { hours, minutes };
 }
 
-function validateTime(hours: number, minutes: number): boolean {
-  return !isNaN(hours) && !isNaN(minutes) && 
-         hours >= 0 && hours <= 23 && 
-         minutes >= 0 && minutes <= 59;
+/** Returns "YYYY-MM-DD" in local time (avoids UTC date shift) */
+function toLocalDateStr(date: Date): string {
+	return [
+		date.getFullYear(),
+		String(date.getMonth() + 1).padStart(2, "0"),
+		String(date.getDate()).padStart(2, "0"),
+	].join("-");
 }
