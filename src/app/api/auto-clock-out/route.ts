@@ -77,25 +77,19 @@ export async function POST(request: NextRequest) {
 				{ status: 400 },
 			);
 		}
-		console.log("[AutoClockOut] Parsed configured time", {
-			raw: settings.auto_clock_out_time,
-			parsed,
-		});
 
 		// ── 3. Build clock-out datetime using IST explicitly (Vercel runs in UTC) ─
 		const now = new Date(); // UTC-based timestamp
 		const istNow = getIstNow(now);
 		const todayStr = toLocalDateStr(istNow); // IST date string
-		const clockOutDateTime = buildIstTimeAsUtcDate(istNow, parsed.hours, parsed.minutes);
+		const clockOutDateTime = buildIstTimeAsUtcDate(
+			istNow,
+			parsed.hours,
+			parsed.minutes,
+		);
 
 		// Safety guard: if cron fires early (clock hasn't reached the set time yet)
 		if (now < clockOutDateTime) {
-			console.log("[AutoClockOut] Time not reached yet", {
-				now: now.toISOString(),
-				nowIST: istNow.toISOString(),
-				clockOutDateTime: clockOutDateTime.toISOString(),
-				todayStr,
-			});
 			return Response.json(
 				{
 					message: "Auto clock-out time not reached yet",
@@ -132,10 +126,6 @@ export async function POST(request: NextRequest) {
 				{ status: 500 },
 			);
 		}
-		console.log("[AutoClockOut] Unclosed records fetched", {
-			todayStr,
-			count: unclosedRecords?.length ?? 0,
-		});
 
 		if (!unclosedRecords?.length) {
 			return Response.json(
@@ -204,10 +194,6 @@ export async function POST(request: NextRequest) {
 				{ status: 500 },
 			);
 		}
-
-		console.log(
-			`[AutoClockOut] ${updates.length} records closed at ${clockOutISO}`,
-		);
 
 		return Response.json(
 			{
