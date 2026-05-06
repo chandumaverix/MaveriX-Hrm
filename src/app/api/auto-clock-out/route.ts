@@ -1,6 +1,8 @@
 import { NextRequest } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
+const IST_OFFSET_MINUTES = 330; // Asia/Kolkata (UTC+05:30), no DST
+
 export async function POST(request: NextRequest) {
 	const requestMeta = {
 		method: request.method,
@@ -80,19 +82,17 @@ export async function POST(request: NextRequest) {
 			parsed,
 		});
 
-		// ── 3. Build clock-out datetime (in IST / server local time) ─────────────
-		// We use today's date + the configured H:M as the clock-out timestamp.
-		// The cron job is responsible for calling this at the right time.
-		const now = new Date();
-		const todayStr = toLocalDateStr(now); // "YYYY-MM-DD"
-
-		const clockOutDateTime = new Date(now);
-		clockOutDateTime.setHours(parsed.hours, parsed.minutes, 0, 0);
+		// ── 3. Build clock-out datetime using IST explicitly (Vercel runs in UTC) ─
+		const now = new Date(); // UTC-based timestamp
+		const istNow = getIstNow(now);
+		const todayStr = toLocalDateStr(istNow); // IST date string
+		const clockOutDateTime = buildIstTimeAsUtcDate(istNow, parsed.hours, parsed.minutes);
 
 		// Safety guard: if cron fires early (clock hasn't reached the set time yet)
 		if (now < clockOutDateTime) {
 			console.log("[AutoClockOut] Time not reached yet", {
 				now: now.toISOString(),
+				nowIST: istNow.toISOString(),
 				clockOutDateTime: clockOutDateTime.toISOString(),
 				todayStr,
 			});
@@ -102,6 +102,7 @@ export async function POST(request: NextRequest) {
 					debug: {
 						...requestMeta,
 						now: now.toISOString(),
+						nowIST: istNow.toISOString(),
 						clockOutDateTime: clockOutDateTime.toISOString(),
 						todayStr,
 					},
@@ -266,8 +267,34 @@ function parseTime(raw: string): { hours: number; minutes: number } | null {
 /** Returns "YYYY-MM-DD" in local time (avoids UTC date shift) */
 function toLocalDateStr(date: Date): string {
 	return [
-		date.getFullYear(),
-		String(date.getMonth() + 1).padStart(2, "0"),
-		String(date.getDate()).padStart(2, "0"),
+		date.getUTCFullYear(),
+		String(date.getUTCMonth() + 1).padStart(2, "0"),
+		String(date.getUTCDate()).padStart(2, "0"),
 	].join("-");
+}
+
+/** Converts a UTC Date to an IST-shifted Date (use UTC getters on returned value). */
+function getIstNow(utcNow: Date): Date {
+	return new Date(utcNow.getTime() + IST_OFFSET_MINUTES * 60_000);
+}
+
+/**
+ * Builds a UTC Date for "today in IST at HH:mm".
+ * Example: IST 17:00 becomes UTC 11:30.
+ */
+function buildIstTimeAsUtcDate(
+	istNow: Date,
+	hours: number,
+	minutes: number,
+): Date {
+	const utcMs = Date.UTC(
+		istNow.getUTCFullYear(),
+		istNow.getUTCMonth(),
+		istNow.getUTCDate(),
+		hours,
+		minutes,
+		0,
+		0,
+	);
+	return new Date(utcMs - IST_OFFSET_MINUTES * 60_000);
 }
