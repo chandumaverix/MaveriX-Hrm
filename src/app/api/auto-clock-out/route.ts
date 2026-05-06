@@ -2,6 +2,29 @@ import { NextRequest } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
 export async function POST(request: NextRequest) {
+	const requestMeta = {
+		method: request.method,
+		userAgent: request.headers.get("user-agent"),
+		hasAuthorizationHeader: Boolean(request.headers.get("authorization")),
+		timestamp: new Date().toISOString(),
+	};
+
+	const hasSupabaseUrl = Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL);
+	const hasServiceRoleKey = Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY);
+	if (!hasSupabaseUrl || !hasServiceRoleKey) {
+		console.error("[AutoClockOut] Missing required environment variables", {
+			hasSupabaseUrl,
+			hasServiceRoleKey,
+		});
+		return Response.json(
+			{
+				error: "Missing required environment variables",
+				debug: { ...requestMeta, hasSupabaseUrl, hasServiceRoleKey },
+			},
+			{ status: 500 },
+		);
+	}
+
 	const supabase = createClient(
 		process.env.NEXT_PUBLIC_SUPABASE_URL!,
 		process.env.SUPABASE_SERVICE_ROLE_KEY!,
@@ -16,8 +39,20 @@ export async function POST(request: NextRequest) {
 			.single();
 
 		if (settingsError || !settings?.auto_clock_out_time) {
+			console.warn("[AutoClockOut] Settings missing or invalid", {
+				settingsError,
+				auto_clock_out_time: settings?.auto_clock_out_time ?? null,
+			});
 			return Response.json(
-				{ message: "Auto clock-out time not configured" },
+				{
+					message: "Auto clock-out time not configured",
+					debug: {
+						...requestMeta,
+						settingsError,
+						auto_clock_out_time:
+							settings?.auto_clock_out_time ?? null,
+					},
+				},
 				{ status: 200 },
 			);
 		}
@@ -25,15 +60,24 @@ export async function POST(request: NextRequest) {
 		// ── 2. Parse the stored time (e.g. "7:30 PM", "7:30PM", "19:30") ────────
 		const parsed = parseTime(settings.auto_clock_out_time);
 		if (!parsed) {
-			console.error(
-				"Invalid auto_clock_out_time:",
-				settings.auto_clock_out_time,
-			);
+			console.error("[AutoClockOut] Invalid auto_clock_out_time", {
+				raw: settings.auto_clock_out_time,
+			});
 			return Response.json(
-				{ error: "Invalid auto clock-out time format" },
+				{
+					error: "Invalid auto clock-out time format",
+					debug: {
+						...requestMeta,
+						auto_clock_out_time: settings.auto_clock_out_time,
+					},
+				},
 				{ status: 400 },
 			);
 		}
+		console.log("[AutoClockOut] Parsed configured time", {
+			raw: settings.auto_clock_out_time,
+			parsed,
+		});
 
 		// ── 3. Build clock-out datetime (in IST / server local time) ─────────────
 		// We use today's date + the configured H:M as the clock-out timestamp.
@@ -46,8 +90,21 @@ export async function POST(request: NextRequest) {
 
 		// Safety guard: if cron fires early (clock hasn't reached the set time yet)
 		if (now < clockOutDateTime) {
+			console.log("[AutoClockOut] Time not reached yet", {
+				now: now.toISOString(),
+				clockOutDateTime: clockOutDateTime.toISOString(),
+				todayStr,
+			});
 			return Response.json(
-				{ message: "Auto clock-out time not reached yet" },
+				{
+					message: "Auto clock-out time not reached yet",
+					debug: {
+						...requestMeta,
+						now: now.toISOString(),
+						clockOutDateTime: clockOutDateTime.toISOString(),
+						todayStr,
+					},
+				},
 				{ status: 200 },
 			);
 		}
@@ -61,16 +118,29 @@ export async function POST(request: NextRequest) {
 			.is("clock_out", null);
 
 		if (attendanceError) {
-			console.error("Error fetching attendance:", attendanceError);
+			console.error(
+				"[AutoClockOut] Error fetching attendance",
+				attendanceError,
+			);
 			return Response.json(
-				{ error: "Failed to fetch attendance records" },
+				{
+					error: "Failed to fetch attendance records",
+					debug: { ...requestMeta, todayStr, attendanceError },
+				},
 				{ status: 500 },
 			);
 		}
+		console.log("[AutoClockOut] Unclosed records fetched", {
+			todayStr,
+			count: unclosedRecords?.length ?? 0,
+		});
 
 		if (!unclosedRecords?.length) {
 			return Response.json(
-				{ message: "No unclosed attendance records found" },
+				{
+					message: "No unclosed attendance records found",
+					debug: { ...requestMeta, todayStr, count: 0 },
+				},
 				{ status: 200 },
 			);
 		}
@@ -114,9 +184,21 @@ export async function POST(request: NextRequest) {
 
 		const failed = results.filter((r) => r.error);
 		if (failed.length > 0) {
-			console.error("Auto clock-out update errors:", failed.map((r) => r.error));
+			console.error(
+				"[AutoClockOut] Update errors",
+				failed.map((r) => r.error),
+			);
 			return Response.json(
-				{ error: "Failed to update attendance records" },
+				{
+					error: "Failed to update attendance records",
+					debug: {
+						...requestMeta,
+						todayStr,
+						attempted: updates.length,
+						failed: failed.length,
+						errors: failed.map((r) => r.error),
+					},
+				},
 				{ status: 500 },
 			);
 		}
@@ -130,13 +212,26 @@ export async function POST(request: NextRequest) {
 				message: `Auto clock-out complete`,
 				processedCount: updates.length,
 				clockOutTime: clockOutISO,
+				debug: {
+					...requestMeta,
+					todayStr,
+					unclosedCount: unclosedRecords.length,
+					processedCount: updates.length,
+				},
 			},
 			{ status: 200 },
 		);
 	} catch (error) {
-		console.error("Unexpected error in auto clock-out:", error);
+		console.error("[AutoClockOut] Unexpected error", error);
 		return Response.json(
-			{ error: "Internal server error" },
+			{
+				error: "Internal server error",
+				debug: {
+					...requestMeta,
+					error:
+						error instanceof Error ? error.message : String(error),
+				},
+			},
 			{ status: 500 },
 		);
 	}
