@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { DashboardHeader } from "@/components/dashboard/header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
 	Table,
 	TableBody,
@@ -91,10 +92,12 @@ function formatTime(s: string | null) {
 export default function EmployeeAttendancePage() {
 	const { employee } = useUser();
 	const [records, setRecords] = useState<Attendance[]>([]);
-	const [selectedMonth, setSelectedMonth] = useState(
-		new Date().toISOString().slice(0, 7)
+	const [selectedDate, setSelectedDate] = useState(
+		new Date().toISOString().slice(0, 10)
 	);
+	const selectedMonth = selectedDate.slice(0, 7);
 	const [isLoading, setIsLoading] = useState(true);
+	const dateInputRef = useRef<HTMLInputElement>(null);
 
 	useEffect(() => {
 		if (employee) fetchAttendance();
@@ -126,7 +129,7 @@ export default function EmployeeAttendancePage() {
 		const newMonth = `${prevDate.getFullYear()}-${String(
 			prevDate.getMonth() + 1
 		).padStart(2, "0")}`;
-		setSelectedMonth(newMonth);
+		setSelectedDate(`${newMonth}-01`);
 	};
 
 	const goToNextMonth = () => {
@@ -138,8 +141,28 @@ export default function EmployeeAttendancePage() {
 		).padStart(2, "0")}`;
 		// Don't allow going beyond current month
 		if (newMonth <= currentMonth) {
-			setSelectedMonth(newMonth);
+			setSelectedDate(`${newMonth}-01`);
 		}
+	};
+
+	const openDatePicker = () => {
+		const input = dateInputRef.current;
+		if (!input) return;
+
+		try {
+			// Use typeof check to avoid TS exhaustive narrowing that leads to 'never' type in else block
+			if (typeof (input as any).showPicker === 'function') {
+				(input as any).showPicker();
+			} else {
+				input.focus();
+			}
+		} catch (e) {
+			input.focus();
+		}
+	};
+
+	const goToToday = () => {
+		setSelectedDate(new Date().toISOString().slice(0, 10));
 	};
 
 	const recordByDate = new Map(records.map((r) => [r.date, r]));
@@ -174,11 +197,13 @@ export default function EmployeeAttendancePage() {
 		weekOff: days.filter((d) => d.status === "week_off").length,
 	};
 
-	// Format month display
-	const monthDisplay = new Date(selectedMonth + "-01").toLocaleDateString(
+	// Format date display
+	const dateDisplay = new Date(selectedDate).toLocaleDateString(
 		"en-US",
 		{
+			weekday: "long",
 			month: "long",
+			day: "numeric",
 			year: "numeric",
 		}
 	);
@@ -191,35 +216,65 @@ export default function EmployeeAttendancePage() {
 		<div className='flex flex-col min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950'>
 			<DashboardHeader
 				title='My Attendance'
-				description='Track your attendance history and statistics'
+				description='Track your attendance history'
 			/>
 
 			<div className='flex-1 space-y-8 p-4 md:p-6 pb-20 md:pb-6'>
 				{/* Month Navigation */}
 				<Card className='border-2 border-slate-200/60 dark:border-slate-800 shadow-lg shadow-slate-200/50 dark:shadow-none bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm'>
-					<CardContent className='p-6'>
+					<CardContent className='p-4'>
 						<div className='flex items-center justify-between gap-4'>
 							<Button
 								variant='outline'
 								size='icon'
 								onClick={goToPreviousMonth}
-								className='h-10 w-10 shrink-0 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors'>
+								className='h-8 w-8 shrink-0 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors'>
 								<ChevronLeft className='h-5 w-5' />
 							</Button>
-							<div className='flex items-center gap-3 flex-1 justify-center'>
-								<div className='h-10 w-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-500/30'>
-									<Calendar className='h-5 w-5 text-white' />
+							<div className='flex flex-col items-center gap-2 flex-1 justify-center min-w-0'>
+								<div className='flex items-center gap-3'>
+									<button
+										type='button'
+										onClick={openDatePicker}
+										className='h-8 w-8 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-500/30 hover:opacity-90 transition-opacity shrink-0'
+										title='Pick a date'>
+										<Calendar className='h-5 w-5 text-white' />
+									</button>
+									<h2 className='text-[16px] sm:text-2xl font-bold tracking-tight bg-gradient-to-r from-slate-900 to-slate-600 dark:from-white dark:to-slate-400 bg-clip-text text-transparent truncate'>
+										{dateDisplay}
+									</h2>
 								</div>
-								<h2 className='text-2xl font-bold tracking-tight bg-gradient-to-r from-slate-900 to-slate-600 dark:from-white dark:to-slate-400 bg-clip-text text-transparent'>
-									{monthDisplay}
-								</h2>
+								
+								<div className='mt-1'>
+									<Input
+										ref={dateInputRef}
+										type='date'
+										value={selectedDate}
+										max={today}
+										onChange={(e) => {
+											if (e.target.value) {
+												setSelectedDate(e.target.value);
+											}
+										}}
+										className='h-8 w-[170px] text-xs'
+									/>
+								</div>
+								
+								{selectedDate !== today && (
+									<button
+										onClick={goToToday}
+										className='mt-1 text-[10px] font-semibold uppercase tracking-wider text-blue-600 dark:text-blue-400 hover:text-blue-700 transition-colors flex items-center gap-1 bg-blue-50 dark:bg-blue-900/30 px-2 py-0.5 rounded-full'>
+										<div className='h-1.5 w-1.5 rounded-full bg-blue-600 dark:bg-blue-400' />
+										Today
+									</button>
+								)}
 							</div>
 							<Button
 								variant='outline'
 								size='icon'
 								onClick={goToNextMonth}
 								disabled={isCurrentMonth}
-								className='h-10 w-10 shrink-0 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors disabled:opacity-50'>
+								className='h-8 w-8 shrink-0 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors disabled:opacity-50'>
 								<ChevronRight className='h-5 w-5' />
 							</Button>
 						</div>
@@ -348,8 +403,8 @@ export default function EmployeeAttendancePage() {
 								<p className='font-medium'>No attendance records for this month</p>
 							</div>
 						) : (
-							<div className='overflow-x-auto'>
-								<Table>
+							<div className='w-[360px] md:w-full overflow-x-auto'>
+								<Table className='w-full'>
 									<TableHeader>
 										<TableRow className='hover:bg-transparent border-t bg-slate-50/50 dark:bg-slate-800/50'>
 											<TableHead className='font-semibold text-slate-700 dark:text-slate-300'>Date</TableHead>
@@ -357,15 +412,20 @@ export default function EmployeeAttendancePage() {
 											<TableHead className='font-semibold text-slate-700 dark:text-slate-300'>Clock In</TableHead>
 											<TableHead className='font-semibold text-slate-700 dark:text-slate-300'>Clock Out</TableHead>
 											<TableHead className='font-semibold text-slate-700 dark:text-slate-300'>Hours</TableHead>
-											<TableHead className='font-semibold text-slate-700 dark:text-slate-300'>Notes</TableHead>
 										</TableRow>
 									</TableHeader>
 									<TableBody>
-										{days.map((row) => (
-											<TableRow
-												key={row.date}
-												className='hover:bg-slate-100/50 dark:hover:bg-slate-800/50 transition-colors border-b border-slate-100 dark:border-slate-800'>
-												<TableCell className='font-medium'>
+										{days.map((row) => {
+											const isSelected = row.date === selectedDate;
+											return (
+												<TableRow
+													key={row.date}
+													className={`transition-colors border-b dark:border-slate-800 ${
+														isSelected
+															? "bg-blue-50/50 dark:bg-blue-900/20 border-l-4 border-l-blue-500"
+															: "hover:bg-slate-100/50 dark:hover:bg-slate-800/50 border-slate-100 border-l-4 border-l-transparent"
+													}`}>
+													<TableCell className='font-medium'>
 													<div className='flex flex-col'>
 														<span className='text-sm'>
 															{new Date(
@@ -387,7 +447,14 @@ export default function EmployeeAttendancePage() {
 													</div>
 												</TableCell>
 												<TableCell>
-													{getStatusBadge(row.status)}
+													<div className="flex items-center gap-1.5">
+														{getStatusBadge(row.status)}
+														{row.record?.is_wfh && (
+															<span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-blue-50 text-blue-600 border border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800">
+																WFH
+															</span>
+														)}
+													</div>
 												</TableCell>
 												<TableCell className='text-muted-foreground tabular-nums text-sm'>
 													{row.record
@@ -410,13 +477,9 @@ export default function EmployeeAttendancePage() {
 														? `${row.record.total_hours}h`
 														: "–"}
 												</TableCell>
-												<TableCell className='max-w-[200px] text-sm text-muted-foreground'>
-													<div className='truncate'>
-														{row.record?.notes || "–"}
-													</div>
-												</TableCell>
 											</TableRow>
-										))}
+											);
+										})}
 									</TableBody>
 								</Table>
 							</div>

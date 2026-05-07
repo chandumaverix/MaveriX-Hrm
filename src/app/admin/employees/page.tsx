@@ -57,6 +57,7 @@ import {
 import type { Employee, UserRole } from "@/lib/types";
 import { createEmployeeWithAuth } from "./actions";
 import { AvatarImage } from "@radix-ui/react-avatar";
+import { Switch } from "@/components/ui/switch";
 
 /** Local date as YYYY-MM-DD (avoids UTC shift for "today" and attendance queries). */
 function toLocalDateStr(d: Date): string {
@@ -291,6 +292,25 @@ export default function EmployeesPage() {
 		} finally {
 			setBlockActionEmployeeId(null);
 		}
+	};
+
+	const handleToggleWFH = async (employeeId: string, currentStatus: boolean) => {
+		const nextStatus = !currentStatus;
+		const supabase = createClient();
+		const { error } = await supabase
+			.from("employees")
+			.update({ is_wfh: nextStatus })
+			.eq("id", employeeId);
+
+		if (error) {
+			toast.error(error.message);
+			return;
+		}
+
+		toast.success(
+			nextStatus ? "Work From Home enabled" : "Work From Home disabled"
+		);
+		await fetchEmployees();
 	};
 
 	const resetForm = () => {
@@ -774,7 +794,8 @@ export default function EmployeesPage() {
 											<TableHead>Joining Date</TableHead>
 											<TableHead>Week Off</TableHead>
 											<TableHead>Role</TableHead>
-									<TableHead>Account Status</TableHead>
+											<TableHead>Account Status</TableHead>
+											<TableHead>WFH Status</TableHead>
 											<TableHead className='w-[70px]'>
 												Actions
 											</TableHead>
@@ -883,6 +904,13 @@ export default function EmployeesPage() {
 															? "Active"
 															: "Blocked"}
 													</Badge>
+												</TableCell>
+												<TableCell>
+													<Switch
+														checked={employee.is_wfh || false}
+														onCheckedChange={() => handleToggleWFH(employee.id, employee.is_wfh || false)}
+														aria-label="Toggle WFH"
+													/>
 												</TableCell>
 												<TableCell>
 													<DropdownMenu>

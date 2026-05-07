@@ -14,6 +14,7 @@ export interface Employee {
 	joining_date: string | null;
 	employee_id?: string | null;
 	is_active: boolean;
+	is_wfh?: boolean;
 	created_at: string;
 	updated_at: string;
 	/** Optional: add columns adhar_url, pan_url to employees table if using uploads */
@@ -60,6 +61,7 @@ export interface Attendance {
 	total_hours: number | null;
 	status: "present" | "absent" | "late" | "leave" | "week_off";
 	notes: string | null;
+	is_wfh?: boolean;
 	created_at: string;
 	updated_at: string;
 	employee?: Employee;

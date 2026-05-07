@@ -476,7 +476,8 @@ export default function EmployeeLeavePage() {
 				</div>
 
 				{/* ── Tabbed Section: Requests & Deductions ── */}
-				<Tabs defaultValue='requests' className='space-y-4'>
+				<div className="w-[340px] md:w-full overflow-x-auto">
+				<Tabs defaultValue='requests' className=' w-full'>
 					<div className='flex items-center justify-between'>
 						<TabsList className='h-auto bg-muted/40 p-1 rounded-xl gap-1 border border-border/50'>
 							<TabsTrigger value='requests' className='gap-1.5 rounded-lg px-4 py-1.5 text-sm data-[state=active]:bg-background data-[state=active]:shadow-sm'>
@@ -985,6 +986,7 @@ export default function EmployeeLeavePage() {
 						</div>
 					</TabsContent>
 				</Tabs>
+				</div>
 			</div>
 		</div>
 	);

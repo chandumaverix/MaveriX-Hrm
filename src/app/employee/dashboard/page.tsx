@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { OFFICE_LOCATION } from "@/lib/constant";
 import {
 	Dialog,
 	DialogContent,
@@ -31,8 +32,8 @@ import {
 	CalendarCheck,
 	Square,
 	Globe,
-	TicketIcon,
 	Loader2,
+	RefreshCw,
 } from "lucide-react";
 import type { Attendance, LeaveBalance, LeaveType } from "@/lib/types";
 import { determineAttendanceStatus } from "@/lib/utils";
@@ -92,6 +93,12 @@ export default function EmployeeDashboardPage() {
 	const [isClockOutButtonDisabled, setIsClockOutButtonDisabled] =
 		useState(true);
 	const [isClockInLoading, setIsClockInLoading] = useState(false);
+
+	const [isLocationAllowed, setIsLocationAllowed] = useState<boolean | null>(
+		null,
+	);
+	const [isCheckingLocation, setIsCheckingLocation] = useState(false);
+	const [locationMessage, setLocationMessage] = useState<string | null>(null);
 
 	useEffect(() => {
 		if (employee) {
@@ -271,8 +278,85 @@ export default function EmployeeDashboardPage() {
 		setIsTeamLoading(false);
 	};
 
+	// re-check location function
+	const recheckLocation = (showToast = false) => {
+		if (!employee) return;
+		if (todayAttendance?.clock_in) return;
+
+		if (employee.is_wfh) {
+			setIsLocationAllowed(true);
+			setLocationMessage(null);
+			return;
+		}
+
+		if (typeof window === "undefined" || !("geolocation" in navigator)) {
+			setIsLocationAllowed(false);
+			setLocationMessage(
+				"Location is not available in this browser. Please enable location to clock in.",
+			);
+			return;
+		}
+
+		setIsCheckingLocation(true);
+		navigator.geolocation.getCurrentPosition(
+			(position) => {
+				const { latitude, longitude } = position.coords;
+				const distance = getDistanceInMeters(
+					latitude,
+					longitude,
+					OFFICE_LOCATION.lat,
+					OFFICE_LOCATION.lng,
+				);
+				const withinRadius = distance <= 50; // 50 meters
+
+				setIsLocationAllowed(withinRadius);
+				setLocationMessage(
+					withinRadius
+						? null
+						: "You must be within 50 meters of the office to clock in.",
+				);
+				setIsCheckingLocation(false);
+				
+				if (showToast) {
+					if (withinRadius) {
+						toast.success("Location verified! You are within office radius.");
+					} else {
+						toast.error("Location check: Still outside office radius.");
+					}
+				}
+			},
+			(error) => {
+				console.error(
+					"Geolocation error while checking clock-in location",
+					error,
+				);
+				setIsLocationAllowed(false);
+				setLocationMessage(
+					"Unable to access your location. Please allow location access to clock in.",
+				);
+				setIsCheckingLocation(false);
+				if (showToast) toast.error("Unable to access location.");
+			},
+			{ enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+		);
+	};
+
+	// check if user is within 50 meters of the office
+	useEffect(() => {
+		recheckLocation();
+	}, [employee, todayAttendance]);
+
 	const handleClockIn = async () => {
 		if (!employee) return;
+
+		if (isLocationAllowed === false) {
+			toast.error(
+				locationMessage ||
+					"You are currently outside the allowed office radius for clock in.",
+			);
+			return;
+		}
+
 		setIsClockInLoading(true);
 
 		try {
@@ -309,6 +393,7 @@ export default function EmployeeDashboardPage() {
 					date: today,
 					clock_in: nowISO,
 					status,
+					is_wfh: employee.is_wfh || false,
 				});
 
 			if (insertError) throw insertError;
@@ -394,6 +479,26 @@ export default function EmployeeDashboardPage() {
 			minutes: String(minutes).padStart(2, "0"),
 			seconds: String(seconds).padStart(2, "0"),
 		};
+	};
+
+	// get distance in meters between two coordinates
+	const getDistanceInMeters = (
+		lat1: number,
+		lng1: number,
+		lat2: number,
+		lng2: number,
+	) => {
+		const toRad = (v: number) => (v * Math.PI) / 180;
+		const R = 6371e3; // metres
+		const φ1 = toRad(lat1);
+		const φ2 = toRad(lat2);
+		const Δφ = toRad(lat2 - lat1);
+		const Δλ = toRad(lng2 - lng1);
+		const a =
+			Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+			Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+		const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+		return R * c;
 	};
 
 	const getCurrentTimeParts = (d: Date) => {
@@ -513,6 +618,11 @@ export default function EmployeeDashboardPage() {
 											},
 										)}
 									</p>
+									{employee?.is_wfh && (
+										<p className='text-sm bg-primary/10 border border-primary text-primary px-2 py-1 rounded-full leading-none flex items-center font-medium'>
+											WFH
+										</p>
+									)}
 								</div>
 
 								<h3 className='text-2xl mt-2 font-bold sm:text-4xl'>
@@ -719,21 +829,66 @@ export default function EmployeeDashboardPage() {
 										Completed
 									</Badge>
 								) : (
-									<Button
-										onClick={handleClockIn}
-										disabled={isClockInLoading}
-										className='gap-3 rounded-xl bg-blue-600 hover:bg-primary/90 text-primary-foreground px-8 py-8 text-lg font-semibold w-[100%] disabled:opacity-70 disabled:cursor-not-allowed'>
-										{isClockInLoading ? (
-											<Loader2 className='h-5 w-5 animate-spin' />
-										) : (
-											<Clock className='h-5 w-5' />
+									<div className='flex items-center gap-3 w-full'>
+										<Button
+											onClick={handleClockIn}
+											disabled={
+												isClockInLoading ||
+												isCheckingLocation ||
+												isLocationAllowed === false
+											}
+											title={
+												isCheckingLocation
+													? "Checking your location..."
+													: isLocationAllowed === false &&
+														  locationMessage
+														? locationMessage
+														: undefined
+											}
+											className='gap-3 rounded-xl bg-blue-600 hover:bg-primary/90 text-primary-foreground px-8 py-8 text-lg font-semibold flex-1 disabled:opacity-70 disabled:cursor-not-allowed'>
+											{isClockInLoading ? (
+												<Loader2 className='h-5 w-5 animate-spin' />
+											) : (
+												<Clock className='h-5 w-5' />
+											)}
+											{isClockInLoading
+												? "Clocking In..."
+												: isCheckingLocation
+													? "Checking location..."
+													: "Clock In"}
+										</Button>
+
+										{!employee?.is_wfh && (
+											<Button
+												variant='outline'
+												size='icon'
+												onClick={() =>
+													recheckLocation(true)
+												}
+												disabled={
+													isCheckingLocation ||
+													isClockInLoading
+												}
+												title='Re-check Location'
+												className='h-16 w-16 rounded-xl border-border/60 hover:bg-muted shrink-0'>
+												<RefreshCw
+													className={`h-6 w-6 text-muted-foreground ${
+														isCheckingLocation
+															? "animate-spin text-primary"
+															: ""
+													}`}
+												/>
+											</Button>
 										)}
-										{isClockInLoading
-											? "Clocking In..."
-											: "Clock In"}
-									</Button>
+									</div>
 								)}
 							</div>
+
+							{isLocationAllowed === false && locationMessage && (
+								<p className='text-xs text-red-600 text-center mt-1'>
+									{locationMessage}
+								</p>
+							)}
 
 							{/* Recent Attendance (unchanged functionality) */}
 							<div className='space-y-2 border-t border-border/50 pt-4'>

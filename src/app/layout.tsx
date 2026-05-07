@@ -4,7 +4,6 @@ import { Toaster } from "react-hot-toast";
 import "./globals.css";
 import { UserProvider } from "../contexts/user-context";
 import { InviteRecoveryRedirect } from "@/components/auth/invite-recovery-redirect";
-import { MobileBlock } from "@/components/mobile-block";
 
 const poppins = Poppins({
 	subsets: ["latin"],
@@ -30,10 +29,8 @@ export default function RootLayout({
 		<html lang='en' suppressHydrationWarning className={poppins.variable}>
 			<body className="font-sans antialiased" suppressHydrationWarning>
 				<UserProvider>
-					<MobileBlock>
 						<InviteRecoveryRedirect />
 						{children}
-					</MobileBlock>
 					<Toaster position='top-right' />
 				</UserProvider>
 			</body>
