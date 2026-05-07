@@ -216,19 +216,19 @@ export default function EmployeeAttendancePage() {
 		<div className='flex flex-col min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950'>
 			<DashboardHeader
 				title='My Attendance'
-				description='Track your attendance history and statistics'
+				description='Track your attendance history'
 			/>
 
 			<div className='flex-1 space-y-8 p-4 md:p-6 pb-20 md:pb-6'>
 				{/* Month Navigation */}
 				<Card className='border-2 border-slate-200/60 dark:border-slate-800 shadow-lg shadow-slate-200/50 dark:shadow-none bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm'>
-					<CardContent className='p-6'>
+					<CardContent className='p-4'>
 						<div className='flex items-center justify-between gap-4'>
 							<Button
 								variant='outline'
 								size='icon'
 								onClick={goToPreviousMonth}
-								className='h-10 w-10 shrink-0 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors'>
+								className='h-8 w-8 shrink-0 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors'>
 								<ChevronLeft className='h-5 w-5' />
 							</Button>
 							<div className='flex flex-col items-center gap-2 flex-1 justify-center min-w-0'>
@@ -236,11 +236,11 @@ export default function EmployeeAttendancePage() {
 									<button
 										type='button'
 										onClick={openDatePicker}
-										className='h-10 w-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-500/30 hover:opacity-90 transition-opacity shrink-0'
+										className='h-8 w-8 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-500/30 hover:opacity-90 transition-opacity shrink-0'
 										title='Pick a date'>
 										<Calendar className='h-5 w-5 text-white' />
 									</button>
-									<h2 className='text-xl sm:text-2xl font-bold tracking-tight bg-gradient-to-r from-slate-900 to-slate-600 dark:from-white dark:to-slate-400 bg-clip-text text-transparent truncate'>
+									<h2 className='text-[16px] sm:text-2xl font-bold tracking-tight bg-gradient-to-r from-slate-900 to-slate-600 dark:from-white dark:to-slate-400 bg-clip-text text-transparent truncate'>
 										{dateDisplay}
 									</h2>
 								</div>
@@ -274,7 +274,7 @@ export default function EmployeeAttendancePage() {
 								size='icon'
 								onClick={goToNextMonth}
 								disabled={isCurrentMonth}
-								className='h-10 w-10 shrink-0 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors disabled:opacity-50'>
+								className='h-8 w-8 shrink-0 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors disabled:opacity-50'>
 								<ChevronRight className='h-5 w-5' />
 							</Button>
 						</div>
@@ -403,8 +403,8 @@ export default function EmployeeAttendancePage() {
 								<p className='font-medium'>No attendance records for this month</p>
 							</div>
 						) : (
-							<div className='overflow-x-auto'>
-								<Table>
+							<div className='w-[360px] md:w-full overflow-x-auto'>
+								<Table className='w-full'>
 									<TableHeader>
 										<TableRow className='hover:bg-transparent border-t bg-slate-50/50 dark:bg-slate-800/50'>
 											<TableHead className='font-semibold text-slate-700 dark:text-slate-300'>Date</TableHead>
@@ -412,7 +412,6 @@ export default function EmployeeAttendancePage() {
 											<TableHead className='font-semibold text-slate-700 dark:text-slate-300'>Clock In</TableHead>
 											<TableHead className='font-semibold text-slate-700 dark:text-slate-300'>Clock Out</TableHead>
 											<TableHead className='font-semibold text-slate-700 dark:text-slate-300'>Hours</TableHead>
-											<TableHead className='font-semibold text-slate-700 dark:text-slate-300'>Notes</TableHead>
 										</TableRow>
 									</TableHeader>
 									<TableBody>
@@ -448,7 +447,7 @@ export default function EmployeeAttendancePage() {
 													</div>
 												</TableCell>
 												<TableCell>
-													<div className="flex flex-wrap items-center gap-1.5">
+													<div className="flex items-center gap-1.5">
 														{getStatusBadge(row.status)}
 														{row.record?.is_wfh && (
 															<span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-blue-50 text-blue-600 border border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800">
@@ -477,11 +476,6 @@ export default function EmployeeAttendancePage() {
 													{row.record?.total_hours
 														? `${row.record.total_hours}h`
 														: "–"}
-												</TableCell>
-												<TableCell className='max-w-[200px] text-sm text-muted-foreground'>
-													<div className='truncate'>
-														{row.record?.notes || "–"}
-													</div>
 												</TableCell>
 											</TableRow>
 											);
