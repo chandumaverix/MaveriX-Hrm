@@ -33,6 +33,7 @@ import {
 	Square,
 	Globe,
 	Loader2,
+	RefreshCw,
 } from "lucide-react";
 import type { Attendance, LeaveBalance, LeaveType } from "@/lib/types";
 import { determineAttendanceStatus } from "@/lib/utils";
@@ -277,10 +278,10 @@ export default function EmployeeDashboardPage() {
 		setIsTeamLoading(false);
 	};
 
-	// check if user is within 100 meters of the office
-	useEffect(() => {
+	// re-check location function
+	const recheckLocation = (showToast = false) => {
 		if (!employee) return;
-		if (todayAttendance?.clock_in) return; // already clocked in, skip
+		if (todayAttendance?.clock_in) return;
 
 		if (employee.is_wfh) {
 			setIsLocationAllowed(true);
@@ -315,6 +316,14 @@ export default function EmployeeDashboardPage() {
 						: "You must be within 50 meters of the office to clock in.",
 				);
 				setIsCheckingLocation(false);
+				
+				if (showToast) {
+					if (withinRadius) {
+						toast.success("Location verified! You are within office radius.");
+					} else {
+						toast.error("Location check: Still outside office radius.");
+					}
+				}
 			},
 			(error) => {
 				console.error(
@@ -326,8 +335,15 @@ export default function EmployeeDashboardPage() {
 					"Unable to access your location. Please allow location access to clock in.",
 				);
 				setIsCheckingLocation(false);
+				if (showToast) toast.error("Unable to access location.");
 			},
+			{ enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
 		);
+	};
+
+	// check if user is within 50 meters of the office
+	useEffect(() => {
+		recheckLocation();
 	}, [employee, todayAttendance]);
 
 	const handleClockIn = async () => {
@@ -813,33 +829,58 @@ export default function EmployeeDashboardPage() {
 										Completed
 									</Badge>
 								) : (
-									<Button
-										onClick={handleClockIn}
-										disabled={
-											isClockInLoading ||
-											isCheckingLocation ||
-											isLocationAllowed === false
-										}
-										title={
-											isCheckingLocation
-												? "Checking your location..."
-												: isLocationAllowed === false &&
-													  locationMessage
-													? locationMessage
-													: undefined
-										}
-										className='gap-3 rounded-xl bg-blue-600 hover:bg-primary/90 text-primary-foreground px-8 py-8 text-lg font-semibold w-[100%] disabled:opacity-70 disabled:cursor-not-allowed'>
-										{isClockInLoading ? (
-											<Loader2 className='h-5 w-5 animate-spin' />
-										) : (
-											<Clock className='h-5 w-5' />
+									<div className='flex items-center gap-3 w-full'>
+										<Button
+											onClick={handleClockIn}
+											disabled={
+												isClockInLoading ||
+												isCheckingLocation ||
+												isLocationAllowed === false
+											}
+											title={
+												isCheckingLocation
+													? "Checking your location..."
+													: isLocationAllowed === false &&
+														  locationMessage
+														? locationMessage
+														: undefined
+											}
+											className='gap-3 rounded-xl bg-blue-600 hover:bg-primary/90 text-primary-foreground px-8 py-8 text-lg font-semibold flex-1 disabled:opacity-70 disabled:cursor-not-allowed'>
+											{isClockInLoading ? (
+												<Loader2 className='h-5 w-5 animate-spin' />
+											) : (
+												<Clock className='h-5 w-5' />
+											)}
+											{isClockInLoading
+												? "Clocking In..."
+												: isCheckingLocation
+													? "Checking location..."
+													: "Clock In"}
+										</Button>
+
+										{!employee?.is_wfh && (
+											<Button
+												variant='outline'
+												size='icon'
+												onClick={() =>
+													recheckLocation(true)
+												}
+												disabled={
+													isCheckingLocation ||
+													isClockInLoading
+												}
+												title='Re-check Location'
+												className='h-16 w-16 rounded-xl border-border/60 hover:bg-muted shrink-0'>
+												<RefreshCw
+													className={`h-6 w-6 text-muted-foreground ${
+														isCheckingLocation
+															? "animate-spin text-primary"
+															: ""
+													}`}
+												/>
+											</Button>
 										)}
-										{isClockInLoading
-											? "Clocking In..."
-											: isCheckingLocation
-												? "Checking location..."
-												: "Clock In"}
-									</Button>
+									</div>
 								)}
 							</div>
 
