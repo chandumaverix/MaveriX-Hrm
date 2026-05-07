@@ -784,7 +784,7 @@ export default function EmployeesPage() {
 							</div>
 						) : (
 							<div className='w-[300px] md:w-full overflow-x-auto'>
-								<Table>
+								<Table className='w-full'>
 									<TableHeader>
 										<TableRow>
 											<TableHead>Employee</TableHead>
@@ -794,8 +794,8 @@ export default function EmployeesPage() {
 											<TableHead>Joining Date</TableHead>
 											<TableHead>Week Off</TableHead>
 											<TableHead>Role</TableHead>
-											<TableHead>Account Status</TableHead>
-											<TableHead>WFH Status</TableHead>
+											<TableHead>Status</TableHead>
+											<TableHead>WFH</TableHead>
 											<TableHead className='w-[70px]'>
 												Actions
 											</TableHead>

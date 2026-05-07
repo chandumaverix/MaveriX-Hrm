@@ -752,7 +752,7 @@ export default function AttendancePage() {
 					) : (
 						<>
 							{/* Desktop table */}
-							<div className='hidden md:block overflow-x-auto'>
+							<div className='w-[360px] md:w-full overflow-x-auto'>
 								<table className='w-full text-sm'>
 									<thead>
 										<tr className='bg-muted/40 border-b border-border/50'>
