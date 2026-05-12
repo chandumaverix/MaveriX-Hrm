@@ -81,7 +81,7 @@ export default function ActivityPage() {
 
 	const hasAccess = employee && unlocked;
 
-	useEffect(() => { if (!employee) router.push("/auth/login"); }, [employee, router]);
+	// useEffect(() => { if (!employee) router.push("/auth/login"); }, [employee, router]);
 	useEffect(() => { if (typeof window !== "undefined" && window.localStorage.getItem(ACTIVITY_LOGGER_UNLOCK_KEY) === "true") setUnlocked(true); }, []);
 
 	useEffect(() => {
