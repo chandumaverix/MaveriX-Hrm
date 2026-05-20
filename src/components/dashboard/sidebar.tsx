@@ -235,13 +235,13 @@ function NavLink({
 		<Link
 			href={item.href}
 			className={cn(
-				"flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+				"flex items-center gap-3 px-4 py-2.5 text-xs font-bold transition-all relative",
 				isActive
-					? "bg-sidebar-accent text-sidebar-accent-foreground"
-					: "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground",
+					? "bg-blue-50/70 text-blue-600 border-l-4 border-blue-600 rounded-r-xl"
+					: "text-slate-500 hover:bg-slate-50 hover:text-slate-800 rounded-xl",
 				className
 			)}>
-			{item.icon}
+			<span className={cn(isActive ? "text-blue-600" : "text-slate-400")}>{item.icon}</span>
 			{item.label}
 		</Link>
 	);
@@ -255,7 +255,7 @@ export function MobileBottomNav() {
 	if (items.length === 0) return null;
 
 	return (
-		<nav className='fixed bottom-0 left-0 right-0 z-40 border-t border-border bg-background/95 pb-[env(safe-area-inset-bottom)] md:hidden'>
+		<nav className='fixed bottom-0 left-0 right-0 z-40 border-t border-slate-100 bg-white pb-[env(safe-area-inset-bottom)] md:hidden shadow-lg'>
 			{/* 5 icons visible in frame; rest scroll right */}
 			<div className='flex overflow-x-auto overflow-y-hidden scrollbar-hide'>
 				{items.map((item) => (
@@ -263,11 +263,11 @@ export function MobileBottomNav() {
 						key={item.href}
 						href={item.href}
 						className={cn(
-							"flex shrink-0 w-[20%] min-w-[72px] max-w-[84px] flex-col items-center justify-center gap-0.5 py-3 text-[10px] transition-colors",
+							"flex shrink-0 w-[20%] min-w-[72px] max-w-[84px] flex-col items-center justify-center gap-0.5 py-3 text-[10px] transition-colors font-bold",
 							pathname === item.href ||
 								pathname.startsWith(item.href + "/")
-								? "text-primary"
-								: "text-muted-foreground"
+								? "text-blue-600"
+								: "text-slate-400"
 						)}>
 						{item.icon}
 						<span className='truncate px-0.5 text-center'>
@@ -277,7 +277,7 @@ export function MobileBottomNav() {
 				))}
 				<button
 					onClick={signOut}
-					className="flex shrink-0 w-[20%] min-w-[72px] max-w-[84px] flex-col items-center justify-center gap-0.5 py-3 text-[10px] transition-colors text-muted-foreground hover:text-destructive">
+					className="flex shrink-0 w-[20%] min-w-[72px] max-w-[84px] flex-col items-center justify-center gap-0.5 py-3 text-[10px] transition-colors text-slate-400 hover:text-red-500 font-bold">
 					<LogOut className='h-5 w-5' />
 					<span className='truncate px-0.5 text-center'>
 						Logout
@@ -305,25 +305,27 @@ export function DashboardSidebar() {
 		: "U";
 
 	return (
-		<aside className='fixed left-0 top-0 z-40 hidden h-screen w-64 flex-col bg-sidebar text-sidebar-foreground md:flex'>
+		<aside className='fixed left-0 top-0 z-40 hidden h-screen w-64 flex-col bg-white text-slate-800 border-r border-slate-100 md:flex shadow-[4px_0_24px_rgba(0,0,0,0.01)]'>
 			{/* Logo */}
-			<div className='flex gap-2 h-14 items-center justify-center border-b border-sidebar-border px-5'>
-				<Image src="/maverix-whitelogo.png" alt="MaveriX - Smart HRM" width={88} height={88} />
+			<div className='flex items-center justify-between h-16 border-b border-slate-100 px-5'>
+				<div className="flex items-center gap-2">
+					<Image src="/maverix-logo.png" alt="MaveriX Logo" width={100} height={26} className="h-6 w-auto object-contain" />
+				</div>
 				<div>
 					{employee?.role === "admin" && (
-						<span className='text-xs bg-red-700 px-2 py-0.5 rounded-full'>Admin</span>
+						<span className='text-[8px] bg-rose-50 text-rose-700 border border-rose-100 px-2 py-0.5 rounded-full font-black uppercase tracking-wider'>Admin</span>
 					)}
 					{employee?.role === "hr" && (
-						<span className='text-xs bg-blue-700 px-2 py-0.5 rounded-full'>HR</span>
+						<span className='text-[8px] bg-blue-50 text-blue-700 border border-blue-100 px-2 py-0.5 rounded-full font-black uppercase tracking-wider'>HR</span>
 					)}
 					{employee?.role === "employee" && (
-						<span className='text-xs bg-green-700 px-2 py-0.5 rounded-full'>Employee</span>
+						<span className='text-[8px] bg-emerald-50 text-emerald-700 border border-emerald-100 px-2 py-0.5 rounded-full font-black uppercase tracking-wider'>Staff</span>
 					)}
 				</div>
 			</div>
 
 			{/* Navigation */}
-			<nav className='flex-1 space-y-0.5 overflow-y-auto px-2.5 py-3'>
+			<nav className='flex-1 space-y-0.5 overflow-y-auto px-2.5 py-4 scrollbar-hide'>
 				{employee?.role === "hr" ? (
 					<>
 						{hrManagementItems.map((item) => (
@@ -336,8 +338,8 @@ export function DashboardSidebar() {
 								}
 							/>
 						))}
-						<div className='mb-1 px-2 py-1'>
-							<p className='text-[10px] font-semibold uppercase tracking-wider text-sidebar-foreground/50'>
+						<div className='mb-1.5 mt-4 px-4 py-1 text-left'>
+							<p className='text-[9px] font-black uppercase tracking-widest text-slate-400'>
 								Personalize
 							</p>
 						</div>
@@ -367,9 +369,9 @@ export function DashboardSidebar() {
 			</nav>
 
 			{/* User Menu */}
-			<div className='grid grid-cols-4 items-center gap-2 border-t border-sidebar-border p-2.5'>
-				<div className='flex col-span-3 items-center justify-start gap-2.5 px-2 py-3 text-sidebar-foreground hover:bg-sidebar-accent rounded-lg'>
-					<Avatar className='h-8 w-8'>
+			<div className='flex items-center gap-2 border-t border-slate-100 p-3 bg-slate-50/50'>
+				<div className='flex flex-1 items-center justify-start gap-2.5 px-1 py-1.5 text-slate-700 rounded-lg'>
+					<Avatar className='h-8 w-8 border border-slate-200 shadow-sm'>
 						{employee?.avatar_url ? (
 							<AvatarImage
 								className='object-cover'
@@ -377,15 +379,15 @@ export function DashboardSidebar() {
 								alt={`${employee.first_name} ${employee.last_name}`}
 							/>
 						) : null}
-						<AvatarFallback className='bg-sidebar-primary text-sidebar-primary-foreground text-xs'>
+						<AvatarFallback className='bg-blue-50 text-blue-600 font-extrabold text-xs'>
 							{initials}
 						</AvatarFallback>
 					</Avatar>
-					<div className='flex flex-1 flex-col items-start text-left'>
-						<span className='text-sm font-medium hover:text-gray-400'>
+					<div className='flex flex-1 flex-col items-start text-left min-w-0'>
+						<span className='text-xs font-black text-slate-800 truncate w-full'>
 							{employee?.first_name} {employee?.last_name}
 						</span>
-						<span className='text-xs capitalize text-sidebar-foreground/60 hover:text-gray-400'>
+						<span className='text-[10px] capitalize text-slate-400 font-bold truncate w-full'>
 							{employee?.role === "employee"
 								? employee?.designation || "—"
 								: employee?.role}
@@ -395,9 +397,9 @@ export function DashboardSidebar() {
 				<Button
 					variant='ghost'
 					size='sm'
-					className='col-span-1 cursor-pointer px-3 py-3 text-sidebar-foreground hover:bg-sidebar-accent hover:text-gray-400'
+					className='cursor-pointer p-2.5 text-slate-400 hover:bg-rose-50 hover:text-rose-600 rounded-xl transition-all'
 					onClick={signOut}>
-					<LogOut className='h-4 w-4 text-destructive' />
+					<LogOut className='h-4 w-4' />
 				</Button>
 			</div>
 		</aside>

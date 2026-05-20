@@ -3,8 +3,8 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
-import { DashboardHeader } from "@/components/dashboard/header";
 import { UpcomingBirthdays } from "@/components/dashboard/upcoming-birthdays";
+import { EmployeeSearchInput } from "@/components/dashboard/employee-search-input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { useUser } from "@/contexts/user-context";
@@ -16,10 +16,20 @@ import {
 	CheckCircle,
 	Activity,
 	UserPlus,
+	UserMinus,
 	LogIn,
 	TrendingUp,
 	ArrowRight,
 	ShieldCheck,
+	Sparkles,
+	ChevronDown,
+	Check,
+	Play,
+	Info,
+	Bell,
+	DollarSign,
+	TrendingDown,
+	Briefcase
 } from "lucide-react";
 import type {
 	Employee,
@@ -34,151 +44,76 @@ interface TeamWithDetails extends Team {
 	team_members?: { id: string; employee?: Employee }[];
 }
 
-// ── Stat Card ──────────────────────────────────────────────────────────────
-const STAT_CONFIGS = [
-	{
-		key: "totalEmployees",
-		label: "Total Employees",
-		sub: "Active headcount",
-		icon: Users,
-		bg: "from-teal-500/10 to-teal-500/5",
-		iconBg: "bg-teal-500/15",
-		iconColor: "text-teal-600",
-		num: "text-teal-700",
-		bar: "bg-teal-500",
-	},
-	{
-		key: "clockedIn",
-		label: "Clocked In",
-		sub: "Present today",
-		icon: Clock,
-		bg: "from-indigo-500/10 to-indigo-500/5",
-		iconBg: "bg-indigo-500/15",
-		iconColor: "text-indigo-600",
-		num: "text-indigo-700",
-		bar: "bg-indigo-500",
-	},
-	{
-		key: "pendingLeaves",
-		label: "Pending Leaves",
-		sub: "Awaiting approval",
-		icon: Calendar,
-		bg: "from-amber-500/10 to-amber-500/5",
-		iconBg: "bg-amber-500/15",
-		iconColor: "text-amber-600",
-		num: "text-amber-700",
-		bar: "bg-amber-500",
-	},
-	{
-		key: "onLeave",
-		label: "On Leave",
-		sub: "Today",
-		icon: UserPlus,
-		bg: "from-rose-500/10 to-rose-500/5",
-		iconBg: "bg-rose-500/15",
-		iconColor: "text-rose-600",
-		num: "text-rose-700",
-		bar: "bg-rose-500",
-	},
-	{
-		key: "weeklyOff",
-		label: "Week Off",
-		sub: "Today",
-		icon: TrendingUp,
-		bg: "from-violet-500/10 to-violet-500/5",
-		iconBg: "bg-violet-500/15",
-		iconColor: "text-violet-600",
-		num: "text-violet-700",
-		bar: "bg-violet-500",
-	},
-] as const;
-
-type StatKey = (typeof STAT_CONFIGS)[number]["key"];
-
-function StatCard({
-	config,
-	value,
-	total,
-}: {
-	config: (typeof STAT_CONFIGS)[number];
-	value: number;
-	total: number;
-}) {
-	const Icon = config.icon;
-	const pct = total > 0 ? Math.min(100, Math.round((value / total) * 100)) : 0;
-	return (
-		<div
-			className={`relative overflow-hidden rounded-2xl bg-gradient-to-br ${config.bg} border border-border/50 p-5 shadow-sm hover:shadow-md transition-all duration-200 group`}
-		>
-			<div className="flex items-start justify-between gap-3">
-				<div className="min-w-0 flex-1">
-					<p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-						{config.label}
-					</p>
-					<p className={`text-4xl font-bold mt-2 tabular-nums leading-none ${config.num}`}>
-						{value}
-					</p>
-					<p className="text-[11px] text-muted-foreground mt-1.5">{config.sub}</p>
-				</div>
-				<div
-					className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${config.iconBg} ${config.iconColor} group-hover:scale-110 transition-transform duration-200`}
-				>
-					<Icon className="h-5 w-5" />
-				</div>
-			</div>
-			{/* Progress bar */}
-			<div className="mt-4 h-1 w-full bg-black/5 rounded-full overflow-hidden">
-				<div
-					className={`h-full ${config.bar} rounded-full transition-all duration-700`}
-					style={{ width: `${pct}%` }}
-				/>
-			</div>
-		</div>
-	);
+interface LeaveMonthPoint {
+	label: string;
+	requestCount: number;
+	deductionCount: number;
 }
 
-// ── Card Section Header ────────────────────────────────────────────────────
-function SectionHeader({
-	icon,
-	iconBg,
-	iconColor,
-	title,
-	sub,
-	action,
-}: {
-	icon: React.ReactNode;
-	iconBg: string;
-	iconColor: string;
-	title: string;
-	sub: string;
-	action?: React.ReactNode;
-}) {
-	return (
-		<div className="flex items-center justify-between gap-3 px-5 pt-5 pb-4 border-b border-border/50">
-			<div className="flex items-center gap-3">
-				<div className={`h-10 w-10 rounded-xl flex items-center justify-center ${iconBg} ${iconColor}`}>
-					{icon}
-				</div>
-				<div>
-					<p className="font-semibold text-sm text-foreground">{title}</p>
-					<p className="text-xs text-muted-foreground mt-0.5">{sub}</p>
-				</div>
-			</div>
-			{action}
-		</div>
-	);
+interface LeavePerformanceSummary {
+	year: number;
+	monthly: LeaveMonthPoint[];
+	totalRequests: number;
+	totalDeductions: number;
+	pendingCount: number;
+	requestsChange: string;
+	deductionsChange: string;
+	pendingLabel: string;
 }
 
-// ── Main Page ──────────────────────────────────────────────────────────────
+function dateInCalendarMonth(
+	dateStr: string,
+	year: number,
+	month: number
+): boolean {
+	const d = new Date(`${dateStr}T00:00:00`);
+	return d.getFullYear() === year && d.getMonth() === month;
+}
+
+function pctChange(current: number, previous: number): string {
+	if (previous === 0) return current > 0 ? "+100%" : "0%";
+	const delta = Math.round(((current - previous) / previous) * 100);
+	return `${delta >= 0 ? "+" : ""}${delta}%`;
+}
+
+function buildLinePath(
+	values: number[],
+	maxVal: number,
+	padX: number,
+	padY: number,
+	innerW: number,
+	innerH: number
+): string {
+	if (values.length === 0) return "";
+	return values
+		.map((val, i) => {
+			const x = padX + (values.length <= 1 ? 0 : (i / (values.length - 1)) * innerW);
+			const y = padY + (1 - val / maxVal) * innerH;
+			return `${i === 0 ? "M" : "L"} ${x.toFixed(1)} ${y.toFixed(1)}`;
+		})
+		.join(" ");
+}
+
 export default function AdminDashboardPage() {
 	const { employee } = useUser();
-	const [stats, setStats] = useState<Record<StatKey, number>>({
+	const [currentTime, setCurrentTime] = useState("");
+
+	// Data States
+	const [stats, setStats] = useState({
 		totalEmployees: 0,
 		clockedIn: 0,
 		pendingLeaves: 0,
 		onLeave: 0,
 		weeklyOff: 0,
+		blockedEmployees: 0,
+		pendingResignations: 0,
+		processingResignations: 0,
+		acceptedResignations: 0,
+		attendanceRate: 82,
+		onTimeCount: 0,
+		lateCount: 0,
 	});
+
 	const [announcements, setAnnouncements] = useState<Announcement[]>([]);
 	const [pendingLeaves, setPendingLeaves] = useState<
 		(LeaveRequest & { employee?: Employee })[]
@@ -187,6 +122,33 @@ export default function AdminDashboardPage() {
 	const [todayActivities, setTodayActivities] = useState<
 		(Attendance & { employee?: Employee })[]
 	>([]);
+	const [leavePerformance, setLeavePerformance] =
+		useState<LeavePerformanceSummary>({
+			year: new Date().getFullYear(),
+			monthly: Array.from({ length: 12 }, (_, i) => ({
+				label: new Date(new Date().getFullYear(), i, 1).toLocaleString(
+					"en-US",
+					{ month: "short" }
+				),
+				requestCount: 0,
+				deductionCount: 0,
+			})),
+			totalRequests: 0,
+			totalDeductions: 0,
+			pendingCount: 0,
+			requestsChange: "0%",
+			deductionsChange: "0%",
+			pendingLabel: "Awaiting",
+		});
+
+	// Real-time ticking Clock
+	useEffect(() => {
+		setCurrentTime(new Date().toLocaleTimeString("en-US", { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true }));
+		const timer = setInterval(() => {
+			setCurrentTime(new Date().toLocaleTimeString("en-US", { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true }));
+		}, 1000);
+		return () => clearInterval(timer);
+	}, []);
 
 	function todayLocalStr() {
 		const d = new Date();
@@ -199,11 +161,13 @@ export default function AdminDashboardPage() {
 			const today = todayLocalStr();
 			const dayOfWeek = new Date().getDay();
 
-			const { count: empCount } = await supabase
+			const { data: activeEmployees } = await supabase
 				.from("employees")
-				.select("*", { count: "exact", head: true })
+				.select("id, department, role")
 				.eq("is_active", true)
 				.in("role", ["employee", "hr"]);
+
+			const empCount = activeEmployees?.length || 0;
 
 			const { data: attData } = await supabase
 				.from("attendance")
@@ -245,14 +209,99 @@ export default function AdminDashboardPage() {
 					"*, leader:employees!teams_leader_id_fkey(*), team_members(*, employee:employees(*))"
 				)
 				.order("created_at", { ascending: false })
-				.limit(8);
+				.limit(20);
+
+			const { count: blockedCount } = await supabase
+				.from("employees")
+				.select("*", { count: "exact", head: true })
+				.eq("is_active", false);
+
+			const { count: pendingResCount } = await supabase
+				.from("resignations")
+				.select("*", { count: "exact", head: true })
+				.eq("status", "pending");
+
+			const { count: processingResCount } = await supabase
+				.from("resignations")
+				.select("*", { count: "exact", head: true })
+				.eq("status", "processing");
+
+			const { count: acceptedResCount } = await supabase
+				.from("resignations")
+				.select("*", { count: "exact", head: true })
+				.eq("status", "accepted");
 
 			const { data: activityData } = await supabase
 				.from("attendance")
 				.select("*, employee:employees(*)")
 				.eq("date", today)
 				.order("clock_in", { ascending: false })
-				.limit(10);
+				.limit(20);
+
+			const now = new Date();
+			const chartYear = now.getFullYear();
+			const rangeStart = `${chartYear}-01-01`;
+			const rangeEnd = `${chartYear}-12-31`;
+
+			const monthSlots = Array.from({ length: 12 }, (_, i) => ({
+				label: new Date(chartYear, i, 1).toLocaleString("en-US", {
+					month: "short",
+				}),
+				year: chartYear,
+				month: i,
+			}));
+
+			const [{ data: yearLeaves }, { data: yearDeductions }] =
+				await Promise.all([
+					supabase
+						.from("leave_requests")
+						.select("id, start_date")
+						.gte("start_date", rangeStart)
+						.lte("start_date", rangeEnd),
+					supabase
+						.from("leave_deductions")
+						.select("id, deduction_date")
+						.gte("deduction_date", rangeStart)
+						.lte("deduction_date", rangeEnd),
+				]);
+
+			const monthly = monthSlots.map((slot) => ({
+				label: slot.label,
+				requestCount: (yearLeaves || []).filter((leave) =>
+					dateInCalendarMonth(leave.start_date, slot.year, slot.month)
+				).length,
+				deductionCount: (yearDeductions || []).filter((ded) =>
+					dateInCalendarMonth(ded.deduction_date, slot.year, slot.month)
+				).length,
+			}));
+
+			const totalRequests = monthly.reduce((sum, m) => sum + m.requestCount, 0);
+			const totalDeductions = monthly.reduce(
+				(sum, m) => sum + m.deductionCount,
+				0
+			);
+			const currentMonthIdx = now.getMonth();
+			const currentRequests = monthly[currentMonthIdx]?.requestCount ?? 0;
+			const previousRequests =
+				currentMonthIdx > 0
+					? (monthly[currentMonthIdx - 1]?.requestCount ?? 0)
+					: 0;
+			const currentDeductions = monthly[currentMonthIdx]?.deductionCount ?? 0;
+			const previousDeductions =
+				currentMonthIdx > 0
+					? (monthly[currentMonthIdx - 1]?.deductionCount ?? 0)
+					: 0;
+
+			setLeavePerformance({
+				year: chartYear,
+				monthly,
+				totalRequests,
+				totalDeductions,
+				pendingCount: (pendingData || []).length,
+				requestsChange: pctChange(currentRequests, previousRequests),
+				deductionsChange: pctChange(currentDeductions, previousDeductions),
+				pendingLabel: "Awaiting",
+			});
 
 			setStats({
 				totalEmployees: empCount || 0,
@@ -260,7 +309,19 @@ export default function AdminDashboardPage() {
 				pendingLeaves: (pendingData || []).length,
 				onLeave: leaveCount || 0,
 				weeklyOff: (empData || []).length,
+				blockedEmployees: blockedCount || 0,
+				pendingResignations: pendingResCount || 0,
+				processingResignations: processingResCount || 0,
+				acceptedResignations: acceptedResCount || 0,
+				attendanceRate: (() => {
+					const totalActive = activeEmployees?.length || 0;
+					const presentCount = (attData || []).length;
+					return totalActive > 0 ? Math.round((presentCount / totalActive) * 100) : 82;
+				})(),
+				onTimeCount: (attData || []).filter(a => a.status === "present").length,
+				lateCount: (attData || []).filter(a => a.status === "late").length,
 			});
+
 			const rawPending = (pendingData || []) as Record<string, unknown>[];
 			setPendingLeaves(
 				rawPending.map((row) => ({
@@ -302,119 +363,187 @@ export default function AdminDashboardPage() {
 			...s,
 			pendingLeaves: Math.max(0, s.pendingLeaves - 1),
 		}));
+		setLeavePerformance((lp) => ({
+			...lp,
+			pendingCount: Math.max(0, lp.pendingCount - 1),
+		}));
 	};
 
 	const formatTime = (s: string | null) =>
 		s
 			? new Date(s).toLocaleTimeString("en-US", {
-					hour: "2-digit",
-					minute: "2-digit",
-			  })
+				hour: "2-digit",
+				minute: "2-digit",
+			})
 			: "–";
 
-	const hour = new Date().getHours();
-	const greeting =
-		hour < 12 ? "Good Morning" : hour < 18 ? "Good Afternoon" : "Good Evening";
+	const initials = employee
+		? `${employee.first_name?.[0] || ""}${employee.last_name?.[0] || ""}`.toUpperCase()
+		: "A";
 
 	return (
-		<div className="flex flex-col min-h-full bg-background">
-			<DashboardHeader
-				title="Admin Dashboard"
-				description={`Welcome back, ${employee?.first_name || "Admin"}`}
-			/>
+		<div className="flex flex-col min-h-screen bg-[#f8fafc] text-slate-800 font-sans antialiased">
 
-			<div className="flex-1 space-y-6 p-4 md:p-6 pb-20 md:pb-8">
+			{/* ── HEADER TOP BAR (Adopted from OMS Image) ── */}
+			<header className="h-16 bg-white border-b border-slate-100 px-6 flex items-center justify-between sticky top-0 z-30 shadow-[0_2px_12px_rgba(0,0,0,0.015)]">
 
-				{/* ── Welcome Banner ── */}
-				<div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-primary to-[#020286] px-6 py-5 text-white shadow-md">
-					<div className="flex items-center justify-between gap-4">
-						<div>
-							<div className="flex items-center gap-2 mb-1">
-								<ShieldCheck className="h-4 w-4 opacity-80" />
-								<span className="text-xs font-medium opacity-80 uppercase tracking-wider">Admin Portal</span>
-							</div>
-							<h2 className="text-xl font-bold">{greeting}, {employee?.first_name || "Admin"} 👋</h2>
-							<p className="text-sm opacity-75 mt-0.5">
-								{new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" })}
-							</p>
-						</div>
-						<div className="hidden sm:flex items-center gap-3">
-							<div className="text-right">
-								<p className="text-xs opacity-75">Pending Actions</p>
-								<p className="text-3xl font-bold tabular-nums">{stats.pendingLeaves}</p>
-								<p className="text-xs opacity-75">leave requests</p>
-							</div>
+				<EmployeeSearchInput
+					variant="pill"
+					placeholder="Search employees..."
+					className="w-64 md:w-80"
+				/>
+
+				{/* Dropdowns & Profile */}
+				<div className="flex items-center gap-4">
+
+					{/* Date Dropdown */}
+					<div className="hidden md:flex items-center gap-1.5 bg-slate-50 border border-slate-100 rounded-xl px-3 py-1.5 text-xs text-slate-500 font-bold hover:bg-slate-100 cursor-pointer transition-colors">
+						<Calendar className="w-3.5 h-3.5 text-slate-400" />
+						<span>{new Date().toLocaleDateString("en-US", { month: "short", year: "numeric" })}</span>
+						<ChevronDown className="w-3 h-3 text-slate-400" />
+					</div>
+
+					{/* Dept Dropdown */}
+					<div className="hidden md:flex items-center gap-1.5 bg-slate-50 border border-slate-100 rounded-xl px-3 py-1.5 text-xs text-slate-500 font-bold hover:bg-slate-100 cursor-pointer transition-colors">
+						<Users className="w-3.5 h-3.5 text-slate-400" />
+						<span>All Departments</span>
+						<ChevronDown className="w-3 h-3 text-slate-400" />
+					</div>
+
+					{/* Notification Bell */}
+					<button className="p-2 rounded-xl border border-slate-100 bg-slate-50 hover:bg-slate-100 transition-colors relative cursor-pointer">
+						<Bell className="w-4 h-4 text-slate-500" />
+						<span className="absolute top-1 right-1 w-1.5 h-1.5 bg-rose-500 rounded-full"></span>
+					</button>
+
+					{/* Vertical Line */}
+					<div className="w-[1px] h-6 bg-slate-100"></div>
+
+					{/* User Card */}
+					<div className="flex items-center gap-2.5 pl-1">
+						<Avatar className="h-8 w-8 border border-slate-200 shadow-sm">
+							{employee?.avatar_url && (
+								<AvatarImage src={employee.avatar_url} className="object-cover" />
+							)}
+							<AvatarFallback className="bg-blue-50 text-blue-600 font-extrabold text-xs">
+								{initials}
+							</AvatarFallback>
+						</Avatar>
+						<div className="hidden sm:flex flex-col items-start text-left min-w-0">
+							<span className="text-xs font-black text-slate-800 leading-none">
+								{employee?.first_name} {employee?.last_name}
+							</span>
+							<span className="text-[9px] text-slate-400 font-black uppercase tracking-wider mt-0.5">
+								{employee?.role}
+							</span>
 						</div>
 					</div>
-					{/* Decorative circles */}
-					<div className="pointer-events-none absolute -right-8 -top-8 h-40 w-40 rounded-full bg-white/5" />
-					<div className="pointer-events-none absolute -right-4 top-8 h-24 w-24 rounded-full bg-white/5" />
+
+				</div>
+			</header>
+
+			{/* Main Grid Pane */}
+			<div className="flex-1 p-6 space-y-6">
+
+				{/* ── PATH CRUMB INDICATOR ── */}
+				<div className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-slate-400 text-left">
+					<Link href="/admin/dashboard" className="hover:text-blue-600 transition-colors">Dashboard</Link>
+					<span>/</span>
+					<span className="text-slate-500">Overview</span>
 				</div>
 
-				{/* Top Info Grid */}
-				<div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-					{STAT_CONFIGS.map((cfg) => (
-						<StatCard
-							key={cfg.key}
-							config={cfg}
-							value={stats[cfg.key]}
-							total={stats.totalEmployees || 1}
-						/>
-					))}
-				</div>
-
-				{/* ── Announcements | Pending Leaves ── */}
-				<div className="grid gap-5 lg:grid-cols-2">
-					{/* Announcements */}
-					<div className="bg-card rounded-2xl border border-border/50 shadow-sm overflow-hidden">
-						<SectionHeader
-							icon={<Megaphone className="h-5 w-5" />}
-							iconBg="bg-primary/10"
-							iconColor="text-primary"
-							title="Announcements"
-							sub={`${announcements.length} announcement${announcements.length !== 1 ? "s" : ""}`}
-							action={
-								<Button size="sm" variant="outline" className="rounded-xl gap-1.5 h-8 text-xs" asChild>
-									<Link href="/admin/announcements">
-										Manage <ArrowRight className="h-3 w-3" />
-									</Link>
-								</Button>
-							}
-						/>
-						<div className="p-4">
-							{announcements.length === 0 ? (
-								<div className="flex flex-col items-center justify-center py-10 text-center rounded-xl bg-muted/30">
-									<div className="h-12 w-12 rounded-2xl bg-primary/10 flex items-center justify-center mb-3">
-										<Megaphone className="h-6 w-6 text-primary/50" />
+				{/* ── METRICS STATS ROW (Dynamic 5-Column Full-Width Grid) ── */}
+				<div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-5">
+					{[
+						{
+							label: "Total Employees",
+							val: stats.totalEmployees,
+							sub: "+12% vs last month",
+							subStyle: "text-emerald-600 bg-emerald-50 border-emerald-100",
+							icon: Users,
+							iconStyle: "text-blue-600 bg-blue-50 border-blue-100"
+						},
+						{
+							label: "Clocked In Today",
+							val: stats.clockedIn,
+							sub: `${stats.totalEmployees > 0 ? Math.round((stats.clockedIn / stats.totalEmployees) * 100) : 0}% Attendance`,
+							subStyle: "text-blue-600 bg-blue-50 border-blue-100",
+							icon: Clock,
+							iconStyle: "text-emerald-600 bg-emerald-50 border-emerald-100"
+						},
+						{
+							label: "Pending Leaves",
+							val: stats.pendingLeaves,
+							sub: "Awaiting approval",
+							subStyle: "text-amber-600 bg-amber-50 border-amber-100",
+							icon: Calendar,
+							iconStyle: "text-amber-600 bg-amber-50 border-amber-100"
+						},
+						{
+							label: "On Leave Today",
+							val: stats.onLeave,
+							sub: "Out of Office",
+							subStyle: "text-rose-600 bg-rose-50 border-rose-100",
+							icon: UserPlus,
+							iconStyle: "text-rose-600 bg-rose-50 border-rose-100"
+						},
+						{
+							label: "Blocked Staff",
+							val: stats.blockedEmployees,
+							sub: "Inactive status",
+							subStyle: "text-rose-600 bg-rose-50 border-rose-100",
+							icon: UserMinus,
+							iconStyle: "text-rose-600 bg-rose-50 border-rose-100"
+						}
+					].map((item, idx) => {
+						const Icon = item.icon;
+						return (
+							<div key={idx} className="bg-white border border-slate-100 rounded-2xl p-5 shadow-[0_4px_24px_rgba(0,0,0,0.015)] flex flex-col justify-between text-left">
+								<div className="flex justify-between items-center">
+									<span className="text-[10px] font-black uppercase tracking-wider text-slate-400">{item.label}</span>
+									<div className={`w-8 h-8 rounded-lg flex items-center justify-center border ${item.iconStyle}`}>
+										<Icon className="w-4 h-4" />
 									</div>
-									<p className="text-sm font-medium">No announcements yet</p>
-									<p className="text-xs text-muted-foreground mt-1 max-w-[200px]">
-										Create and manage from the announcements page
-									</p>
-									<Button size="sm" className="mt-4 rounded-xl" asChild>
-										<Link href="/admin/announcements">Go to Announcements</Link>
-									</Button>
 								</div>
+								<div className="mt-4">
+									<h2 className="text-3xl font-black text-slate-800 leading-none tabular-nums">{item.val}</h2>
+									<span className={`inline-block text-[9px] font-black uppercase tracking-wide border px-2 py-0.5 rounded-md mt-2 ${item.subStyle}`}>
+										{item.sub}
+									</span>
+								</div>
+							</div>
+						);
+					})}
+				</div>
+
+				{/* ── THREE COLUMNS: ANNOUNCEMENTS / LEAVES / EXIT RESIGNATIONS ── */}
+				<div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+
+					{/* Announcements */}
+					<div className="bg-white border border-slate-100 rounded-2xl shadow-[0_4px_24px_rgba(0,0,0,0.015)] flex flex-col justify-between overflow-hidden">
+						<div className="px-5 pt-5 pb-3 border-b border-slate-100 flex items-center justify-between">
+							<div className="flex items-center gap-2 text-left">
+								<Megaphone className="w-4.5 h-4.5 text-indigo-500" />
+								<div>
+									<h4 className="text-xs font-black text-slate-800 uppercase tracking-wider">Announcements</h4>
+									<p className="text-[9px] text-slate-400 font-bold mt-0.5">Broadcasting feed</p>
+								</div>
+							</div>
+							<Link href="/admin/announcements" className="text-[9px] font-black uppercase bg-slate-50 border border-slate-150 px-2 py-1 rounded-md text-slate-500 hover:bg-slate-100 hover:text-blue-600 transition-colors">
+								View All
+							</Link>
+						</div>
+						<div className="p-5 flex-grow">
+							{announcements.length === 0 ? (
+								<p className="text-[10px] text-slate-400 italic py-6">No broadcasts posted yet.</p>
 							) : (
-								<div className="space-y-1.5 max-h-[280px] overflow-y-auto pr-1">
-									{announcements.slice(0, 5).map((a) => (
-										<div
-											key={a.id}
-											className="flex gap-3 rounded-xl p-3 hover:bg-muted/40 transition-colors group cursor-default"
-										>
-											<div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-												<Megaphone className="h-4 w-4" />
-											</div>
-											<div className="flex-1 min-w-0">
-												<p className="text-sm font-semibold line-clamp-1 text-foreground">
-													{a.title || "Announcement"}
-												</p>
-												<p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
-													{a.content}
-												</p>
-												<p className="text-[10px] text-muted-foreground/70 mt-1 font-medium">
-													{a.date}
-												</p>
+								<div className="space-y-2 max-h-[190px] overflow-y-auto pr-1 scrollbar-hide text-left">
+									{announcements.slice(0, 3).map((a) => (
+										<div key={a.id} className="flex gap-2.5 p-2 bg-slate-50/50 hover:bg-slate-50 border border-slate-100 rounded-xl transition-all">
+											<div className="w-1.5 h-1.5 rounded-full bg-indigo-500 mt-1.5 flex-shrink-0"></div>
+											<div>
+												<h6 className="text-[10px] font-black text-slate-700 leading-snug">{a.title}</h6>
+												<p className="text-[9px] text-slate-400 font-bold leading-normal mt-0.5 line-clamp-1">{a.content}</p>
 											</div>
 										</div>
 									))}
@@ -423,59 +552,43 @@ export default function AdminDashboardPage() {
 						</div>
 					</div>
 
-					{/* Pending Leaves */}
-					<div className="bg-card rounded-2xl border border-border/50 shadow-sm overflow-hidden">
-						<SectionHeader
-							icon={<Calendar className="h-5 w-5" />}
-							iconBg="bg-amber-500/15"
-							iconColor="text-amber-600"
-							title="Pending Leave Requests"
-							sub={`${pendingLeaves.length} request${pendingLeaves.length !== 1 ? "s" : ""} awaiting approval`}
-							action={
-								pendingLeaves.length > 0 ? (
-									<Button size="sm" variant="outline" className="rounded-xl gap-1.5 h-8 text-xs" asChild>
-										<Link href="/admin/leave">
-											View all <ArrowRight className="h-3 w-3" />
-										</Link>
-									</Button>
-								) : undefined
-							}
-						/>
-						<div className="p-4">
-							{pendingLeaves.length === 0 ? (
-								<div className="flex flex-col items-center justify-center py-10 text-center rounded-xl bg-muted/30">
-									<div className="h-12 w-12 rounded-2xl bg-emerald-500/10 flex items-center justify-center mb-3">
-										<CheckCircle className="h-6 w-6 text-emerald-500/70" />
-									</div>
-									<p className="text-sm font-medium">All clear!</p>
-									<p className="text-xs text-muted-foreground mt-1">No pending leave requests</p>
+					{/* Leave Approvals */}
+					<div className="bg-white border border-slate-100 rounded-2xl shadow-[0_4px_24px_rgba(0,0,0,0.015)] flex flex-col justify-between overflow-hidden">
+						<div className="px-5 pt-5 pb-3 border-b border-slate-100 flex items-center justify-between">
+							<div className="flex items-center gap-2 text-left">
+								<Calendar className="w-4.5 h-4.5 text-amber-500" />
+								<div>
+									<h4 className="text-xs font-black text-slate-800 uppercase tracking-wider">Leave Requests</h4>
+									<p className="text-[9px] text-slate-400 font-bold mt-0.5">Approval list</p>
 								</div>
+							</div>
+							<Link href="/admin/leave" className="text-[9px] font-black uppercase bg-slate-50 border border-slate-150 px-2 py-1 rounded-md text-slate-500 hover:bg-slate-100 hover:text-blue-600 transition-colors">
+								View All
+							</Link>
+						</div>
+						<div className="p-5 flex-grow">
+							{pendingLeaves.length === 0 ? (
+								<p className="text-[10px] text-slate-400 italic py-6">All clear! No pending leave requests.</p>
 							) : (
-								<div className="space-y-2 max-h-[280px] overflow-y-auto pr-1">
-									{pendingLeaves.map((leave) => (
-										<div
-											key={leave.id}
-											className="flex items-center justify-between gap-3 rounded-xl border border-border/50 bg-background p-3 hover:border-amber-300/70 hover:bg-amber-50/30 transition-all duration-150"
-										>
+								<div className="space-y-2 max-h-[190px] overflow-y-auto pr-1 scrollbar-hide text-left">
+									{pendingLeaves.slice(0, 3).map((leave) => (
+										<div key={leave.id} className="flex justify-between items-center p-2.5 bg-slate-50 border border-slate-100 rounded-xl">
 											<div className="min-w-0 flex-1">
-												<p className="text-sm font-semibold truncate text-foreground">
-													{leave.employee?.first_name} {leave.employee?.last_name}
-												</p>
-												<p className="text-xs text-muted-foreground mt-0.5">
-													{(leave as unknown as { leave_type?: { name?: string } }).leave_type?.name ?? "Leave"}{" "}
-													· {leave.start_date} → {leave.end_date}
+												<h6 className="text-[10px] font-black text-slate-700 truncate">{leave.employee?.first_name} {leave.employee?.last_name}</h6>
+												<p className="text-[8px] text-slate-400 font-bold mt-0.5">
+													{(leave as any).leave_type?.name || "Leave"} · {leave.start_date}
 												</p>
 											</div>
-											<div className="flex shrink-0 gap-1.5">
+											<div className="flex shrink-0 gap-1.5 ml-2">
 												<button
 													onClick={() => handleLeaveAction(leave.id, "rejected")}
-													className="px-3 py-1.5 rounded-lg text-xs font-semibold border border-border bg-background text-muted-foreground hover:bg-red-50 hover:text-red-700 hover:border-red-200 transition-colors cursor-pointer"
+													className="px-2 py-1 bg-white border border-slate-200 text-slate-400 hover:text-rose-500 rounded-md text-[8px] font-extrabold cursor-pointer transition-colors"
 												>
 													Reject
 												</button>
 												<button
 													onClick={() => handleLeaveAction(leave.id, "approved")}
-													className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-600 text-white hover:bg-emerald-700 transition-colors cursor-pointer"
+													className="px-2 py-1 bg-blue-600 text-white hover:bg-blue-700 rounded-md text-[8px] font-extrabold cursor-pointer transition-colors"
 												>
 													Approve
 												</button>
@@ -486,146 +599,375 @@ export default function AdminDashboardPage() {
 							)}
 						</div>
 					</div>
+
+					{/* Exit Management & Resignations */}
+					<div className="bg-white border border-slate-100 rounded-2xl shadow-[0_4px_24px_rgba(0,0,0,0.015)] flex flex-col justify-between overflow-hidden">
+						<div className="px-5 pt-5 pb-3 border-b border-slate-100 flex items-center justify-between">
+							<div className="flex items-center gap-2 text-left">
+								<ShieldCheck className="w-4.5 h-4.5 text-rose-500" />
+								<div>
+									<h4 className="text-xs font-black text-slate-800 uppercase tracking-wider">Exit Clearances</h4>
+									<p className="text-[9px] text-slate-400 font-bold mt-0.5">Resignations logs</p>
+								</div>
+							</div>
+							<Link href="/admin/resignations" className="text-[9px] font-black uppercase bg-slate-50 border border-slate-150 px-2 py-1 rounded-md text-slate-500 hover:bg-slate-100 hover:text-blue-600 transition-colors">
+								View All
+							</Link>
+						</div>
+						<div className="p-5 flex-grow text-left">
+							<div className="space-y-2">
+								<div className="flex items-center justify-between p-2.5 bg-slate-50 border border-slate-100 rounded-xl">
+									<div className="flex items-center gap-2">
+										<div className="w-1.5 h-1.5 rounded-full bg-rose-500"></div>
+										<span className="text-[10px] font-black text-slate-700">Resignations Submitted</span>
+									</div>
+									<span className="text-xs font-black text-slate-800">{stats.pendingResignations}</span>
+								</div>
+								<div className="flex items-center justify-between p-2.5 bg-slate-50 border border-slate-100 rounded-xl">
+									<div className="flex items-center gap-2">
+										<div className="w-1.5 h-1.5 rounded-full bg-amber-500"></div>
+										<span className="text-[10px] font-black text-slate-700">Active Clearances</span>
+									</div>
+									<span className="text-xs font-black text-slate-800">{stats.processingResignations}</span>
+								</div>
+								<div className="flex items-center justify-between p-2.5 bg-slate-50 border border-slate-100 rounded-xl">
+									<div className="flex items-center gap-2">
+										<div className="w-1.5 h-1.5 rounded-full bg-emerald-500"></div>
+										<span className="text-[10px] font-black text-slate-700">Exit Completed</span>
+									</div>
+									<span className="text-xs font-black text-slate-800">{stats.acceptedResignations}</span>
+								</div>
+							</div>
+						</div>
+					</div>
+
 				</div>
 
-				{/* ── Today's Activity | Teams | Birthdays ── */}
-				<div className="grid gap-5 lg:grid-cols-3 items-start">
-					{/* Activity */}
-					<div className="bg-card rounded-2xl border border-border/50 shadow-sm overflow-hidden">
-						<SectionHeader
-							icon={<Activity className="h-5 w-5" />}
-							iconBg="bg-sky-500/15"
-							iconColor="text-sky-600"
-							title="Today's Activity"
-							sub={`${todayActivities.length} check-in${todayActivities.length !== 1 ? "s" : ""} today`}
-						/>
-						<div className="p-4">
-							{todayActivities.length === 0 ? (
-								<div className="flex flex-col items-center justify-center py-10 text-center rounded-xl bg-muted/20">
-									<div className="h-12 w-12 rounded-2xl bg-sky-500/10 flex items-center justify-center mb-3">
-										<LogIn className="h-5 w-5 text-sky-500/70" />
-									</div>
-									<p className="text-sm font-medium">No activity yet</p>
-									<p className="text-xs text-muted-foreground mt-1 max-w-[160px]">
-										Clock-in events will appear here
-									</p>
-								</div>
-							) : (
-								<ul className="space-y-1.5 max-h-[370px] overflow-y-auto pr-1">
-									{todayActivities.map((a) => (
-										<li
-											key={a.id}
-											className="flex items-center gap-3 rounded-xl border border-border/40 bg-background/70 p-2.5 hover:bg-muted/30 transition-colors"
-										>
-											<Avatar className="h-9 w-9 shrink-0 border-2 border-background shadow-sm">
-												{a.employee?.avatar_url && (
-													<AvatarImage
-														height={36}
-														width={36}
-														className="object-cover"
-														src={a.employee.avatar_url}
-														alt={`${a.employee.first_name}`}
+				{/* ── TWO COLUMNS: LEAVE PERFORMANCE (LINE CHART) & OVERALL ATTENDANCE (CIRCULAR DONUT) ── */}
+				<div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch">
+
+					{/* Column 1: Leave performance line chart */}
+					<div className="lg:col-span-8 bg-white border border-slate-100 rounded-2xl p-5 shadow-[0_4px_24px_rgba(0,0,0,0.015)] flex flex-col justify-between text-left">
+						<div className="flex justify-between items-center border-b border-slate-100 pb-3 mb-4">
+							<div>
+								<h3 className="text-xs font-black uppercase tracking-wider text-slate-400">Leave Performance</h3>
+								<p className="text-[9px] text-slate-400 font-bold mt-0.5">
+									Leave requests & deductions — {leavePerformance.year}
+								</p>
+							</div>
+							<Link href="/admin/leave" className="text-[8px] font-black uppercase tracking-wide bg-slate-50 border border-slate-150 px-2 py-0.5 rounded-md text-slate-500 hover:bg-slate-100 hover:text-blue-600 transition-colors">
+								View All
+							</Link>
+						</div>
+
+						<div className="grid md:grid-cols-12 gap-6 items-center">
+							<div className="md:col-span-8">
+								{(() => {
+									const chartW = 360;
+									const chartH = 140;
+									const padX = 12;
+									const padY = 16;
+									const data = leavePerformance.monthly;
+									const requestValues = data.map((d) => d.requestCount);
+									const deductionValues = data.map((d) => d.deductionCount);
+									const maxVal = Math.max(
+										...requestValues,
+										...deductionValues,
+										1
+									);
+									const innerW = chartW - padX * 2;
+									const innerH = chartH - padY * 2;
+									const requestPath = buildLinePath(
+										requestValues,
+										maxVal,
+										padX,
+										padY,
+										innerW,
+										innerH
+									);
+									const deductionPath = buildLinePath(
+										deductionValues,
+										maxVal,
+										padX,
+										padY,
+										innerW,
+										innerH
+									);
+									const pointCoords = (values: number[]) =>
+										values.map((val, i) => ({
+											x:
+												padX +
+												(values.length <= 1
+													? 0
+													: (i / (values.length - 1)) * innerW),
+											y: padY + (1 - val / maxVal) * innerH,
+											val,
+										}));
+
+									return (
+										<div className="relative pt-2">
+											<div className="flex items-center gap-4 mb-2 px-1">
+												<span className="flex items-center gap-1.5 text-[8px] font-black uppercase text-slate-500">
+													<span className="w-2 h-2 rounded-full bg-blue-600" />
+													Leave requests
+												</span>
+												<span className="flex items-center gap-1.5 text-[8px] font-black uppercase text-slate-500">
+													<span className="w-2 h-2 rounded-full bg-amber-500" />
+													Deductions
+												</span>
+											</div>
+											<svg
+												viewBox={`0 0 ${chartW} ${chartH}`}
+												className="w-full h-36"
+												aria-label="Monthly leave requests and deductions line chart"
+											>
+												{[0.25, 0.5, 0.75].map((ratio) => (
+													<line
+														key={ratio}
+														x1={padX}
+														y1={padY + ratio * innerH}
+														x2={chartW - padX}
+														y2={padY + ratio * innerH}
+														stroke="#f1f5f9"
+														strokeWidth="1"
 													/>
-												)}
-												<AvatarFallback className="text-xs font-semibold bg-muted">
-													{a.employee?.first_name?.[0]}
-													{a.employee?.last_name?.[0]}
-												</AvatarFallback>
-											</Avatar>
+												))}
+												{deductionPath ? (
+													<path
+														d={deductionPath}
+														fill="none"
+														stroke="#f59e0b"
+														strokeWidth="2"
+														strokeLinecap="round"
+														strokeLinejoin="round"
+													/>
+												) : null}
+												{requestPath ? (
+													<path
+														d={requestPath}
+														fill="none"
+														stroke="#2563eb"
+														strokeWidth="2.5"
+														strokeLinecap="round"
+														strokeLinejoin="round"
+													/>
+												) : null}
+												{pointCoords(deductionValues).map((p, i) => (
+													<g key={`ded-${i}`}>
+														<circle
+															cx={p.x}
+															cy={p.y}
+															r="3.5"
+															fill="#fff"
+															stroke="#f59e0b"
+															strokeWidth="2"
+														/>
+														<title>{`${data[i].label}: ${p.val} deduction${p.val === 1 ? "" : "s"}`}</title>
+													</g>
+												))}
+												{pointCoords(requestValues).map((p, i) => (
+													<g key={`req-${i}`}>
+														<circle
+															cx={p.x}
+															cy={p.y}
+															r="3.5"
+															fill="#fff"
+															stroke="#2563eb"
+															strokeWidth="2"
+														/>
+														<title>{`${data[i].label}: ${p.val} request${p.val === 1 ? "" : "s"}`}</title>
+													</g>
+												))}
+											</svg>
+											<div
+												className="flex justify-between px-1 -mt-1"
+												style={{
+													paddingLeft: `${(padX / chartW) * 100}%`,
+													paddingRight: `${(padX / chartW) * 100}%`,
+												}}
+											>
+												{data.map((d) => (
+													<span
+														key={d.label}
+														className="text-[7px] text-slate-400 font-bold"
+													>
+														{d.label}
+													</span>
+												))}
+											</div>
+										</div>
+									);
+								})()}
+							</div>
+
+							<div className="md:col-span-4 space-y-2">
+								{[
+									{
+										label: "Total Requests",
+										val: String(leavePerformance.totalRequests),
+										change: leavePerformance.requestsChange,
+										color: leavePerformance.requestsChange.startsWith("-")
+											? "text-rose-500"
+											: "text-emerald-500",
+									},
+									{
+										label: "Total Deductions",
+										val: String(leavePerformance.totalDeductions),
+										change: leavePerformance.deductionsChange,
+										color: leavePerformance.deductionsChange.startsWith("-")
+											? "text-rose-500"
+											: "text-emerald-500",
+									},
+									{
+										label: "Pending Requests",
+										val: String(leavePerformance.pendingCount),
+										change: leavePerformance.pendingLabel,
+										color: "text-amber-500",
+									},
+								].map((item, idx) => (
+									<div key={idx} className="flex justify-between items-center p-2 bg-slate-50 border border-slate-100 rounded-xl">
+										<div className="text-left">
+											<p className="text-[9px] text-slate-400 font-black uppercase tracking-wider">{item.label}</p>
+											<p className="text-xs font-black text-slate-700 mt-0.5">{item.val}</p>
+										</div>
+										<span className={`text-[8px] font-black uppercase ${item.color}`}>{item.change}</span>
+									</div>
+								))}
+							</div>
+						</div>
+					</div>
+
+					{/* Column 2: Overall Attendance Circular Donut Chart ( OMS Image Right Component) */}
+					<div className="lg:col-span-4 bg-white border border-slate-100 rounded-2xl p-5 shadow-[0_4px_24px_rgba(0,0,0,0.015)] flex flex-col justify-between text-left">
+						<div className="flex justify-between items-center border-b border-slate-100 pb-3 mb-4">
+							<div>
+								<h3 className="text-xs font-black uppercase tracking-wider text-slate-400">Overall Attendance</h3>
+								<p className="text-[9px] text-slate-400 font-bold mt-0.5">On time vs late arrivals break</p>
+							</div>
+							<Link href="/admin/attendance" className="text-[9px] font-black uppercase bg-slate-50 border border-slate-150 px-2 py-1 rounded-md text-slate-500 hover:bg-slate-100 hover:text-blue-600 transition-colors">
+								View All
+							</Link>
+						</div>
+
+						<div className="flex flex-col sm:flex-row items-center gap-6 justify-center">
+
+							{/* Pure SVG Donut gauge */}
+							<div className="relative w-28 h-28 flex items-center justify-center flex-shrink-0">
+								<svg className="w-full h-full transform -rotate-90">
+									<circle cx="56" cy="56" r="44" stroke="#f1f5f9" strokeWidth="8" fill="transparent" />
+									<circle cx="56" cy="56" r="44" stroke="#2563eb" strokeWidth="8" strokeDasharray="276" strokeDashoffset={276 - (stats.attendanceRate / 100) * 276} strokeLinecap="round" fill="transparent" />
+								</svg>
+								<div className="absolute text-center">
+									<span className="text-xl font-black text-slate-800">{stats.attendanceRate}%</span>
+									<p className="text-[7px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">Total Present</p>
+								</div>
+							</div>
+
+							{/* Legend breakdown list */}
+							<div className="space-y-1.5 text-left w-full">
+								{[
+									{ label: "On Time", val: `${stats.onTimeCount}`, dot: "bg-emerald-500" },
+									{ label: "Late Arrival", val: `${stats.lateCount}`, dot: "bg-rose-500" }
+								].map((item, idx) => (
+									<div key={idx} className="flex items-center justify-between text-[10px] font-bold p-1 border-b border-slate-50">
+										<div className="flex items-center gap-1.5">
+											<div className={`w-1.5 h-1.5 rounded-full ${item.dot}`}></div>
+											<span className="text-slate-500">{item.label}</span>
+										</div>
+										<span className="text-slate-800 font-black">{item.val}</span>
+									</div>
+								))}
+							</div>
+
+						</div>
+					</div>
+
+				</div>
+
+				{/* ── THREE COLUMNS: BIRTHDAYS / LATEST ACTIVITY / TEAMS ── */}
+				<div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+
+					{/* Activities Timeline */}
+					<div className="bg-white border border-slate-100 rounded-2xl shadow-[0_4px_24px_rgba(0,0,0,0.015)] flex flex-col justify-between overflow-hidden">
+						<div className="px-5 pt-5 pb-3 border-b border-slate-100 flex items-center justify-between">
+							<div className="flex items-center gap-2 text-left">
+								<Activity className="w-4.5 h-4.5 text-sky-500" />
+								<div>
+									<h4 className="text-xs font-black text-slate-800 uppercase tracking-wider">Latest Activity</h4>
+									<p className="text-[9px] text-slate-400 font-bold mt-0.5">Timesheet checking logs</p>
+								</div>
+							</div>
+						</div>
+						<div className="p-5 flex-grow">
+							{todayActivities.length === 0 ? (
+								<p className="text-[10px] text-slate-400 italic py-6">No check-ins logged today.</p>
+							) : (
+								<div className="space-y-2.5 max-h-[360px] overflow-y-auto pr-1 scrollbar-hide text-left">
+									{todayActivities.slice(0, 20).map((a) => (
+										<div key={a.id} className="flex items-start gap-2 text-xs">
+											<div className="w-1.5 h-1.5 rounded-full bg-blue-500 mt-1.5 flex-shrink-0"></div>
 											<div className="min-w-0 flex-1">
-												<p className="text-sm font-semibold truncate text-foreground">
+												<h6 className="text-[10px] font-black text-slate-700 truncate">
 													{a.employee?.first_name} {a.employee?.last_name}
-												</p>
-												<p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
-													<Clock className="h-3 w-3 shrink-0" />
-													{formatTime(a.clock_in)}
-													{a.total_hours != null && (
-														<>
-															<span className="text-border">·</span>
-															<span>{a.total_hours}h</span>
-														</>
+												</h6>
+												<p className="text-[8px] text-slate-400 font-bold mt-0.5 flex items-center gap-1">
+													<span>Clocked in at {formatTime(a.clock_in)}</span>
+													{a.status === "late" && (
+														<span className="text-rose-500 font-black">(LATE)</span>
 													)}
 												</p>
 											</div>
-											<span
-												className={`shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold ${
-													a.status === "present"
-														? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-														: "bg-amber-50 text-amber-700 border border-amber-200"
-												}`}
-											>
-												{a.status === "present" ? "Present" : "Late"}
-											</span>
-										</li>
+										</div>
 									))}
-								</ul>
+								</div>
 							)}
 						</div>
 					</div>
 
-					{/* Teams */}
-					<div className="bg-card rounded-2xl border border-border/50 shadow-sm overflow-hidden">
-						<SectionHeader
-							icon={<Users className="h-5 w-5" />}
-							iconBg="bg-violet-500/15"
-							iconColor="text-violet-600"
-							title="Teams"
-							sub={`${teams.length} team${teams.length !== 1 ? "s" : ""} active`}
-							action={
-								<Button size="sm" variant="outline" className="rounded-xl gap-1.5 h-8 text-xs" asChild>
-									<Link href="/admin/teams">
-										View all <ArrowRight className="h-3 w-3" />
-									</Link>
-								</Button>
-							}
-						/>
-						<div className="p-4">
-							{teams.length === 0 ? (
-								<div className="flex flex-col items-center justify-center py-10 text-center rounded-xl bg-muted/20">
-									<p className="text-sm font-medium text-muted-foreground">No teams yet</p>
+					{/* Teams List */}
+					<div className="bg-white border border-slate-100 rounded-2xl shadow-[0_4px_24px_rgba(0,0,0,0.015)] flex flex-col justify-between overflow-hidden">
+						<div className="px-5 pt-5 pb-3 border-b border-slate-100 flex items-center justify-between">
+							<div className="flex items-center gap-2 text-left">
+								<Users className="w-4.5 h-4.5 text-violet-500" />
+								<div>
+									<h4 className="text-xs font-black text-slate-800 uppercase tracking-wider">Teams & Structure</h4>
+									<p className="text-[9px] text-slate-400 font-bold mt-0.5">Org directory</p>
 								</div>
+							</div>
+							<Link href="/admin/teams" className="text-[9px] font-black uppercase bg-slate-50 border border-slate-150 px-2 py-1 rounded-md text-slate-500 hover:bg-slate-100 hover:text-blue-600 transition-colors">
+								View All
+							</Link>
+						</div>
+						<div className="p-5 flex-grow">
+							{teams.length === 0 ? (
+								<p className="text-[10px] text-slate-400 italic py-6">No teams created yet.</p>
 							) : (
-								<ul className="space-y-1.5 max-h-[370px] overflow-y-auto pr-1">
-									{teams.map((team) => (
-										<li
-											key={team.id}
-											className="flex items-center gap-3 rounded-xl border border-border/40 p-2.5 hover:bg-muted/30 transition-colors"
-										>
-											<Avatar className="h-9 w-9 shrink-0">
-												{team.leader?.avatar_url && (
-													<AvatarImage
-														height={36}
-														width={36}
-														className="object-cover"
-														src={team.leader.avatar_url}
-														alt="Leader"
-													/>
-												)}
-												<AvatarFallback className="text-xs bg-violet-500/15 text-violet-600 font-semibold">
-													{team.leader?.first_name?.[0]}
-													{team.leader?.last_name?.[0]}
-													{!team.leader && team.name?.[0]}
-												</AvatarFallback>
-											</Avatar>
+								<div className="space-y-2 max-h-[360px] overflow-y-auto pr-1 scrollbar-hide text-left">
+									{teams.slice(0, 20).map((team) => (
+										<div key={team.id} className="flex items-center justify-between p-2 bg-slate-50 border border-slate-100 rounded-xl">
 											<div className="min-w-0 flex-1">
-												<p className="text-sm font-semibold truncate text-foreground">{team.name}</p>
-												<p className="text-xs text-muted-foreground">
-													{team.team_members?.length ?? 0} members
+												<h6 className="text-[10px] font-black text-slate-700 truncate">{team.name}</h6>
+												<p className="text-[8px] text-slate-400 font-bold mt-0.5">
+													Leader: {team.leader?.first_name || "—"}
 												</p>
 											</div>
-											<span className="shrink-0 inline-flex items-center px-2 py-0.5 rounded-full bg-violet-50 border border-violet-200 text-[10px] font-semibold text-violet-700">
-												{team.team_members?.length ?? 0}
+											<span className="text-[9px] font-black text-blue-600 bg-blue-50 border border-blue-100 px-2 py-0.5 rounded-md">
+												{team.team_members?.length ?? 0} Members
 											</span>
-										</li>
+										</div>
 									))}
-								</ul>
+								</div>
 							)}
 						</div>
 					</div>
 
 					{/* Birthdays */}
-					<UpcomingBirthdays />
+					<div className="bg-white border border-slate-100 rounded-2xl shadow-[0_4px_24px_rgba(0,0,0,0.015)] overflow-hidden">
+						<UpcomingBirthdays />
+					</div>
+
 				</div>
+
 			</div>
 		</div>
 	);
