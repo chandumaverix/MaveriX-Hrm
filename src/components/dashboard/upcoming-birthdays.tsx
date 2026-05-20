@@ -75,16 +75,16 @@ function BirthdayBadge({
 	const isTomorrow = diffDays === 1;
 
 	const style = isToday
-		? "bg-pink-500/15 text-pink-700 dark:text-pink-300 ring-1 ring-pink-500/30"
+		? "bg-rose-50 dark:bg-rose-950/20 text-rose-500 dark:text-rose-450 border border-rose-100/50 dark:border-rose-900/30 text-[8px]"
 		: isTomorrow
-		? "bg-amber-500/15 text-amber-700 dark:text-amber-300 ring-1 ring-amber-500/30"
-		: "bg-muted/80 text-muted-foreground";
+		? "bg-amber-50 dark:bg-amber-950/20 text-amber-600 dark:text-amber-450 border border-amber-100/50 dark:border-amber-900/30 text-[8px]"
+		: "bg-slate-50 dark:bg-slate-950/40 text-slate-550 dark:text-slate-400 border border-slate-100/80 dark:border-slate-800 text-[8px]";
 
 	return (
 		<span
-			className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium ${style}`}>
-			{isToday && <Sparkles className='h-3 w-3' />}
-			{isTomorrow && <Cake className='h-3 w-3' />}
+			className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 font-black uppercase tracking-wider ${style}`}>
+			{isToday && <Sparkles className='h-2.5 w-2.5' />}
+			{isTomorrow && <Cake className='h-2.5 w-2.5' />}
 			{displayLabel}
 		</span>
 	);
@@ -111,50 +111,49 @@ export function UpcomingBirthdays() {
 	const upcoming = getUpcomingBirthdays(employees);
 
 	return (
-		<Card className="rounded-2xl border-border/50 shadow-sm overflow-hidden bg-gradient-to-b from-pink-50/50 to-transparent dark:from-pink-950/20 dark:to-transparent">
-			<CardHeader className="pb-2">
-				<div className="flex items-center gap-3">
-					<div className="flex h-10 w-10 items-center justify-center rounded-xl bg-pink-500/15 text-pink-600 dark:text-pink-400">
-						<Gift className="h-5 w-5" />
+		<Card className="h-full flex flex-col rounded-2xl border-slate-100 dark:border-slate-800/40 bg-white dark:bg-slate-900 shadow-[0_4px_24px_rgba(0,0,0,0.015)] overflow-hidden">
+			<CardHeader className="px-5 pt-5 pb-3 border-b border-slate-100 dark:border-slate-800/40 flex-shrink-0 flex items-center justify-between">
+				<div className="flex items-center gap-2">
+					<div className="flex h-9 w-9 items-center justify-center rounded-xl bg-pink-50/80 dark:bg-pink-950/20 border border-pink-100/50 dark:border-pink-900/30 text-pink-500 dark:text-pink-400 shadow-[0_2px_8px_rgba(244,63,94,0.05)]">
+						<Gift className="h-4.5 w-4.5" />
 					</div>
-					<div>
-						<CardTitle className="text-base font-semibold">Upcoming Birthdays</CardTitle>
+					<div className="text-left">
+						<CardTitle className="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-white">Upcoming Birthdays</CardTitle>
 						{!loading && upcoming.length > 0 && (
-							<p className="text-xs text-muted-foreground mt-0.5">Next {MONTHS_AHEAD} months</p>
+							<p className="text-[9px] text-slate-400 font-bold mt-0.5">Next {MONTHS_AHEAD} months</p>
 						)}
 					</div>
 				</div>
 			</CardHeader>
-			<CardContent className='pt-0'>
+			<CardContent className='p-5 flex-grow flex flex-col min-h-0'>
 				{loading ? (
-					<div className='space-y-3'>
+					<div className='space-y-2.5 flex-grow'>
 						{[1, 2, 3].map((i) => (
 							<div
 								key={i}
-								className='flex items-center gap-3 rounded-lg p-2'>
-								<div className='h-10 w-10 shrink-0 animate-pulse rounded-full bg-muted' />
+								className='flex items-center gap-3 rounded-xl p-2.5 border border-slate-50 dark:border-slate-850 bg-white dark:bg-slate-900'>
+								<div className='h-8 w-8 shrink-0 animate-pulse rounded-full bg-slate-100 dark:bg-slate-800' />
 								<div className='flex-1 space-y-1.5'>
-									<div className='h-3.5 w-20 animate-pulse rounded bg-muted' />
-									<div className='h-3 w-14 animate-pulse rounded bg-muted/70' />
+									<div className='h-3 w-20 animate-pulse rounded bg-slate-100 dark:bg-slate-800' />
+									<div className='h-2.5 w-14 animate-pulse rounded bg-slate-100/70 dark:bg-slate-800/70' />
 								</div>
 							</div>
 						))}
 					</div>
 				) : upcoming.length === 0 ? (
-					<div className='flex flex-col items-center justify-center py-8 text-center'>
-						<div className='mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-muted/50'>
-							<Cake className='h-7 w-7 text-muted-foreground/60' />
+					<div className='flex flex-col items-center justify-center py-8 text-center flex-grow'>
+						<div className='mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800/40 text-slate-400'>
+							<Cake className='h-6 w-6 text-slate-400 dark:text-slate-550' />
 						</div>
-						<p className='text-sm font-medium text-foreground'>
+						<p className='text-xs font-bold text-slate-700 dark:text-slate-300'>
 							No birthdays soon
 						</p>
-						<p className='text-xs text-muted-foreground mt-1 max-w-[180px]'>
-							Birthdays in the next {MONTHS_AHEAD} months will
-							appear here
+						<p className='text-[10px] text-slate-400 font-bold mt-1 max-w-[180px]'>
+							Birthdays in the next {MONTHS_AHEAD} months will appear here
 						</p>
 					</div>
 				) : (
-					<ul className='space-y-2 max-h-[370px] overflow-y-auto pr-1'>
+					<ul className='space-y-2.5 max-h-[300px] overflow-y-auto pr-1 scrollbar-hide flex-grow'>
 						{upcoming.map(
 							({ employee, displayLabel, diffDays }) => {
 								const isToday = diffDays === 0;
@@ -166,33 +165,33 @@ export function UpcomingBirthdays() {
 										key={employee.id}
 										className={
 											isToday
-												? "flex items-center gap-3 rounded-xl border border-pink-200 bg-pink-50/50 p-3 transition-colors dark:border-pink-800/50 dark:bg-pink-950/30"
-												: "flex items-center gap-3 rounded-xl border border-border/50 bg-card p-3 transition-colors hover:bg-muted/30 dark:hover:bg-muted/20"
+												? "flex items-center gap-3 rounded-xl border border-pink-100/80 dark:border-pink-900/30 bg-pink-50/10 dark:bg-pink-950/10 p-2.5 transition-all hover:shadow-[0_2px_12px_rgba(244,63,94,0.03)]"
+												: "flex items-center gap-3 rounded-xl border border-slate-100 dark:border-slate-850 bg-white dark:bg-slate-900 p-2.5 transition-all hover:bg-slate-50 dark:hover:bg-slate-850 hover:shadow-[0_2px_8px_rgba(0,0,0,0.01)]"
 										}>
 										<Avatar
-											className={`h-10 w-10 shrink-0 ${
+											className={
 												isToday
-													? "ring-2 ring-pink-400/50 dark:ring-pink-500/50"
-													: ""
-											}`}>
+													? "h-8 w-8 shrink-0 ring-2 ring-pink-400/50 dark:ring-pink-500/50 border border-white dark:border-slate-900"
+													: "h-8 w-8 shrink-0 border border-slate-100 dark:border-slate-800"
+											}>
 											{employee.avatar_url ? (
 												<AvatarImage
-												className="object-cover"
+													className="object-cover"
 													src={employee.avatar_url}
 													alt={name}
 												/>
 											) : null}
-											<AvatarFallback className='text-xs font-medium bg-muted text-muted-foreground'>
+											<AvatarFallback className='text-[9px] font-black bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400'>
 												{employee.first_name?.[0]}
 												{employee.last_name?.[0]}
 											</AvatarFallback>
 										</Avatar>
-										<div className='flex-1 min-w-0'>
-											<p className='text-sm font-medium truncate text-foreground'>
+										<div className='flex-1 min-w-0 text-left'>
+											<p className={`text-[10px] font-bold truncate ${isToday ? "text-pink-700 dark:text-pink-400" : "text-slate-800 dark:text-slate-200"}`}>
 												{name}
 											</p>
 											{employee.designation && (
-												<p className='text-xs text-muted-foreground truncate mt-0.5'>
+												<p className='text-[9px] text-slate-400 font-bold truncate mt-0.5'>
 													{employee.designation}
 												</p>
 											)}

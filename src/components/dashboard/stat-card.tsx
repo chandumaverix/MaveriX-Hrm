@@ -23,26 +23,28 @@ export function StatCard({
 	className,
 }: StatCardProps) {
 	return (
-		<Card className={cn("rounded-2xl border-0 shadow-sm hover:shadow-md transition-shadow overflow-hidden", className)}>
-			<CardContent className="p-5">
-				<div className="flex items-start justify-between gap-3">
-					<div className="space-y-1 min-w-0">
-						<p className="text-sm font-medium text-muted-foreground truncate">{title}</p>
-						<div className="flex items-baseline gap-2">
-							<h3 className="text-lg font-bold md:text-2xl tabular-nums text-foreground">{value}</h3>
-							{trend && (
-								<span className={cn("text-xs font-medium", trend.isPositive ? "text-success" : "text-destructive")}>
-									{trend.isPositive ? "+" : ""}{trend.value}%
-								</span>
-							)}
-						</div>
-						{description && <p className="text-xs text-muted-foreground">{description}</p>}
-					</div>
-					<div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-						{icon}
-					</div>
+		<Card className={cn("bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800/40 rounded-2xl p-5 shadow-[0_4px_24px_rgba(0,0,0,0.015)] flex flex-col justify-between text-left", className)}>
+			<div className="flex justify-between items-center w-full">
+				<span className="text-[10px] font-black uppercase tracking-wider text-slate-400 truncate">{title}</span>
+				<div className="w-8 h-8 rounded-lg flex items-center justify-center border border-primary/10 bg-primary/5 text-primary shrink-0">
+					{icon}
 				</div>
-			</CardContent>
+			</div>
+			<div className="mt-4 flex flex-col items-start">
+				<div className="flex items-baseline gap-2">
+					<h2 className="text-2xl font-black text-slate-800 dark:text-white leading-none tabular-nums">{value}</h2>
+					{trend && (
+						<span className={cn("inline-block text-[9px] font-black uppercase tracking-wide border px-2 py-0.5 rounded-md", trend.isPositive ? "text-emerald-600 bg-emerald-50 border-emerald-100" : "text-rose-600 bg-rose-50 border-rose-100")}>
+							{trend.isPositive ? "+" : ""}{trend.value}%
+						</span>
+					)}
+				</div>
+				{description && (
+					<span className="inline-block text-[9px] font-black uppercase tracking-wide border border-slate-100 dark:border-slate-800/60 px-2 py-0.5 rounded-md mt-2 text-slate-500 bg-slate-50 dark:bg-slate-950/20">
+						{description}
+					</span>
+				)}
+			</div>
 		</Card>
 	);
 }

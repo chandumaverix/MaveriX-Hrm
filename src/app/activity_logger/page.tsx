@@ -133,21 +133,21 @@ export default function ActivityPage() {
 	// ── Password Gate ──
 	if (!unlocked) {
 		return (
-			<div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-gray-50 via-white to-violet-50/40">
+			<div className="min-h-screen flex items-center justify-center p-4 bg-[#f8fafc] dark:bg-slate-950">
 				<motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="w-full max-w-sm">
-					<div className="rounded-2xl border border-gray-200 bg-white p-8 shadow-xl shadow-gray-200/50">
+					<div className="rounded-3xl border border-slate-100 dark:border-slate-800/60 bg-white dark:bg-slate-900 p-8 shadow-[0_4px_24px_rgba(0,0,0,0.015)] text-center">
 						<div className="flex justify-center mb-6">
-							<div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-violet-200">
-								<Lock className="w-6 h-6 text-white" />
+							<div className="w-12 h-12 rounded-2xl bg-blue-50/80 dark:bg-blue-950/20 border border-blue-100/50 dark:border-blue-900/30 flex items-center justify-center text-blue-600 dark:text-blue-450 shadow-[0_2px_8px_rgba(37,99,235,0.05)]">
+								<Lock className="w-5 h-5" />
 							</div>
 						</div>
-						<h1 className="text-lg font-bold text-gray-900 text-center mb-1">Activity Logger</h1>
-						<p className="text-sm text-gray-500 text-center mb-6">Enter password to access system logs</p>
+						<h1 className="text-sm font-black uppercase tracking-wider text-slate-800 dark:text-white mb-1">Activity Logger</h1>
+						<p className="text-[10px] text-slate-400 font-bold mb-6">Enter password to access system logs</p>
 						<input type="password" value={pw} onChange={e => { setPw(e.target.value); setPwErr(""); }}
 							onKeyDown={e => e.key === "Enter" && tryUnlock()} placeholder="Enter password"
-							className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/30 focus:border-violet-400 transition-all mb-3" />
-						<AnimatePresence>{pwErr && <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="text-xs text-red-500 text-center mb-2">{pwErr}</motion.p>}</AnimatePresence>
-						<button onClick={tryUnlock} className="w-full py-2.5 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 text-white text-sm font-semibold hover:from-violet-500 hover:to-indigo-500 transition-all shadow-md shadow-violet-200 active:scale-[0.98]">Unlock</button>
+							className="w-full border border-slate-100 dark:border-slate-800/60 rounded-2xl px-4 py-3 text-xs bg-slate-50/40 dark:bg-slate-950/10 placeholder-slate-400 text-slate-700 dark:text-slate-350 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 focus:bg-white dark:focus:bg-slate-900 transition-all mb-4" />
+						<AnimatePresence>{pwErr && <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="text-[10px] font-bold text-rose-500 text-center mb-3">{pwErr}</motion.p>}</AnimatePresence>
+						<button onClick={tryUnlock} className="w-full py-3 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-[0_4px_12px_rgba(37,99,235,0.15)] active:scale-95 transition-all">Unlock Dashboard</button>
 					</div>
 				</motion.div>
 			</div>
@@ -156,73 +156,93 @@ export default function ActivityPage() {
 
 	// ── Main View ──
 	return (
-		<div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-violet-50/30">
+		<div className="min-h-screen bg-[#f8fafc] dark:bg-slate-950">
 			<div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 space-y-6">
 				{/* Header */}
-				<motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="flex items-center justify-between">
+				<motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
 					<div>
-						<h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2.5">
-							<Activity className="w-6 h-6 text-violet-600" /> Activity Logger
+						<h1 className="text-xl font-black uppercase tracking-wider text-slate-850 dark:text-white flex items-center gap-3">
+							<div className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-50/80 dark:bg-violet-950/20 border border-violet-100/50 dark:border-violet-900/30 text-violet-600 dark:text-violet-400 shadow-[0_2px_8px_rgba(124,58,237,0.05)] shrink-0">
+								<Activity className="w-5 h-5" />
+							</div>
+							Activity Logger
 						</h1>
-						<p className="text-sm text-gray-500 mt-1">Real-time system timeline &middot; <span className="font-medium text-gray-700">{total.toLocaleString()}</span> events</p>
+						<p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold mt-1.5">
+							Real-time system timeline &middot; <span className="text-slate-650 dark:text-slate-350">{total.toLocaleString()}</span> events
+						</p>
 					</div>
-					<div className="flex items-center gap-2">
+					<div className="flex items-center gap-2.5">
 						<button
 							onClick={() => { setPage(0); fetchLogs(0, true); }}
-							className="flex items-center gap-1.5 text-xs font-medium text-gray-600 bg-white border border-gray-200 hover:border-gray-300 hover:bg-gray-50 px-3 py-1.5 rounded-full transition-all active:scale-95 shadow-sm"
+							className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider text-slate-600 dark:text-slate-405 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-805 hover:bg-slate-50 dark:hover:bg-slate-850 px-4 py-2.5 rounded-2xl transition-all active:scale-95 shadow-[0_2px_8px_rgba(0,0,0,0.01)]"
 						>
 							<RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
 							Refresh
 						</button>
-						<span className="flex items-center gap-2 text-xs font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-full">
-							<span className="relative flex h-2 w-2"><span className="animate-ping absolute h-full w-full rounded-full bg-emerald-400 opacity-75" /><span className="relative rounded-full h-2 w-2 bg-emerald-500" /></span>
-							Live
+						<span className="flex items-center gap-2 text-[10px] font-black uppercase tracking-wider text-emerald-650 dark:text-emerald-400 bg-emerald-50/60 dark:bg-emerald-950/20 border border-emerald-100/50 dark:border-emerald-900/30 px-4 py-2.5 rounded-2xl">
+							<span className="relative flex h-2 w-2">
+								<span className="animate-ping absolute h-full w-full rounded-full bg-emerald-400 opacity-75" />
+								<span className="relative rounded-full h-2 w-2 bg-emerald-500" />
+							</span>
+							Live Syncing
 						</span>
 					</div>
 				</motion.div>
 
 				{/* Category Cards */}
-				<motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
+				<motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
 					{Object.entries(CAT_META).map(([k, v]) => {
 						const I = v.icon; const a = cat === k; return (
 							<button key={k} onClick={() => setCat(cat === k ? "all" : k)}
-								className={`rounded-xl p-3 border transition-all text-left ${a ? "border-violet-300 bg-violet-50 ring-1 ring-violet-200" : "border-gray-100 bg-white hover:border-gray-200 hover:shadow-sm"}`}>
-								<div className="flex items-center gap-1.5 mb-1"><I className={`w-3.5 h-3.5 ${v.text}`} /><span className={`text-[11px] font-semibold ${v.text}`}>{v.label}</span></div>
-								<div className="text-lg font-bold text-gray-900">{counts[k] || 0}</div>
+								className={`rounded-2xl p-4 border transition-all text-left duration-200 relative overflow-hidden ${a 
+									? "border-blue-200 dark:border-blue-900 bg-blue-50/40 dark:bg-blue-950/20 ring-1 ring-blue-100 dark:ring-blue-900/40 shadow-[0_4px_20px_rgba(37,99,235,0.03)]" 
+									: "border-slate-100 dark:border-slate-800/40 bg-white dark:bg-slate-900 hover:border-slate-200 dark:hover:border-slate-700 hover:scale-[1.01] shadow-[0_4px_24px_rgba(0,0,0,0.015)]"}`}>
+								<div className="flex items-center gap-2 mb-2">
+									<div className={`p-1.5 rounded-lg ${a ? "bg-blue-100/50 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400" : "bg-slate-50 dark:bg-slate-800 text-slate-400 dark:text-slate-505"}`}>
+										<I className="w-3.5 h-3.5" />
+									</div>
+									<span className={`text-[9px] font-black uppercase tracking-wider ${a ? "text-blue-600 dark:text-blue-400" : "text-slate-500 dark:text-slate-400"}`}>{v.label}</span>
+								</div>
+								<div className="text-2xl font-black text-slate-800 dark:text-white leading-none mt-1">{counts[k] || 0}</div>
 							</button>
 						);
 					})}
 				</motion.div>
 
 				{/* Filters */}
-				<div className="flex flex-wrap gap-3 items-center">
-					<div className="relative flex-1 min-w-[200px] max-w-xs">
-						<Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-						<input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search activities..."
-							className="w-full border border-gray-200 rounded-xl pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/30 focus:border-violet-400 transition-all" />
+				<div className="flex flex-wrap gap-4 items-center justify-between">
+					<div className="relative flex-1 min-w-[240px] max-w-sm">
+						<Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+						<input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search activities by description..."
+							className="w-full border border-slate-100 dark:border-slate-800/60 rounded-2xl pl-10 pr-4 py-2.5 text-xs text-slate-750 dark:text-slate-350 bg-white dark:bg-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 transition-all shadow-[0_2px_8px_rgba(0,0,0,0.01)]" />
 					</div>
-					<div className="flex gap-1 bg-gray-100 rounded-xl p-1">
-						{ROLES.map(r => (
-							<button key={r} onClick={() => setRole(r)} className={`px-3 py-1.5 rounded-lg text-xs font-medium capitalize transition-all ${role === r ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}>{r}</button>
-						))}
-					</div>
-					<div className="flex gap-1.5 flex-wrap">
-						{CATEGORIES.map(c => (
-							<button key={c} onClick={() => setCat(c)} className={`px-2.5 py-1 rounded-full text-[11px] font-medium capitalize transition-all border ${cat === c ? "bg-violet-600 text-white border-violet-600" : "bg-white text-gray-500 border-gray-200 hover:border-gray-300"}`}>{c}</button>
-						))}
+					<div className="flex flex-wrap gap-3 items-center">
+						<div className="flex gap-1 bg-slate-100/70 dark:bg-slate-900 border border-slate-150/40 dark:border-slate-800/40 rounded-2xl p-1">
+							{ROLES.map(r => (
+								<button key={r} onClick={() => setRole(r)} className={`px-4 py-2 rounded-xl text-xs font-bold capitalize transition-all ${role === r ? "bg-white dark:bg-slate-800 text-slate-800 dark:text-white shadow-[0_2px_8px_rgba(0,0,0,0.04)]" : "text-slate-400 hover:text-slate-650 dark:hover:text-slate-300"}`}>{r}</button>
+							))}
+						</div>
+						<div className="flex gap-1.5 flex-wrap">
+							{CATEGORIES.map(c => (
+								<button key={c} onClick={() => setCat(c)} className={`px-3.5 py-1.5 rounded-full text-[9px] font-black uppercase tracking-wider transition-all border ${cat === c ? "bg-blue-600 text-white border-blue-600 shadow-[0_2px_8px_rgba(37,99,235,0.15)]" : "bg-white dark:bg-slate-900 text-slate-450 dark:text-slate-400 border-slate-100 dark:border-slate-800/60 hover:bg-slate-50 dark:hover:bg-slate-850"}`}>{c}</button>
+							))}
+						</div>
 					</div>
 				</div>
 
 				{/* Timeline */}
 				{loading && !logs.length ? (
 					<div className="flex flex-col items-center py-20 gap-3">
-						<div className="w-8 h-8 border-2 border-violet-200 border-t-violet-600 rounded-full animate-spin" />
-						<p className="text-sm text-gray-400">Loading...</p>
+						<div className="w-7 h-7 border-2 border-slate-200 border-t-blue-600 rounded-full animate-spin" />
+						<p className="text-xs font-bold text-slate-400">Loading activities...</p>
 					</div>
 				) : !logs.length ? (
-					<div className="flex flex-col items-center py-20 gap-3">
-						<Activity className="w-10 h-10 text-gray-300" />
-						<p className="text-sm text-gray-400">No activities found</p>
+					<div className="flex flex-col items-center py-20 gap-3 bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800/40 p-8 shadow-[0_4px_24px_rgba(0,0,0,0.015)]">
+						<div className="flex h-12 w-12 items-center justify-center rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-800/40 text-slate-405">
+							<Activity className="w-6 h-6" />
+						</div>
+						<p className="text-xs font-bold text-slate-700 dark:text-slate-300">No activities found</p>
+						<p className="text-[10px] text-slate-400 font-bold max-w-[200px] text-center mt-1">Try adjusting your filters or search query to find matching events.</p>
 					</div>
 				) : (
 					<div className="space-y-0">
@@ -231,73 +251,74 @@ export default function ActivityPage() {
 								{/* Date Header */}
 								<motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: gi * 0.04 }} className="sticky top-0 z-10 py-3">
 									<div className="flex items-center gap-3">
-										<div className="flex items-center gap-2 bg-white border border-violet-200 shadow-sm rounded-full px-4 py-1.5">
-											<Calendar className="w-3.5 h-3.5 text-violet-600" />
-											<span className="text-xs font-bold text-violet-700">{fmtDateLabel(dk)}</span>
-											<span className="text-[10px] text-violet-400 font-medium">{dateLogs.length} event{dateLogs.length !== 1 && "s"}</span>
+										<div className="flex items-center gap-2.5 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 shadow-[0_2px_8px_rgba(0,0,0,0.015)] rounded-2xl px-4 py-2">
+											<Calendar className="w-3.5 h-3.5 text-blue-600 dark:text-blue-450" />
+											<span className="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-slate-205">{fmtDateLabel(dk)}</span>
+											<span className="text-[9px] text-slate-400 dark:text-slate-500 font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-850">{dateLogs.length} event{dateLogs.length !== 1 && "s"}</span>
 										</div>
-										<div className="flex-1 h-px bg-gradient-to-r from-violet-200 to-transparent" />
+										<div className="flex-1 h-px bg-gradient-to-r from-slate-200/60 dark:from-slate-800/60 to-transparent" />
 									</div>
 								</motion.div>
 
 								{/* Timeline Items */}
 								<div className="relative pl-7 sm:pl-9">
 									{/* Vertical line */}
-									<div className="absolute left-[11px] sm:left-[15px] top-0 bottom-0 w-0.5 bg-gradient-to-b from-violet-200 via-gray-200 to-transparent rounded-full" />
+									<div className="absolute left-[13px] sm:left-[17px] top-0 bottom-0 w-0.5 bg-slate-100 dark:bg-slate-800/60 rounded-full" />
 
 									{dateLogs.map((log: any, i: number) => {
 										const c = CAT_META[log.category];
 										const Icon = c?.icon || Zap;
 										const changes = log.metadata?.changes || [];
-										const targetName = log.metadata?.target_name;
-										const operation = log.metadata?.operation || log.action;
 										const isOpen = openMeta.has(log.id);
 										const hasChanges = changes.length > 0;
 
 										return (
-											<motion.div key={log.id} initial={{ opacity: 0, x: -6 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.015 }} className="relative pb-1 group">
+											<motion.div key={log.id} initial={{ opacity: 0, x: -6 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.015 }} className="relative pb-1.5 group">
 												{/* Dot */}
-												<div className="absolute -left-7 sm:-left-9 top-4">
-													<div className={`w-[22px] h-[22px] sm:w-[26px] sm:h-[26px] rounded-full border-[3px] border-white flex items-center justify-center bg-gradient-to-br ${c?.grad || "from-gray-400 to-gray-500"} shadow-md`}>
-														<Icon className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-white" />
+												<div className="absolute -left-[20px] sm:-left-[24px] top-5 z-10">
+													<div className={`w-[16px] h-[16px] sm:w-[18px] sm:h-[18px] rounded-full border-2 border-white dark:border-slate-950 flex items-center justify-center bg-gradient-to-br ${c?.grad || "from-slate-400 to-slate-500"} shadow-sm`}>
+														{/* Tiny dot inner */}
+														<div className="w-1.5 h-1.5 rounded-full bg-white" />
 													</div>
 												</div>
 
 												{/* Card */}
-												<div className="ml-2 sm:ml-3 mb-1.5 rounded-xl border border-gray-100 bg-white hover:border-gray-200 hover:shadow-md transition-all px-3.5 py-2.5 group-hover:shadow-lg group-hover:shadow-gray-100">
-													<div className="flex items-start justify-between gap-3">
+												<div className="ml-2 sm:ml-4 mb-3.5 rounded-2xl border border-slate-100 dark:border-slate-800/40 bg-white dark:bg-slate-900 p-5 hover:shadow-[0_6px_30px_rgba(0,0,0,0.02)] transition-all duration-300">
+													<div className="flex items-start justify-between gap-4">
 														<div className="flex-1 min-w-0">
 															{/* Who + Badges */}
-															<div className="flex items-center gap-2.5 flex-wrap mb-1.5">
-																<div className={`w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold bg-gradient-to-br ${c?.grad || "from-gray-400 to-gray-500"} text-white shrink-0 shadow-sm ring-2 ring-white`}>
+															<div className="flex items-center gap-2.5 flex-wrap mb-2">
+																<div className={`w-8 h-8 rounded-xl flex items-center justify-center text-[10px] font-black bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-100 dark:border-slate-700 shrink-0 shadow-sm`}>
 																	{log.user_name?.split(" ").map((n: string) => n[0]).join("").slice(0, 2).toUpperCase()}
 																</div>
 
-																<span className="text-[15px] font-bold text-gray-900 tracking-tight">{log.user_name}</span>
-																{/* Action badge */}
-																<span className="text-[11px] font-bold text-violet-700 bg-violet-50 px-2 py-0.5 rounded-md">{log.action}</span>
-																{/* {targetName && <span className="text-xs text-gray-500 ml-2">for <span className="font-semibold text-gray-700">{targetName}</span></span>} */}
-																<span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold capitalize ${ROLE_STYLE[log.user_role] || "bg-gray-100 text-gray-600"}`}>{log.user_role}</span>
-																<span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${c?.bg} ${c?.text}`}>{c?.label}</span>
+																<div className="flex flex-col text-left">
+																	<span className="text-xs font-bold text-slate-800 dark:text-white leading-none">{log.user_name}</span>
+																	<span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider mt-1">{log.user_role}</span>
+																</div>
+
+																<div className="flex items-center gap-1.5 ml-auto sm:ml-2">
+																	<span className="text-[9px] font-black uppercase tracking-wider text-blue-600 dark:text-blue-400 bg-blue-50/70 dark:bg-blue-950/20 border border-blue-100/50 dark:border-blue-900/30 px-2.5 py-0.5 rounded-md">{log.action}</span>
+																	<span className={`text-[9px] font-black uppercase tracking-wider ${c?.bg} ${c?.text} border border-slate-105/80 dark:border-slate-800/40 px-2.5 py-0.5 rounded-md`}>{c?.label}</span>
+																</div>
 															</div>
 
-
 															{/* Description */}
-															<p className="text-sm text-gray-600 leading-relaxed">{log.description}</p>
+															<p className="text-xs text-slate-600 dark:text-slate-350 leading-relaxed font-semibold mt-2.5 text-left">{log.description}</p>
 
 															{/* Changes diff */}
 															{hasChanges && (
-																<div className="mt-2">
+																<div className="mt-3">
 																	<button onClick={() => { const s = new Set(openMeta); s.has(log.id) ? s.delete(log.id) : s.add(log.id); setOpenMeta(s); }}
-																		className="flex items-center gap-1 text-[11px] font-medium text-violet-600 hover:text-violet-800 transition-colors">
-																		<ChevronDown className={`w-3 h-3 transition-transform ${isOpen ? "rotate-180" : ""}`} />
+																		className="flex items-center gap-1 text-[9px] font-black uppercase tracking-wider text-blue-600 hover:text-blue-700 dark:text-blue-450 dark:hover:text-blue-400 transition-colors">
+																		<ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`} />
 																		{isOpen ? "Hide" : "View"} {changes.length} change{changes.length !== 1 && "s"}
 																	</button>
 																	<AnimatePresence>
 																		{isOpen && (
 																			<motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2 }}
 																				className="overflow-hidden">
-																				<div className="mt-1.5 px-2.5 py-2 rounded-lg bg-gray-50 border border-gray-100">
+																				<div className="mt-2.5 px-3.5 py-3 rounded-xl bg-slate-50/50 dark:bg-slate-950/20 border border-slate-100 dark:border-slate-800/60">
 																					<ChangeDiff changes={changes} />
 																				</div>
 																			</motion.div>
@@ -308,17 +329,17 @@ export default function ActivityPage() {
 
 															{/* Legacy metadata fallback */}
 															{!hasChanges && log.metadata && Object.keys(log.metadata).length > 0 && !log.metadata?.changes && (
-																<details className="mt-2">
-																	<summary className="text-[11px] text-gray-400 cursor-pointer hover:text-gray-600">Raw details</summary>
-																	<pre className="text-[11px] bg-gray-50 rounded-lg p-2 mt-1 overflow-auto text-gray-500">{JSON.stringify(log.metadata, null, 2)}</pre>
+																<details className="mt-3 group/raw">
+																	<summary className="text-[9px] font-black uppercase tracking-wider text-slate-400 cursor-pointer hover:text-slate-500 select-none">Raw details</summary>
+																	<pre className="text-[10px] bg-slate-50/50 dark:bg-slate-950/20 border border-slate-100 dark:border-slate-800/60 rounded-xl p-3 mt-2 overflow-auto text-slate-500 dark:text-slate-450 font-mono scrollbar-hide">{JSON.stringify(log.metadata, null, 2)}</pre>
 																</details>
 															)}
 														</div>
 
 														{/* Time */}
 														<div className="flex items-center gap-1.5 shrink-0 pt-0.5">
-															<Clock className="w-3 h-3 text-gray-400" />
-															<span className="text-[11px] text-gray-500 font-medium tabular-nums">{fmtTime(log.created_at)}</span>
+															<Clock className="w-3.5 h-3.5 text-slate-400" />
+															<span className="text-[10px] text-slate-500 font-bold tabular-nums">{fmtTime(log.created_at)}</span>
 														</div>
 													</div>
 												</div>
@@ -334,12 +355,12 @@ export default function ActivityPage() {
 				{/* Load More */}
 				{hasMore && !loading && (
 					<button onClick={() => { const n = page + 1; setPage(n); fetchLogs(n, false); }}
-						className="w-full py-3 text-sm font-medium text-gray-500 bg-white hover:bg-gray-50 border border-gray-200 hover:border-gray-300 rounded-xl transition-all shadow-sm">
+						className="w-full py-3.5 text-xs font-bold text-slate-500 dark:text-slate-400 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-850 border border-slate-100 dark:border-slate-800/60 rounded-2xl transition-all shadow-[0_2px_8px_rgba(0,0,0,0.01)] active:scale-[0.99]">
 						Load more activities
 					</button>
 				)}
 				{loading && logs.length > 0 && (
-					<div className="flex justify-center py-4"><div className="w-5 h-5 border-2 border-violet-200 border-t-violet-600 rounded-full animate-spin" /></div>
+					<div className="flex justify-center py-4"><div className="w-5 h-5 border-2 border-slate-200 border-t-blue-600 rounded-full animate-spin" /></div>
 				)}
 			</div>
 		</div>

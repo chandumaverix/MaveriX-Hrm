@@ -638,6 +638,29 @@ export default function LeavePage() {
 				.eq("id", bal.id);
 		}
 
+		// Notify employee of deduction (fire-and-forget; does not block UI)
+		const emp = employees.find((e) => e.id === deductionForm.employee_id);
+		const leaveType = leaveTypes.find((t) => t.id === deductionForm.leave_type_id);
+		const empEmail = emp?.email;
+		if (empEmail) {
+			const employeeName = `${emp?.first_name ?? ""} ${emp?.last_name ?? ""}`.trim() || "Employee";
+			const deductorName = `${currentUser?.first_name ?? ""} ${currentUser?.last_name ?? ""}`.trim() || "Administrator";
+			fetch("/api/leave/notify", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({
+					type: "leave_deduction",
+					employeeEmail: empEmail,
+					employeeName,
+					deductedBy: deductorName,
+					leaveTypeName: leaveType?.name ?? "Leave",
+					daysDeducted: Math.round(days * 100) / 100,
+					deductionDate: deductionForm.deduction_date,
+					reason: deductionForm.reason.trim(),
+				}),
+			}).catch(() => { });
+		}
+
 		setDeductionLoading(false);
 		setIsDeductionOpen(false);
 		setDeductionForm({
@@ -687,6 +710,7 @@ export default function LeavePage() {
 					startDate: request.start_date,
 					endDate: request.end_date,
 					status,
+					halfDay: request.half_day,
 				}),
 			}).catch(() => { });
 		}
@@ -949,7 +973,7 @@ export default function LeavePage() {
 		requests: LeaveRequestWithDetails[],
 		showActions = false
 	) => (
-		<div className='w-[300px] md:w-full overflow-x-auto'>
+		<div className='w-full overflow-x-auto'>
 			<Table>
 				<TableHeader>
 					<TableRow>
@@ -1119,7 +1143,7 @@ export default function LeavePage() {
 	);
 
 	return (
-		<div className='flex flex-col min-h-screen bg-background'>
+		<div className='flex flex-col min-h-screen bg-transparent text-slate-800 dark:text-slate-200'>
 			<DashboardHeader
 				title='Leave Management'
 				description='Manage employee leave requests'
@@ -1157,64 +1181,68 @@ export default function LeavePage() {
 						{/* ── Stat Cards ── */}
 						<div className='grid gap-4 grid-cols-2 md:grid-cols-5'>
 							{/* Pending */}
-							<div className='relative overflow-hidden rounded-2xl bg-gradient-to-br from-amber-500/10 to-amber-500/5 border border-border/50 p-5 shadow-sm hover:shadow-md transition-all group'>
+							<div className='bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800/40 p-5 shadow-[0_4px_24px_rgba(0,0,0,0.015)] hover:shadow-md transition-all duration-200 flex flex-col justify-between group'>
 								<div className='flex items-start justify-between gap-3'>
 									<div>
-										<p className='text-xs font-semibold uppercase tracking-wider text-muted-foreground'>Pending</p>
-										<p className='text-4xl font-bold mt-2 tabular-nums text-amber-700 leading-none'>{stats.pending}</p>
+										<span className='text-[10px] font-black uppercase tracking-wider text-slate-400'>Pending</span>
+										<p className='text-3xl font-black text-slate-800 dark:text-white leading-none mt-2 tabular-nums'>{stats.pending}</p>
 										<p className='text-[11px] text-muted-foreground mt-1.5'>Awaiting review</p>
 									</div>
-									<div className='h-11 w-11 rounded-xl bg-amber-500/15 flex items-center justify-center text-amber-600 group-hover:scale-110 transition-transform'><Clock className='h-5 w-5' /></div>
+									<div className='w-8 h-8 rounded-lg flex items-center justify-center border border-amber-100 dark:border-amber-800/30 bg-amber-50/50 dark:bg-amber-950/20 text-amber-600 dark:text-amber-400 group-hover:scale-110 transition-transform'><Clock className='h-4 w-4' /></div>
 								</div>
-								<div className='mt-4 h-1 w-full bg-black/5 rounded-full overflow-hidden'><div className='h-full bg-amber-500 rounded-full transition-all duration-700' style={{ width: `${stats.total > 0 ? (stats.pending / stats.total) * 100 : 0}%` }} /></div>
+								<div className='mt-3 h-1 w-full bg-slate-100 dark:bg-slate-800/50 rounded-full overflow-hidden'><div className='h-full bg-amber-500 rounded-full transition-all duration-700' style={{ width: `${stats.total > 0 ? (stats.pending / stats.total) * 100 : 0}%` }} /></div>
 							</div>
+
 							{/* Approved */}
-							<div className='relative overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-500/10 to-emerald-500/5 border border-border/50 p-5 shadow-sm hover:shadow-md transition-all group'>
+							<div className='bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800/40 p-5 shadow-[0_4px_24px_rgba(0,0,0,0.015)] hover:shadow-md transition-all duration-200 flex flex-col justify-between group'>
 								<div className='flex items-start justify-between gap-3'>
 									<div>
-										<p className='text-xs font-semibold uppercase tracking-wider text-muted-foreground'>Approved</p>
-										<p className='text-4xl font-bold mt-2 tabular-nums text-emerald-700 leading-none'>{stats.approved}</p>
+										<span className='text-[10px] font-black uppercase tracking-wider text-slate-400'>Approved</span>
+										<p className='text-3xl font-black text-slate-800 dark:text-white leading-none mt-2 tabular-nums'>{stats.approved}</p>
 										<p className='text-[11px] text-muted-foreground mt-1.5'>Granted leaves</p>
 									</div>
-									<div className='h-11 w-11 rounded-xl bg-emerald-500/15 flex items-center justify-center text-emerald-600 group-hover:scale-110 transition-transform'><CheckCircle2 className='h-5 w-5' /></div>
+									<div className='w-8 h-8 rounded-lg flex items-center justify-center border border-emerald-100 dark:border-emerald-800/30 bg-emerald-50/50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-400 group-hover:scale-110 transition-transform'><CheckCircle2 className='h-4 w-4' /></div>
 								</div>
-								<div className='mt-4 h-1 w-full bg-black/5 rounded-full overflow-hidden'><div className='h-full bg-emerald-500 rounded-full transition-all duration-700' style={{ width: `${stats.total > 0 ? (stats.approved / stats.total) * 100 : 0}%` }} /></div>
+								<div className='mt-3 h-1 w-full bg-slate-100 dark:bg-slate-800/50 rounded-full overflow-hidden'><div className='h-full bg-emerald-500 rounded-full transition-all duration-700' style={{ width: `${stats.total > 0 ? (stats.approved / stats.total) * 100 : 0}%` }} /></div>
 							</div>
+
 							{/* Rejected */}
-							<div className='relative overflow-hidden rounded-2xl bg-gradient-to-br from-red-500/10 to-red-500/5 border border-border/50 p-5 shadow-sm hover:shadow-md transition-all group'>
+							<div className='bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800/40 p-5 shadow-[0_4px_24px_rgba(0,0,0,0.015)] hover:shadow-md transition-all duration-200 flex flex-col justify-between group'>
 								<div className='flex items-start justify-between gap-3'>
 									<div>
-										<p className='text-xs font-semibold uppercase tracking-wider text-muted-foreground'>Rejected</p>
-										<p className='text-4xl font-bold mt-2 tabular-nums text-red-700 leading-none'>{stats.rejected}</p>
+										<span className='text-[10px] font-black uppercase tracking-wider text-slate-400'>Rejected</span>
+										<p className='text-3xl font-black text-slate-800 dark:text-white leading-none mt-2 tabular-nums'>{stats.rejected}</p>
 										<p className='text-[11px] text-muted-foreground mt-1.5'>Declined requests</p>
 									</div>
-									<div className='h-11 w-11 rounded-xl bg-red-500/15 flex items-center justify-center text-red-600 group-hover:scale-110 transition-transform'><XCircle className='h-5 w-5' /></div>
+									<div className='w-8 h-8 rounded-lg flex items-center justify-center border border-rose-100 dark:border-rose-800/30 bg-rose-50/50 dark:bg-rose-950/20 text-rose-600 dark:text-rose-400 group-hover:scale-110 transition-transform'><XCircle className='h-4 w-4' /></div>
 								</div>
-								<div className='mt-4 h-1 w-full bg-black/5 rounded-full overflow-hidden'><div className='h-full bg-red-500 rounded-full transition-all duration-700' style={{ width: `${stats.total > 0 ? (stats.rejected / stats.total) * 100 : 0}%` }} /></div>
+								<div className='mt-3 h-1 w-full bg-slate-100 dark:bg-slate-800/50 rounded-full overflow-hidden'><div className='h-full bg-red-500 rounded-full transition-all duration-700' style={{ width: `${stats.total > 0 ? (stats.rejected / stats.total) * 100 : 0}%` }} /></div>
 							</div>
+
 							{/* Deducted */}
-							<div className='relative overflow-hidden rounded-2xl bg-gradient-to-br from-orange-500/10 to-orange-500/5 border border-border/50 p-5 shadow-sm hover:shadow-md transition-all group'>
+							<div className='bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800/40 p-5 shadow-[0_4px_24px_rgba(0,0,0,0.015)] hover:shadow-md transition-all duration-200 flex flex-col justify-between group'>
 								<div className='flex items-start justify-between gap-3'>
 									<div>
-										<p className='text-xs font-semibold uppercase tracking-wider text-muted-foreground'>Deducted</p>
-										<p className='text-4xl font-bold mt-2 tabular-nums text-orange-700 leading-none'>{stats.deducted}</p>
+										<span className='text-[10px] font-black uppercase tracking-wider text-slate-400'>Deducted</span>
+										<p className='text-3xl font-black text-slate-800 dark:text-white leading-none mt-2 tabular-nums'>{stats.deducted}</p>
 										<p className='text-[11px] text-muted-foreground mt-1.5'>Leave deductions</p>
 									</div>
-									<div className='h-11 w-11 rounded-xl bg-orange-500/15 flex items-center justify-center text-orange-600 group-hover:scale-110 transition-transform'><Minus className='h-5 w-5' /></div>
+									<div className='w-8 h-8 rounded-lg flex items-center justify-center border border-orange-100 dark:border-orange-800/30 bg-orange-50/50 dark:bg-orange-950/20 text-orange-600 dark:text-orange-400 group-hover:scale-110 transition-transform'><Minus className='h-4 w-4' /></div>
 								</div>
-								<div className='mt-4 h-1 w-full bg-black/5 rounded-full overflow-hidden'><div className='h-full bg-orange-500 rounded-full transition-all duration-700' style={{ width: `${stats.total > 0 ? (stats.deducted / stats.total) * 100 : 0}%` }} /></div>
+								<div className='mt-3 h-1 w-full bg-slate-100 dark:bg-slate-800/50 rounded-full overflow-hidden'><div className='h-full bg-orange-500 rounded-full transition-all duration-700' style={{ width: `${stats.total > 0 ? (stats.deducted / stats.total) * 100 : 0}%` }} /></div>
 							</div>
+
 							{/* Total */}
-							<div className='relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary/10 to-primary/5 border border-border/50 p-5 shadow-sm hover:shadow-md transition-all group'>
+							<div className='bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800/40 p-5 shadow-[0_4px_24px_rgba(0,0,0,0.015)] hover:shadow-md transition-all duration-200 flex flex-col justify-between group'>
 								<div className='flex items-start justify-between gap-3'>
 									<div>
-										<p className='text-xs font-semibold uppercase tracking-wider text-muted-foreground'>Total</p>
-										<p className='text-4xl font-bold mt-2 tabular-nums text-primary leading-none'>{stats.total}</p>
+										<span className='text-[10px] font-black uppercase tracking-wider text-slate-400'>Total</span>
+										<p className='text-3xl font-black text-slate-800 dark:text-white leading-none mt-2 tabular-nums'>{stats.total}</p>
 										<p className='text-[11px] text-muted-foreground mt-1.5'>All requests</p>
 									</div>
-									<div className='h-11 w-11 rounded-xl bg-primary/15 flex items-center justify-center text-primary group-hover:scale-110 transition-transform'><CalendarDays className='h-5 w-5' /></div>
+									<div className='w-8 h-8 rounded-lg flex items-center justify-center border border-primary/10 dark:border-primary/30 bg-primary/5 dark:bg-primary/20 text-primary group-hover:scale-110 transition-transform'><CalendarDays className='h-4 w-4' /></div>
 								</div>
-								<div className='mt-4 h-1 w-full bg-black/5 rounded-full overflow-hidden'><div className='h-full bg-primary rounded-full' style={{ width: '100%' }} /></div>
+								<div className='mt-3 h-1 w-full bg-slate-100 dark:bg-slate-800/50 rounded-full overflow-hidden'><div className='h-full bg-primary rounded-full' style={{ width: '100%' }} /></div>
 							</div>
 						</div>
 

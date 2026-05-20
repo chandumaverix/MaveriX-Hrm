@@ -97,6 +97,44 @@ const emptyForm = () => ({
 	document_url: null as string | null,
 });
 
+const getLeaveTheme = (name: string) => {
+	const n = name.toLowerCase();
+	if (n.includes("sick") || n.includes("medical")) {
+		return {
+			bg: "bg-rose-50/60 dark:bg-rose-950/20",
+			border: "border-rose-100/50 dark:border-rose-900/30",
+			text: "text-rose-600 dark:text-rose-400",
+			progress: "bg-rose-500/60",
+			iconBg: "bg-rose-100/50 dark:bg-rose-900/30",
+		};
+	}
+	if (n.includes("casual")) {
+		return {
+			bg: "bg-amber-50/60 dark:bg-amber-950/20",
+			border: "border-amber-100/50 dark:border-amber-900/30",
+			text: "text-amber-600 dark:text-amber-400",
+			progress: "bg-amber-500/60",
+			iconBg: "bg-amber-100/50 dark:bg-amber-900/30",
+		};
+	}
+	if (n.includes("earned") || n.includes("privilege") || n.includes("annual")) {
+		return {
+			bg: "bg-emerald-50/60 dark:bg-emerald-950/20",
+			border: "border-emerald-100/50 dark:border-emerald-900/30",
+			text: "text-emerald-600 dark:text-emerald-450",
+			progress: "bg-emerald-500/60",
+			iconBg: "bg-emerald-100/50 dark:bg-emerald-900/30",
+		};
+	}
+	return {
+		bg: "bg-blue-50/60 dark:bg-blue-950/20",
+		border: "border-blue-100/50 dark:border-blue-900/30",
+		text: "text-blue-600 dark:text-blue-400",
+		progress: "bg-blue-500/60",
+		iconBg: "bg-blue-100/50 dark:bg-blue-900/30",
+	};
+};
+
 export default function EmployeeLeavePage() {
 	const { employee } = useUser();
 	const [leaveRequests, setLeaveRequests] = useState<LeaveRequestWithType[]>(
@@ -343,27 +381,27 @@ export default function EmployeeLeavePage() {
 		switch (status) {
 			case "approved":
 				return (
-					<span className='inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 text-xs font-semibold border border-emerald-200'>
+					<span className='inline-flex items-center gap-1 px-2 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-450 text-[10px] font-black uppercase tracking-wider border border-emerald-100/50 dark:border-emerald-900/30 shadow-[0_2px_8px_rgba(16,185,129,0.02)]'>
 						<CheckCircle2 className='h-3 w-3' />
 						Approved
 					</span>
 				);
 			case "rejected":
 				return (
-					<span className='inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-red-50 text-red-700 text-xs font-semibold border border-red-200'>
+					<span className='inline-flex items-center gap-1 px-2 py-0.5 rounded bg-rose-50 dark:bg-rose-950/20 text-rose-500 dark:text-rose-455 text-[10px] font-black uppercase tracking-wider border border-rose-100/50 dark:border-rose-900/30 shadow-[0_2px_8px_rgba(244,63,94,0.02)]'>
 						<XCircle className='h-3 w-3' />
 						Rejected
 					</span>
 				);
 			case "pending":
 				return (
-					<span className='inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 text-xs font-semibold border border-amber-200'>
+					<span className='inline-flex items-center gap-1 px-2 py-0.5 rounded bg-amber-50 dark:bg-amber-950/20 text-amber-500 dark:text-amber-400 text-[10px] font-black uppercase tracking-wider border border-amber-100/50 dark:border-amber-900/30 shadow-[0_2px_8px_rgba(245,158,11,0.02)]'>
 						<Clock className='h-3 w-3' />
 						Pending
 					</span>
 				);
 			default:
-				return <Badge variant='outline'>{status}</Badge>;
+				return <Badge variant='outline' className="text-[10px] font-black uppercase tracking-wider">{status}</Badge>;
 		}
 	};
 
@@ -384,21 +422,21 @@ export default function EmployeeLeavePage() {
 	}, [filteredRequests, leaveDeductions]);
 
 	return (
-		<div className='flex flex-col'>
+		<div className="flex flex-col min-h-screen bg-[#f8fafc] text-slate-800 font-sans antialiased">
 			<DashboardHeader
 				title='Leave Requests'
 				description='Manage your leave applications'
 			/>
 
-			<div className='flex-1 space-y-5 p-6'>
+			<div className='flex-1 space-y-6 p-6'>
 				{/* ── Leave Balance Cards ── */}
-				<div className='grid gap-3 grid-cols-1 md:grid-cols-3 lg:grid-cols-5'>
+				<div className='grid gap-4 grid-cols-1 md:grid-cols-3 lg:grid-cols-5'>
 					{leaveBalances.filter((b) => b.total_days > 0).length ===
 					0 ? (
 						<div className='col-span-full'>
-							<div className='flex flex-col items-center justify-center py-10 rounded-2xl border border-dashed border-border/60 bg-muted/20'>
-								<CalendarDays className='h-10 w-10 text-muted-foreground/30 mb-3' />
-								<p className='text-sm font-medium text-muted-foreground'>No leave balance allotted for {currentYear}</p>
+							<div className='flex flex-col items-center justify-center py-10 rounded-2xl border border-dashed border-slate-200 dark:border-slate-800 bg-slate-50/20 dark:bg-slate-950/10'>
+								<CalendarDays className='h-10 w-10 text-slate-300 dark:text-slate-700 mb-3' />
+								<p className='text-xs font-bold text-slate-450 uppercase tracking-wider'>No leave balance allotted for {currentYear}</p>
 							</div>
 						</div>
 					) : (
@@ -408,17 +446,18 @@ export default function EmployeeLeavePage() {
 								const remaining =
 									balance.total_days - balance.used_days;
 								const usedPct = balance.total_days > 0 ? (balance.used_days / balance.total_days) * 100 : 0;
+								const theme = getLeaveTheme(balance.leave_type?.name ?? "");
 								return (
-									<div key={balance.id} className='relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary/5 to-primary/[0.02] border border-border/50 p-4 shadow-sm hover:shadow-md transition-all group'>
-										<p className='text-xs font-semibold uppercase tracking-wider text-muted-foreground'>{balance.leave_type?.name}</p>
-										<p className='text-3xl font-bold mt-1 tabular-nums text-primary leading-none'>
+									<div key={balance.id} className={`relative overflow-hidden rounded-2xl ${theme.bg} border ${theme.border} p-5 shadow-[0_4px_20px_rgba(0,0,0,0.01)] hover:shadow-[0_6px_24px_rgba(0,0,0,0.02)] transition-all duration-305 group`}>
+										<p className={`text-[10px] font-black uppercase tracking-wider ${theme.text}`}>{balance.leave_type?.name}</p>
+										<p className='text-3xl font-black mt-2 tabular-nums text-slate-800 dark:text-white leading-none'>
 											{remaining % 1 === 0 ? remaining : remaining.toFixed(1)}
 										</p>
-										<p className='text-[11px] text-muted-foreground mt-1'>
-											of {balance.total_days % 1 === 0 ? balance.total_days : balance.total_days.toFixed(1)} days
+										<p className='text-[10px] text-slate-400 dark:text-slate-500 font-bold mt-1.5'>
+											Allotted: {balance.total_days % 1 === 0 ? balance.total_days : balance.total_days.toFixed(1)} days
 										</p>
-										<div className='mt-3 h-1.5 w-full bg-black/5 rounded-full overflow-hidden'>
-											<div className='h-full bg-primary/60 rounded-full transition-all duration-700' style={{ width: `${Math.min(usedPct, 100)}%` }} />
+										<div className='mt-4 h-1.5 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden'>
+											<div className={`h-full ${theme.progress} rounded-full transition-all duration-700`} style={{ width: `${Math.min(usedPct, 100)}%` }} />
 										</div>
 									</div>
 								);
@@ -428,63 +467,63 @@ export default function EmployeeLeavePage() {
 
 				{/* ── Stat Cards ── */}
 				<div className='grid gap-4 grid-cols-2 md:grid-cols-5'>
-					<div className='relative overflow-hidden rounded-2xl bg-gradient-to-br from-amber-500/10 to-amber-500/5 border border-border/50 p-4 shadow-sm hover:shadow-md transition-all group'>
+					<div className='relative overflow-hidden rounded-2xl border border-slate-100 dark:border-slate-800/40 bg-white dark:bg-slate-900 p-4 shadow-[0_4px_24px_rgba(0,0,0,0.015)] hover:shadow-[0_6px_30px_rgba(0,0,0,0.025)] transition-all duration-300 group'>
 						<div className='flex items-start justify-between gap-2'>
 							<div>
-								<p className='text-[11px] font-semibold uppercase tracking-wider text-muted-foreground'>Pending</p>
-								<p className='text-2xl font-bold mt-1 tabular-nums text-amber-700 leading-none'>{employeeStats.pending}</p>
+								<p className='text-[10px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500'>Pending</p>
+								<p className='text-2xl font-black mt-2 tabular-nums text-slate-800 dark:text-white leading-none'>{employeeStats.pending}</p>
 							</div>
-							<div className='h-9 w-9 rounded-lg bg-amber-500/15 flex items-center justify-center text-amber-600 group-hover:scale-110 transition-transform'><Clock className='h-4 w-4' /></div>
+							<div className='h-9 w-9 rounded-xl bg-amber-50 dark:bg-amber-950/20 border border-amber-100/50 dark:border-amber-900/30 text-amber-500 dark:text-amber-400 flex items-center justify-center shadow-[0_2px_8px_rgba(245,158,11,0.05)] group-hover:scale-105 transition-transform'><Clock className='h-4.5 w-4.5' /></div>
 						</div>
 					</div>
-					<div className='relative overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-500/10 to-emerald-500/5 border border-border/50 p-4 shadow-sm hover:shadow-md transition-all group'>
+					<div className='relative overflow-hidden rounded-2xl border border-slate-100 dark:border-slate-800/40 bg-white dark:bg-slate-900 p-4 shadow-[0_4px_24px_rgba(0,0,0,0.015)] hover:shadow-[0_6px_30px_rgba(0,0,0,0.025)] transition-all duration-300 group'>
 						<div className='flex items-start justify-between gap-2'>
 							<div>
-								<p className='text-[11px] font-semibold uppercase tracking-wider text-muted-foreground'>Approved</p>
-								<p className='text-2xl font-bold mt-1 tabular-nums text-emerald-700 leading-none'>{employeeStats.approved}</p>
+								<p className='text-[10px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500'>Approved</p>
+								<p className='text-2xl font-black mt-2 tabular-nums text-slate-800 dark:text-white leading-none'>{employeeStats.approved}</p>
 							</div>
-							<div className='h-9 w-9 rounded-lg bg-emerald-500/15 flex items-center justify-center text-emerald-600 group-hover:scale-110 transition-transform'><CheckCircle2 className='h-4 w-4' /></div>
+							<div className='h-9 w-9 rounded-xl bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-100/50 dark:border-emerald-900/30 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shadow-[0_2px_8px_rgba(16,185,129,0.05)] group-hover:scale-105 transition-transform'><CheckCircle2 className='h-4.5 w-4.5' /></div>
 						</div>
 					</div>
-					<div className='relative overflow-hidden rounded-2xl bg-gradient-to-br from-red-500/10 to-red-500/5 border border-border/50 p-4 shadow-sm hover:shadow-md transition-all group'>
+					<div className='relative overflow-hidden rounded-2xl border border-slate-100 dark:border-slate-800/40 bg-white dark:bg-slate-900 p-4 shadow-[0_4px_24px_rgba(0,0,0,0.015)] hover:shadow-[0_6px_30px_rgba(0,0,0,0.025)] transition-all duration-300 group'>
 						<div className='flex items-start justify-between gap-2'>
 							<div>
-								<p className='text-[11px] font-semibold uppercase tracking-wider text-muted-foreground'>Rejected</p>
-								<p className='text-2xl font-bold mt-1 tabular-nums text-red-700 leading-none'>{employeeStats.rejected}</p>
+								<p className='text-[10px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500'>Rejected</p>
+								<p className='text-2xl font-black mt-2 tabular-nums text-slate-800 dark:text-white leading-none'>{employeeStats.rejected}</p>
 							</div>
-							<div className='h-9 w-9 rounded-lg bg-red-500/15 flex items-center justify-center text-red-600 group-hover:scale-110 transition-transform'><XCircle className='h-4 w-4' /></div>
+							<div className='h-9 w-9 rounded-xl bg-rose-50 dark:bg-rose-950/20 border border-rose-100/50 dark:border-rose-900/30 text-rose-550 dark:text-rose-400 flex items-center justify-center shadow-[0_2px_8px_rgba(244,63,94,0.05)] group-hover:scale-105 transition-transform'><XCircle className='h-4.5 w-4.5' /></div>
 						</div>
 					</div>
-					<div className='relative overflow-hidden rounded-2xl bg-gradient-to-br from-orange-500/10 to-orange-500/5 border border-border/50 p-4 shadow-sm hover:shadow-md transition-all group'>
+					<div className='relative overflow-hidden rounded-2xl border border-slate-100 dark:border-slate-800/40 bg-white dark:bg-slate-900 p-4 shadow-[0_4px_24px_rgba(0,0,0,0.015)] hover:shadow-[0_6px_30px_rgba(0,0,0,0.025)] transition-all duration-300 group'>
 						<div className='flex items-start justify-between gap-2'>
 							<div>
-								<p className='text-[11px] font-semibold uppercase tracking-wider text-muted-foreground'>Deducted</p>
-								<p className='text-2xl font-bold mt-1 tabular-nums text-orange-700 leading-none'>{employeeStats.deducted}</p>
+								<p className='text-[10px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500'>Deducted</p>
+								<p className='text-2xl font-black mt-2 tabular-nums text-slate-800 dark:text-white leading-none'>{employeeStats.deducted}</p>
 							</div>
-							<div className='h-9 w-9 rounded-lg bg-orange-500/15 flex items-center justify-center text-orange-600 group-hover:scale-110 transition-transform'><Minus className='h-4 w-4' /></div>
+							<div className='h-9 w-9 rounded-xl bg-orange-50 dark:bg-orange-950/20 border border-orange-100/50 dark:border-orange-900/30 text-orange-550 dark:text-orange-400 flex items-center justify-center shadow-[0_2px_8px_rgba(249,115,22,0.05)] group-hover:scale-105 transition-transform'><Minus className='h-4.5 w-4.5' /></div>
 						</div>
 					</div>
-					<div className='relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary/10 to-primary/5 border border-border/50 p-4 shadow-sm hover:shadow-md transition-all group'>
+					<div className='relative overflow-hidden rounded-2xl border border-slate-100 dark:border-slate-800/40 bg-white dark:bg-slate-900 p-4 shadow-[0_4px_24px_rgba(0,0,0,0.015)] hover:shadow-[0_6px_30px_rgba(0,0,0,0.025)] transition-all duration-300 group'>
 						<div className='flex items-start justify-between gap-2'>
 							<div>
-								<p className='text-[11px] font-semibold uppercase tracking-wider text-muted-foreground'>Total</p>
-								<p className='text-2xl font-bold mt-1 tabular-nums text-primary leading-none'>{employeeStats.total}</p>
+								<p className='text-[10px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500'>Total</p>
+								<p className='text-2xl font-black mt-2 tabular-nums text-slate-800 dark:text-white leading-none'>{employeeStats.total}</p>
 							</div>
-							<div className='h-9 w-9 rounded-lg bg-primary/15 flex items-center justify-center text-primary group-hover:scale-110 transition-transform'><CalendarDays className='h-4 w-4' /></div>
+							<div className='h-9 w-9 rounded-xl bg-blue-50 dark:bg-blue-950/20 border border-blue-100/50 dark:border-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center shadow-[0_2px_8px_rgba(37,99,235,0.05)] group-hover:scale-105 transition-transform'><CalendarDays className='h-4.5 w-4.5' /></div>
 						</div>
 					</div>
 				</div>
 
 				{/* ── Tabbed Section: Requests & Deductions ── */}
 				<div className="w-[340px] md:w-full overflow-x-auto">
-				<Tabs defaultValue='requests' className=' w-full'>
+				<Tabs defaultValue='requests' className='w-full space-y-4'>
 					<div className='flex items-center justify-between'>
-						<TabsList className='h-auto bg-muted/40 p-1 rounded-xl gap-1 border border-border/50'>
-							<TabsTrigger value='requests' className='gap-1.5 rounded-lg px-4 py-1.5 text-sm data-[state=active]:bg-background data-[state=active]:shadow-sm'>
+						<TabsList className='h-auto bg-slate-100/60 dark:bg-slate-950/40 p-1 rounded-xl gap-1 border border-slate-200/40 dark:border-slate-850/40'>
+							<TabsTrigger value='requests' className='gap-1.5 rounded-lg px-4 py-1.5 text-xs font-bold data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-slate-800 dark:data-[state=active]:text-white data-[state=active]:shadow-[0_2px_8px_rgba(0,0,0,0.04)] text-slate-500 dark:text-slate-400 transition-all'>
 								<Calendar className='h-3.5 w-3.5' />
 								My Requests ({filteredRequests.length})
 							</TabsTrigger>
-							<TabsTrigger value='deductions' className='gap-1.5 rounded-lg px-4 py-1.5 text-sm data-[state=active]:bg-background data-[state=active]:shadow-sm'>
+							<TabsTrigger value='deductions' className='gap-1.5 rounded-lg px-4 py-1.5 text-xs font-bold data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-slate-800 dark:data-[state=active]:text-white data-[state=active]:shadow-[0_2px_8px_rgba(0,0,0,0.04)] text-slate-500 dark:text-slate-400 transition-all'>
 								<Minus className='h-3.5 w-3.5' />
 								Deductions ({leaveDeductions.length})
 							</TabsTrigger>
@@ -493,27 +532,27 @@ export default function EmployeeLeavePage() {
 							open={isDialogOpen}
 							onOpenChange={setIsDialogOpen}>
 							<DialogTrigger asChild>
-								<Button size='sm' className='rounded-xl gap-1.5' onClick={openNewDialog}>
+								<Button size='sm' className='rounded-xl gap-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold px-4 py-2 shadow-[0_4px_12px_rgba(37,99,235,0.15)] active:scale-95 transition-all' onClick={openNewDialog}>
 									<Plus className='h-4 w-4' />
 									New Request
 								</Button>
 							</DialogTrigger>
-							<DialogContent className='max-h-[90vh] overflow-y-auto'>
+							<DialogContent className='max-h-[90vh] overflow-y-auto rounded-2xl border-slate-100 dark:border-slate-800/40'>
 								<DialogHeader>
-									<DialogTitle>
+									<DialogTitle className="text-base font-black uppercase tracking-wider text-slate-850 dark:text-white">
 										{editingRequest
 											? "Edit Leave Request"
 											: "Request Leave"}
 									</DialogTitle>
-									<DialogDescription>
+									<DialogDescription className="text-xs text-slate-400 font-medium">
 										{editingRequest
-											? "Update your pending leave request."
-											: "Submit a new leave application for approval."}
+											? "Update your pending leave request details."
+											: "Submit a new leave application for HR/Leader approval."}
 									</DialogDescription>
 								</DialogHeader>
 								<div className='space-y-4 py-4'>
 									<div className='space-y-2'>
-										<Label>Leave Type</Label>
+										<Label className="text-xs font-bold text-slate-600 dark:text-slate-400">Leave Type</Label>
 										<Select
 											value={formData.leave_type_id}
 											onValueChange={(v) =>
@@ -524,17 +563,14 @@ export default function EmployeeLeavePage() {
 												})
 											}
 											disabled={!!editingRequest}>
-											<SelectTrigger>
+											<SelectTrigger className="rounded-xl border-slate-200/80 dark:border-slate-800 text-xs">
 												<SelectValue placeholder='Select leave type' />
 											</SelectTrigger>
-											<SelectContent>
+											<SelectContent className="rounded-xl">
 												{requestableLeaveBalances.length ===
 												0 ? (
-													<div className='py-2 px-2 text-sm text-muted-foreground'>
-														No leave balance
-														available. Contact
-														HR for allotted
-														leaves.
+													<div className='py-2 px-2 text-xs text-slate-400 font-bold'>
+														No leave balance available.
 													</div>
 												) : (
 													requestableLeaveBalances.map(
@@ -545,21 +581,10 @@ export default function EmployeeLeavePage() {
 																}
 																value={
 																	balance.leave_type_id
-																}>
-																{balance
-																	.leave_type
-																	?.name ??
-																	"—"}{" "}
-																(
-																{Number(
-																	balance.total_days ??
-																		0
-																) -
-																	Number(
-																		balance.used_days ??
-																			0
-																	)}{" "}
-																remaining)
+																}
+																className="text-xs rounded-lg">
+																{balance.leave_type?.name ?? "—"} (
+																{Number(balance.total_days ?? 0) - Number(balance.used_days ?? 0)} remaining)
 															</SelectItem>
 														)
 													)
@@ -570,7 +595,7 @@ export default function EmployeeLeavePage() {
 
 									{/* Half day: show when leave type selected */}
 									{formData.leave_type_id && (
-										<div className='space-y-2'>
+										<div className='space-y-2 bg-slate-50/50 dark:bg-slate-950/20 p-3 rounded-xl border border-slate-100 dark:border-slate-850/50'>
 											<div className='flex items-center gap-2'>
 												<input
 													type='checkbox'
@@ -597,15 +622,15 @@ export default function EmployeeLeavePage() {
 																	: formData.end_date,
 														});
 													}}
-													className='rounded'
+													className='rounded border-slate-300 dark:border-slate-700 text-blue-600 focus:ring-blue-500'
 												/>
-												<Label htmlFor='half_day'>
+												<Label htmlFor='half_day' className="text-xs font-bold text-slate-650 dark:text-slate-350">
 													Half day leave
 												</Label>
 											</div>
 											{formData.half_day && (
-												<div className='flex gap-4 pl-6'>
-													<label className='flex items-center gap-2 text-sm'>
+												<div className='flex gap-4 pl-6 mt-1.5'>
+													<label className='flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 font-medium'>
 														<input
 															type='radio'
 															name='half_period'
@@ -622,11 +647,11 @@ export default function EmployeeLeavePage() {
 																	}
 																)
 															}
+															className="text-blue-600 focus:ring-blue-500"
 														/>
-														First half (9am –
-														1pm)
+														First half (9am – 1pm)
 													</label>
-													<label className='flex items-center gap-2 text-sm'>
+													<label className='flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 font-medium'>
 														<input
 															type='radio'
 															name='half_period'
@@ -643,9 +668,9 @@ export default function EmployeeLeavePage() {
 																	}
 																)
 															}
+															className="text-blue-600 focus:ring-blue-500"
 														/>
-														Second half (1pm –
-														7pm)
+														Second half (1pm – 7pm)
 													</label>
 												</div>
 											)}
@@ -654,7 +679,7 @@ export default function EmployeeLeavePage() {
 
 									<div className='grid grid-cols-2 gap-4'>
 										<div className='space-y-2'>
-											<Label>Start Date</Label>
+											<Label className="text-xs font-bold text-slate-600 dark:text-slate-400">Start Date</Label>
 											<Input
 												type='date'
 												value={formData.start_date}
@@ -665,10 +690,11 @@ export default function EmployeeLeavePage() {
 															e.target.value,
 													})
 												}
+												className="rounded-xl border-slate-205 dark:border-slate-800 text-xs"
 											/>
 										</div>
 										<div className='space-y-2'>
-											<Label>End Date</Label>
+											<Label className="text-xs font-bold text-slate-600 dark:text-slate-400">End Date</Label>
 											<Input
 												type='date'
 												value={formData.end_date}
@@ -679,6 +705,7 @@ export default function EmployeeLeavePage() {
 															e.target.value,
 													})
 												}
+												className="rounded-xl border-slate-205 dark:border-slate-800 text-xs"
 											/>
 										</div>
 									</div>
@@ -687,7 +714,7 @@ export default function EmployeeLeavePage() {
 									{formData.start_date &&
 										formData.end_date &&
 										formData.leave_type_id && (
-											<div className='rounded-xl border bg-muted/40 p-3 text-sm'>
+											<div className='rounded-xl border border-slate-100 dark:border-slate-850/50 bg-slate-50/50 dark:bg-slate-950/20 p-3.5 text-xs text-slate-600 dark:text-slate-405 space-y-1'>
 												<p>
 													<strong>
 														Total leave:
@@ -704,21 +731,13 @@ export default function EmployeeLeavePage() {
 													</strong>{" "}
 													{remaining % 1 === 0
 														? remaining
-														: remaining.toFixed(
-																1
-														  )}{" "}
-													day
-													{remaining !== 1
-														? "s"
-														: ""}
+														: remaining.toFixed(1)}{" "}
+													day{remaining !== 1 ? "s" : ""}
 												</p>
 												{requestDays >
 													remaining && (
-													<p className='text-destructive font-medium'>
-														Insufficient
-														balance. Reduce days
-														or choose another
-														leave type.
+													<p className='text-red-500 font-bold mt-2'>
+														Insufficient balance. Choose another leave type.
 													</p>
 												)}
 											</div>
@@ -726,13 +745,10 @@ export default function EmployeeLeavePage() {
 
 									{/* Medical: required document upload */}
 									{isMedicalLeave(selectedType) && (
-										<div className='space-y-2'>
-											<Label>
-												Document (receipt / medical
-												certificate){" "}
-												<span className='text-destructive'>
-													*
-												</span>
+										<div className='space-y-2 bg-rose-50/20 dark:bg-rose-950/10 p-3 rounded-xl border border-rose-100/50 dark:border-rose-900/20'>
+											<Label className="text-xs font-bold text-rose-700 dark:text-rose-400">
+												Document (receipt / medical certificate){" "}
+												<span className='text-rose-500'>*</span>
 											</Label>
 											<input
 												ref={docInputRef}
@@ -741,7 +757,7 @@ export default function EmployeeLeavePage() {
 												className='hidden'
 												onChange={handleDocUpload}
 											/>
-											<div className='flex items-center gap-2'>
+											<div className='flex items-center gap-2 mt-1'>
 												<Button
 													type='button'
 													variant='outline'
@@ -749,13 +765,14 @@ export default function EmployeeLeavePage() {
 													onClick={() =>
 														docInputRef.current?.click()
 													}
-													disabled={docUploading}>
+													disabled={docUploading}
+													className="rounded-lg text-xs h-8 border-rose-200 dark:border-rose-900 text-rose-700 dark:text-rose-400 bg-white dark:bg-slate-900 hover:bg-rose-50 dark:hover:bg-rose-950/30">
 													{docUploading ? (
 														<Loader2 className='h-4 w-4 animate-spin' />
 													) : (
-														<Upload className='mr-2 h-4 w-4' />
+														<Upload className='mr-1.5 h-3.5 w-3.5' />
 													)}
-													Upload
+													Upload File
 												</Button>
 												{formData.document_url && (
 													<>
@@ -765,24 +782,19 @@ export default function EmployeeLeavePage() {
 															}
 															target='_blank'
 															rel='noopener noreferrer'
-															className='text-sm text-primary hover:underline flex items-center gap-1'>
-															<ExternalLink className='h-3 w-3' />{" "}
-															Document
-															attached
+															className='text-xs text-blue-600 dark:text-blue-400 font-bold hover:underline flex items-center gap-1'>
+															<ExternalLink className='h-3 w-3' /> Document Attached
 														</a>
 														<Button
 															type='button'
 															variant='ghost'
 															size='sm'
-															className='h-7 text-destructive'
+															className='h-7 text-rose-500 hover:text-rose-600 font-bold hover:bg-transparent text-xs'
 															onClick={() =>
 																setFormData(
-																	(
-																		f
-																	) => ({
+																	(f) => ({
 																		...f,
-																		document_url:
-																			null,
+																		document_url: null,
 																	})
 																)
 															}>
@@ -795,9 +807,9 @@ export default function EmployeeLeavePage() {
 									)}
 
 									<div className='space-y-2'>
-										<Label>Reason</Label>
+										<Label className="text-xs font-bold text-slate-600 dark:text-slate-400">Reason</Label>
 										<Textarea
-											placeholder='Reason for leave...'
+											placeholder='Brief reason for leave request...'
 											value={formData.reason}
 											onChange={(e) =>
 												setFormData({
@@ -805,22 +817,25 @@ export default function EmployeeLeavePage() {
 													reason: e.target.value,
 												})
 											}
+											className="rounded-xl border-slate-205 dark:border-slate-800 text-xs min-h-[80px]"
 										/>
 									</div>
 
-									<div className='flex justify-end gap-3 pt-4'>
+									<div className='flex justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-800/40'>
 										<Button
 											variant='outline'
 											onClick={() =>
 												setIsDialogOpen(false)
-											}>
+											}
+											className="rounded-xl text-xs h-9 border-slate-200 dark:border-slate-800">
 											Cancel
 										</Button>
 										<Button
 											onClick={handleSubmit}
 											disabled={
 												!canSubmit || submitting
-											}>
+											}
+											className="rounded-xl text-xs h-9 bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-[0_4px_12px_rgba(37,99,235,0.15)]">
 											{submitting ? (
 												<Loader2 className='h-4 w-4 animate-spin' />
 											) : editingRequest ? (
@@ -836,87 +851,88 @@ export default function EmployeeLeavePage() {
 					</div>
 
 					<TabsContent value='requests'>
-						<div className='bg-card rounded-2xl border border-border/50 shadow-sm overflow-hidden'>
-							<div className='flex items-center gap-3 px-5 py-4 border-b border-border/50'>
-								<div className='h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary'><Calendar className='h-4 w-4' /></div>
+						<div className='bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800/40 shadow-[0_4px_24px_rgba(0,0,0,0.015)] overflow-hidden'>
+							<div className='flex items-center gap-3 px-5 py-4 border-b border-slate-100 dark:border-slate-800/40 bg-slate-50/20 dark:bg-slate-950/10'>
+								<div className='h-8 w-8 rounded-xl bg-blue-50/80 dark:bg-blue-950/20 border border-blue-100/50 dark:border-blue-900/30 text-blue-600 dark:text-blue-450 flex items-center justify-center'><Calendar className='h-4 w-4' /></div>
 								<div>
-									<p className='font-semibold text-sm'>My Leave Requests ({currentYear})</p>
-									<p className='text-xs text-muted-foreground'>{filteredRequests.length} request{filteredRequests.length !== 1 ? 's' : ''}</p>
+									<p className='font-black text-xs uppercase tracking-wider text-slate-700 dark:text-slate-350'>My Leave Requests ({currentYear})</p>
+									<p className='text-[10px] font-bold text-slate-400 dark:text-slate-500 mt-0.5'>{filteredRequests.length} request{filteredRequests.length !== 1 ? 's' : ''}</p>
 								</div>
 							</div>
 							{isLoading ? (
-								<div className='flex items-center justify-center py-12'><div className='h-6 w-6 rounded-full border-2 border-primary/30 border-t-primary animate-spin' /></div>
+								<div className='flex items-center justify-center py-16'><Loader2 className='h-6 w-6 text-slate-300 dark:text-slate-700 animate-spin' /></div>
 							) : filteredRequests.length === 0 ? (
-								<div className='flex flex-col items-center justify-center py-12 text-center'>
-									<Calendar className='h-10 w-10 text-muted-foreground/30 mb-3' />
-									<p className='text-sm font-medium text-muted-foreground'>
+								<div className='flex flex-col items-center justify-center py-16 text-center'>
+									<Calendar className='h-12 w-12 text-slate-200 dark:text-slate-800 mb-3' />
+									<p className='text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider'>
 										{leaveRequests.length === 0 ? "No leave requests yet" : "No requests for this year"}
 									</p>
-									<p className='text-xs text-muted-foreground mt-1'>Click "New Request" to submit a leave application</p>
+									<p className='text-[10px] text-slate-400 dark:text-slate-500 font-bold mt-1'>Click "New Request" to submit a leave application</p>
 								</div>
 							) : (
 								<div className='overflow-x-auto'>
 									<Table>
 										<TableHeader>
-											<TableRow className='bg-muted/30'>
-												<TableHead className='font-semibold'>Leave Type</TableHead>
-												<TableHead className='font-semibold'>Duration</TableHead>
-												<TableHead className='font-semibold'>Days</TableHead>
-												<TableHead className='font-semibold'>Document</TableHead>
-												<TableHead className='font-semibold'>Status</TableHead>
-												<TableHead className='font-semibold'>Submitted</TableHead>
-												<TableHead className='font-semibold w-[80px]'>Actions</TableHead>
+											<TableRow className='hover:bg-transparent border-b border-slate-100 dark:border-slate-800/40 bg-slate-50/50 dark:bg-slate-950/20'>
+												<TableHead className='font-black text-[9px] uppercase tracking-wider text-slate-400 dark:text-slate-500'>Leave Type</TableHead>
+												<TableHead className='font-black text-[9px] uppercase tracking-wider text-slate-400 dark:text-slate-500'>Duration</TableHead>
+												<TableHead className='font-black text-[9px] uppercase tracking-wider text-slate-400 dark:text-slate-500'>Days</TableHead>
+												<TableHead className='font-black text-[9px] uppercase tracking-wider text-slate-400 dark:text-slate-500'>Reason</TableHead>
+												<TableHead className='font-black text-[9px] uppercase tracking-wider text-slate-400 dark:text-slate-500'>Document</TableHead>
+												<TableHead className='font-black text-[9px] uppercase tracking-wider text-slate-400 dark:text-slate-500'>Status</TableHead>
+												<TableHead className='font-black text-[9px] uppercase tracking-wider text-slate-400 dark:text-slate-500'>Submitted</TableHead>
+												<TableHead className='font-black text-[9px] uppercase tracking-wider text-slate-400 dark:text-slate-500 w-[80px]'>Actions</TableHead>
 											</TableRow>
 										</TableHeader>
 										<TableBody>
 											{filteredRequests.map((request) => (
-												<TableRow key={request.id} className='hover:bg-muted/30 transition-colors'>
+												<TableRow key={request.id} className='hover:bg-slate-50/50 dark:hover:bg-slate-900/50 transition-colors border-b border-slate-100 dark:border-slate-800/40'>
 													<TableCell>
-														<span className='inline-flex items-center px-2 py-0.5 rounded-full bg-muted text-xs font-medium border border-border/60'>
+														<span className='inline-flex items-center px-2 py-0.5 rounded bg-slate-50 dark:bg-slate-950/40 text-slate-650 dark:text-slate-300 text-[10px] font-black uppercase tracking-wider border border-slate-100 dark:border-slate-850/40'>
 															{request.leave_type?.name}
 														</span>
 														{request.half_day && request.half_day_period && (
-															<span className='ml-2 text-xs text-muted-foreground'>
+															<span className='ml-2 text-[10px] text-slate-400 dark:text-slate-500 font-bold'>
 																({request.half_day_period === "first_half" ? "9am-1pm" : "1pm-7pm"})
 															</span>
 														)}
 													</TableCell>
-													<TableCell className='text-sm'>
+													<TableCell className='text-xs text-slate-600 dark:text-slate-350'>
 														<div className='flex flex-col'>
-															<span>{new Date(request.start_date).toLocaleDateString()}</span>
-															<span className='text-xs text-muted-foreground'>to {new Date(request.end_date).toLocaleDateString()}</span>
+															<span className="font-bold">{new Date(request.start_date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</span>
+															<span className='text-[10px] text-slate-400 dark:text-slate-500 font-semibold mt-0.5'>to {new Date(request.end_date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</span>
 														</div>
 													</TableCell>
 													<TableCell>
-														<span className='inline-flex px-2 py-0.5 rounded-md bg-primary/10 text-primary text-xs font-semibold'>
+														<span className='inline-flex px-2 py-0.5 rounded bg-blue-50/60 dark:bg-blue-950/20 text-blue-600 dark:text-blue-450 text-[10px] font-black uppercase tracking-wider border border-blue-100/50 dark:border-blue-900/30'>
 															{formatLeaveDays(request.start_date, request.end_date, request.half_day)}
 														</span>
 													</TableCell>
-													<TableCell className='max-w-[200px] truncate text-sm'>
+													<TableCell className='max-w-[200px] truncate text-xs text-slate-500 dark:text-slate-400 font-medium'>
 														{request.reason || "—"}
 													</TableCell>
 													<TableCell>
 														{request.document_url ? (
-															<Button variant='outline' size='sm' asChild className='h-7 text-xs rounded-lg'>
-																<a href={request.document_url} target='_blank' rel='noopener noreferrer'>
-																	<ExternalLink className='mr-1 h-3 w-3' />
+															<Button variant='outline' size='sm' asChild className='h-7 text-[10px] font-bold rounded-lg border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-850'>
+																<a href={request.document_url} target='_blank' rel='noopener noreferrer' className="flex items-center gap-1">
+																	<ExternalLink className='h-3 w-3' />
 																	View
 																</a>
 															</Button>
 														) : (
-															<span className='text-muted-foreground text-sm'>—</span>
+															<span className='text-slate-400 dark:text-slate-600 text-xs'>—</span>
 														)}
 													</TableCell>
 													<TableCell>
 														{getStatusBadge(request.status)}
 													</TableCell>
-													<TableCell className='text-sm text-muted-foreground'>
-														{new Date(request.created_at).toLocaleDateString()}
+													<TableCell className='text-xs text-slate-400 dark:text-slate-550 font-medium'>
+														{new Date(request.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
 													</TableCell>
 													<TableCell>
 														{request.status === "pending" && (
-															<Button variant='ghost' size='sm' className='h-8 w-8 p-0' onClick={() => openEditDialog(request)} title='Edit'>
-																<Pencil className='h-4 w-4' />
+															<Button variant='ghost' size='sm' className='h-8 w-8 p-0 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-850' onClick={() => openEditDialog(request)} title='Edit'>
+																<Pencil className='h-3.5 w-3.5 text-slate-450 dark:text-slate-400' />
 															</Button>
 														)}
 													</TableCell>
@@ -930,51 +946,51 @@ export default function EmployeeLeavePage() {
 					</TabsContent>
 
 					<TabsContent value='deductions'>
-						<div className='bg-card rounded-2xl border border-border/50 shadow-sm overflow-hidden'>
-							<div className='flex items-center gap-3 px-5 py-4 border-b border-border/50'>
-								<div className='h-8 w-8 rounded-lg bg-orange-500/15 flex items-center justify-center text-orange-600'><Minus className='h-4 w-4' /></div>
+						<div className='bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800/40 shadow-[0_4px_24px_rgba(0,0,0,0.015)] overflow-hidden'>
+							<div className='flex items-center gap-3 px-5 py-4 border-b border-slate-100 dark:border-slate-800/40 bg-slate-50/20 dark:bg-slate-950/10'>
+								<div className='h-8 w-8 rounded-xl bg-orange-50/80 dark:bg-orange-950/20 border border-orange-100/50 dark:border-orange-900/30 text-orange-600 dark:text-orange-450 flex items-center justify-center'><Minus className='h-4 w-4' /></div>
 								<div>
-									<p className='font-semibold text-sm'>Leave Deductions</p>
-									<p className='text-xs text-muted-foreground'>{leaveDeductions.length} deduction{leaveDeductions.length !== 1 ? 's' : ''} recorded</p>
+									<p className='font-black text-xs uppercase tracking-wider text-slate-700 dark:text-slate-350'>Leave Deductions</p>
+									<p className='text-[10px] font-bold text-slate-405 mt-0.5'>{leaveDeductions.length} deduction{leaveDeductions.length !== 1 ? 's' : ''} recorded</p>
 								</div>
 							</div>
 							{leaveDeductions.length === 0 ? (
-								<div className='flex flex-col items-center justify-center py-12 text-center'>
-									<Minus className='h-10 w-10 text-muted-foreground/30 mb-3' />
-									<p className='text-sm font-medium text-muted-foreground'>No leave deductions recorded.</p>
+								<div className='flex flex-col items-center justify-center py-16 text-center'>
+									<Minus className='h-12 w-12 text-slate-200 dark:text-slate-800 mb-3' />
+									<p className='text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider'>No leave deductions recorded</p>
 								</div>
 							) : (
 								<div className='overflow-x-auto'>
 									<Table>
 										<TableHeader>
-											<TableRow className='bg-muted/30'>
-												<TableHead className='font-semibold'>Leave Type</TableHead>
-												<TableHead className='font-semibold'>Days Deducted</TableHead>
-												<TableHead className='font-semibold'>Date</TableHead>
-												<TableHead className='font-semibold'>Reason</TableHead>
-												<TableHead className='font-semibold'>Deducted By</TableHead>
+											<TableRow className='hover:bg-transparent border-b border-slate-100 dark:border-slate-800/40 bg-slate-50/50 dark:bg-slate-950/20'>
+												<TableHead className='font-black text-[9px] uppercase tracking-wider text-slate-400 dark:text-slate-500'>Leave Type</TableHead>
+												<TableHead className='font-black text-[9px] uppercase tracking-wider text-slate-400 dark:text-slate-500'>Days Deducted</TableHead>
+												<TableHead className='font-black text-[9px] uppercase tracking-wider text-slate-400 dark:text-slate-500'>Date</TableHead>
+												<TableHead className='font-black text-[9px] uppercase tracking-wider text-slate-400 dark:text-slate-500'>Reason</TableHead>
+												<TableHead className='font-black text-[9px] uppercase tracking-wider text-slate-400 dark:text-slate-500'>Deducted By</TableHead>
 											</TableRow>
 										</TableHeader>
 										<TableBody>
 											{leaveDeductions.map((deduction) => (
-												<TableRow key={deduction.id} className='hover:bg-muted/30 transition-colors'>
+												<TableRow key={deduction.id} className='hover:bg-slate-50/50 dark:hover:bg-slate-900/50 transition-colors border-b border-slate-100 dark:border-slate-800/40'>
 													<TableCell>
-														<span className='inline-flex items-center px-2 py-0.5 rounded-full bg-muted text-xs font-medium border border-border/60'>
+														<span className='inline-flex items-center px-2 py-0.5 rounded bg-slate-50 dark:bg-slate-950/40 text-slate-650 dark:text-slate-350 text-[10px] font-black uppercase tracking-wider border border-slate-100 dark:border-slate-850/40'>
 															{deduction.leave_type?.name ?? "—"}
 														</span>
 													</TableCell>
 													<TableCell>
-														<span className='inline-flex px-2 py-0.5 rounded-md bg-red-50 text-red-700 text-xs font-semibold border border-red-200'>
+														<span className='inline-flex px-2 py-0.5 rounded bg-rose-50 dark:bg-rose-950/20 text-rose-500 dark:text-rose-455 text-[10px] font-black uppercase tracking-wider border border-rose-100/50 dark:border-rose-900/30 shadow-[0_2px_8px_rgba(244,63,94,0.02)]'>
 															-{deduction.days_deducted}
 														</span>
 													</TableCell>
-													<TableCell className='text-sm'>
-														{new Date(deduction.deduction_date).toLocaleDateString()}
+													<TableCell className='text-xs text-slate-600 dark:text-slate-350 font-bold'>
+														{new Date(deduction.deduction_date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
 													</TableCell>
-													<TableCell className='max-w-[200px] truncate text-sm'>
+													<TableCell className='max-w-[200px] truncate text-xs text-slate-500 dark:text-slate-400 font-medium'>
 														{deduction.reason || "—"}
 													</TableCell>
-													<TableCell className='text-xs text-muted-foreground'>
+													<TableCell className='text-xs text-slate-400 dark:text-slate-550 font-medium'>
 														{deduction.deductor ? `${deduction.deductor.first_name} ${deduction.deductor.last_name}` : "—"}
 													</TableCell>
 												</TableRow>

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { UpcomingBirthdays } from "@/components/dashboard/upcoming-birthdays";
 import { EmployeeSearchInput } from "@/components/dashboard/employee-search-input";
+import { DashboardHeader } from "@/components/dashboard/header";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { useUser } from "@/contexts/user-context";
@@ -376,71 +377,9 @@ export default function AdminDashboardPage() {
 				minute: "2-digit",
 			})
 			: "–";
-
-	const initials = employee
-		? `${employee.first_name?.[0] || ""}${employee.last_name?.[0] || ""}`.toUpperCase()
-		: "A";
-
 	return (
 		<div className="flex flex-col min-h-screen bg-[#f8fafc] text-slate-800 font-sans antialiased">
-
-			{/* ── HEADER TOP BAR (Adopted from OMS Image) ── */}
-			<header className="h-16 bg-white border-b border-slate-100 px-6 flex items-center justify-between sticky top-0 z-30 shadow-[0_2px_12px_rgba(0,0,0,0.015)]">
-
-				<EmployeeSearchInput
-					variant="pill"
-					placeholder="Search employees..."
-					className="w-64 md:w-80"
-				/>
-
-				{/* Dropdowns & Profile */}
-				<div className="flex items-center gap-4">
-
-					{/* Date Dropdown */}
-					<div className="hidden md:flex items-center gap-1.5 bg-slate-50 border border-slate-100 rounded-xl px-3 py-1.5 text-xs text-slate-500 font-bold hover:bg-slate-100 cursor-pointer transition-colors">
-						<Calendar className="w-3.5 h-3.5 text-slate-400" />
-						<span>{new Date().toLocaleDateString("en-US", { month: "short", year: "numeric" })}</span>
-						<ChevronDown className="w-3 h-3 text-slate-400" />
-					</div>
-
-					{/* Dept Dropdown */}
-					<div className="hidden md:flex items-center gap-1.5 bg-slate-50 border border-slate-100 rounded-xl px-3 py-1.5 text-xs text-slate-500 font-bold hover:bg-slate-100 cursor-pointer transition-colors">
-						<Users className="w-3.5 h-3.5 text-slate-400" />
-						<span>All Departments</span>
-						<ChevronDown className="w-3 h-3 text-slate-400" />
-					</div>
-
-					{/* Notification Bell */}
-					<button className="p-2 rounded-xl border border-slate-100 bg-slate-50 hover:bg-slate-100 transition-colors relative cursor-pointer">
-						<Bell className="w-4 h-4 text-slate-500" />
-						<span className="absolute top-1 right-1 w-1.5 h-1.5 bg-rose-500 rounded-full"></span>
-					</button>
-
-					{/* Vertical Line */}
-					<div className="w-[1px] h-6 bg-slate-100"></div>
-
-					{/* User Card */}
-					<div className="flex items-center gap-2.5 pl-1">
-						<Avatar className="h-8 w-8 border border-slate-200 shadow-sm">
-							{employee?.avatar_url && (
-								<AvatarImage src={employee.avatar_url} className="object-cover" />
-							)}
-							<AvatarFallback className="bg-blue-50 text-blue-600 font-extrabold text-xs">
-								{initials}
-							</AvatarFallback>
-						</Avatar>
-						<div className="hidden sm:flex flex-col items-start text-left min-w-0">
-							<span className="text-xs font-black text-slate-800 leading-none">
-								{employee?.first_name} {employee?.last_name}
-							</span>
-							<span className="text-[9px] text-slate-400 font-black uppercase tracking-wider mt-0.5">
-								{employee?.role}
-							</span>
-						</div>
-					</div>
-
-				</div>
-			</header>
+			<DashboardHeader title="" />
 
 			{/* Main Grid Pane */}
 			<div className="flex-1 p-6 space-y-6">
@@ -855,10 +794,10 @@ export default function AdminDashboardPage() {
 							<div className="relative w-28 h-28 flex items-center justify-center flex-shrink-0">
 								<svg className="w-full h-full transform -rotate-90">
 									<circle cx="56" cy="56" r="44" stroke="#f1f5f9" strokeWidth="8" fill="transparent" />
-									<circle cx="56" cy="56" r="44" stroke="#2563eb" strokeWidth="8" strokeDasharray="276" strokeDashoffset={276 - (stats.attendanceRate / 100) * 276} strokeLinecap="round" fill="transparent" />
+									<circle cx="56" cy="56" r="44" stroke="#2563eb" strokeWidth="8" strokeDasharray="276" strokeDashoffset={String(276 - (Math.max(0, Math.min(100, Number(stats.attendanceRate) || 0)) / 100) * 276)} strokeLinecap="round" fill="transparent" />
 								</svg>
 								<div className="absolute text-center">
-									<span className="text-xl font-black text-slate-800">{stats.attendanceRate}%</span>
+									<span className="text-xl font-black text-slate-800">{(Number(stats.attendanceRate) || 0)}%</span>
 									<p className="text-[7px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">Total Present</p>
 								</div>
 							</div>
@@ -902,23 +841,55 @@ export default function AdminDashboardPage() {
 							{todayActivities.length === 0 ? (
 								<p className="text-[10px] text-slate-400 italic py-6">No check-ins logged today.</p>
 							) : (
-								<div className="space-y-2.5 max-h-[360px] overflow-y-auto pr-1 scrollbar-hide text-left">
-									{todayActivities.slice(0, 20).map((a) => (
-										<div key={a.id} className="flex items-start gap-2 text-xs">
-											<div className="w-1.5 h-1.5 rounded-full bg-blue-500 mt-1.5 flex-shrink-0"></div>
-											<div className="min-w-0 flex-1">
-												<h6 className="text-[10px] font-black text-slate-700 truncate">
-													{a.employee?.first_name} {a.employee?.last_name}
-												</h6>
-												<p className="text-[8px] text-slate-400 font-bold mt-0.5 flex items-center gap-1">
-													<span>Clocked in at {formatTime(a.clock_in)}</span>
-													{a.status === "late" && (
-														<span className="text-rose-500 font-black">(LATE)</span>
+								<div className="relative space-y-4 max-h-[360px] overflow-y-auto pr-1 text-left scrollbar-hide">
+									{/* Vertical timeline track line */}
+									<div className="absolute left-[11px] top-1 bottom-1 w-[1px] bg-slate-100 dark:bg-slate-800"></div>
+
+									{todayActivities.slice(0, 20).map((a) => {
+										const isLate = a.status === "late";
+										return (
+											<div key={a.id} className="relative flex items-center gap-3 text-xs pl-0.5 group">
+												{/* Node Bullet indicator */}
+												<div className={`absolute left-[9px] w-1.5 h-1.5 rounded-full border border-white dark:border-slate-900 z-10 ${
+													isLate ? "bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.4)]" : "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]"
+												}`} />
+
+												{/* Employee Avatar */}
+												<Avatar className="h-6.5 w-6.5 border border-slate-100 dark:border-slate-850 shrink-0 ml-5 shadow-[0_2px_8px_rgba(0,0,0,0.01)]">
+													{a.employee?.avatar_url && (
+														<AvatarImage src={a.employee.avatar_url} className="object-cover" />
 													)}
-												</p>
+													<AvatarFallback className="text-[8px] font-black bg-slate-105 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
+														{a.employee?.first_name?.[0]}{a.employee?.last_name?.[0]}
+													</AvatarFallback>
+												</Avatar>
+
+												{/* Information Block */}
+												<div className="min-w-0 flex-1">
+													<div className="flex items-center justify-between gap-2">
+														<h6 className="text-[10px] font-bold text-slate-800 dark:text-slate-200 truncate">
+															{a.employee?.first_name} {a.employee?.last_name}
+														</h6>
+														<span className="text-[9px] font-medium text-slate-400 tabular-nums">
+															{formatTime(a.clock_in)}
+														</span>
+													</div>
+													<div className="flex items-center gap-1.5 mt-0.5">
+														<span className="text-[9px] text-slate-400 font-medium">Clocked in</span>
+														{isLate ? (
+															<span className="text-[7.5px] font-black tracking-wider uppercase px-1.5 py-0.2 bg-rose-50 dark:bg-rose-950/20 border border-rose-100/50 dark:border-rose-900/30 text-rose-500 dark:text-rose-400 rounded-md">
+																Late
+															</span>
+														) : (
+															<span className="text-[7.5px] font-black tracking-wider uppercase px-1.5 py-0.2 bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-100/50 dark:border-emerald-900/30 text-emerald-550 dark:text-emerald-400 rounded-md">
+																On Time
+															</span>
+														)}
+													</div>
+												</div>
 											</div>
-										</div>
-									))}
+										);
+									})}
 								</div>
 							)}
 						</div>

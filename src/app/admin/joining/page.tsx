@@ -3,6 +3,7 @@
 import { useEffect, useState, useMemo } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { DashboardHeader } from "@/components/dashboard/header";
+import { StatCard } from "@/components/dashboard/stat-card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import {
@@ -155,7 +156,7 @@ export default function EmployeeJoiningPage() {
 	}, null);
 
 	return (
-		<div className="flex flex-col">
+		<div className="flex flex-col min-h-screen bg-transparent text-slate-800 dark:text-slate-200">
 			<DashboardHeader
 				title="Employee Joining"
 				description="Track employee tenure and joining dates"
@@ -164,46 +165,26 @@ export default function EmployeeJoiningPage() {
 			<div className="flex-1 space-y-5 p-6">
 				{/* Stats Row */}
 				<div className="grid gap-4 grid-cols-1 md:grid-cols-3">
-					<div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary/10 to-primary/5 border border-border/50 p-5 shadow-sm">
-						<div className="flex items-start justify-between gap-3">
-							<div>
-								<p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Total Employees</p>
-								<p className="text-3xl font-bold mt-1 tabular-nums text-primary leading-none">{totalEmployees}</p>
-								<p className="text-[11px] text-muted-foreground mt-1.5">With joining dates</p>
-							</div>
-							<div className="h-11 w-11 rounded-xl bg-primary/15 flex items-center justify-center text-primary"><UserPlus className="h-5 w-5" /></div>
-						</div>
-					</div>
-					<div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-500/10 to-emerald-500/5 border border-border/50 p-5 shadow-sm">
-						<div className="flex items-start justify-between gap-3">
-							<div>
-								<p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Newest Member</p>
-								<p className="text-lg font-bold mt-1 text-emerald-700 leading-tight truncate">
-									{newestEmployee ? `${newestEmployee.first_name} ${newestEmployee.last_name}` : "—"}
-								</p>
-								<p className="text-[11px] text-muted-foreground mt-1">
-									{newestEmployee?.joining_date
-										? new Date(newestEmployee.joining_date).toLocaleDateString("en-US", { day: "numeric", month: "short", year: "numeric" })
-										: ""}
-								</p>
-							</div>
-							<div className="h-11 w-11 rounded-xl bg-emerald-500/15 flex items-center justify-center text-emerald-600"><Cake className="h-5 w-5" /></div>
-						</div>
-					</div>
-					<div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-amber-500/10 to-amber-500/5 border border-border/50 p-5 shadow-sm">
-						<div className="flex items-start justify-between gap-3">
-							<div>
-								<p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Longest Serving</p>
-								<p className="text-lg font-bold mt-1 text-amber-700 leading-tight truncate">
-									{longestEmployee ? `${longestEmployee.first_name} ${longestEmployee.last_name}` : "—"}
-								</p>
-								<p className="text-[11px] text-muted-foreground mt-1">
-									{longestEmployee?.joining_date ? formatDuration(longestEmployee.joining_date) : ""}
-								</p>
-							</div>
-							<div className="h-11 w-11 rounded-xl bg-amber-500/15 flex items-center justify-center text-amber-600"><Briefcase className="h-5 w-5" /></div>
-						</div>
-					</div>
+					<StatCard
+						title="Total Employees"
+						value={totalEmployees}
+						description="With joining dates"
+						icon={<UserPlus className="h-4 w-4" />}
+					/>
+					<StatCard
+						title="Newest Member"
+						value={newestEmployee ? `${newestEmployee.first_name} ${newestEmployee.last_name}` : "—"}
+						description={newestEmployee?.joining_date
+							? new Date(newestEmployee.joining_date).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })
+							: "No joining date"}
+						icon={<Cake className="h-4 w-4" />}
+					/>
+					<StatCard
+						title="Longest Serving"
+						value={longestEmployee ? `${longestEmployee.first_name} ${longestEmployee.last_name}` : "—"}
+						description={longestEmployee?.joining_date ? formatDuration(longestEmployee.joining_date) : ""}
+						icon={<Briefcase className="h-4 w-4" />}
+					/>
 				</div>
 
 				{/* Search + Month Filter */}

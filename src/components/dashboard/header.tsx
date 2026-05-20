@@ -1,8 +1,19 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-
-import { Search, Loader2 } from "lucide-react";
+import {
+	Search,
+	Loader2,
+	Calendar,
+	ChevronDown,
+	Users,
+	Bell,
+	Mail,
+	Phone,
+	IdCard,
+	Building,
+	User,
+} from "lucide-react";
 import { Input } from "@/components/ui/input";
 import {
 	Dialog,
@@ -10,12 +21,12 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from "@/components/ui/dialog";
-
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { createClient } from "@/lib/supabase/client";
 import { useUser } from "../../contexts/user-context";
 import type { Employee } from "@/lib/types";
 import Image from "next/image";
+
 interface DashboardHeaderProps {
 	title: string;
 	description?: string;
@@ -99,36 +110,54 @@ export function DashboardHeader({
 		setSelectedEmployee(emp);
 	};
 
+	const initials = employee
+		? `${employee.first_name?.[0] || ""}${employee.last_name?.[0] || ""}`.toUpperCase()
+		: "A";
+
+	const formatDate = (dateString: string | null) => {
+		if (!dateString) return "N/A";
+		const date = new Date(dateString);
+		return date.toLocaleDateString("en-US", {
+			day: "numeric",
+			month: "short",
+			year: "numeric",
+		});
+	};
+
 	return (
 		<>
-			<header className="sticky top-0 z-30 flex h-16 items-center justify-between gap-4 border-b border-border/80 bg-background/95 px-4 md:px-6 backdrop-blur supports-[backdrop-filter]:bg-background/80 shadow-sm">
-				<div className='flex min-w-0 flex-1 justify-between items-center gap-3'>
+			<header className="sticky top-0 z-30 flex h-16 items-center justify-between gap-4 border-b border-slate-100 bg-white/95 dark:bg-slate-900/95 dark:border-slate-800/40 px-4 md:px-6 backdrop-blur shadow-[0_2px_12px_rgba(0,0,0,0.015)]">
+				<div className="flex min-w-0 flex-1 justify-between items-center gap-3">
 					{/* Logo on mobile (sidebar hidden); matches sidebar branding */}
-					<div className='flex shrink-0 items-center gap-2 md:hidden'>
+					<div className="flex shrink-0 items-center gap-2 md:hidden">
 						<Image src="/maverix-logo.png" alt="MaveriX - Smart HRM" width={100} height={100} />
 					</div>
-					<div className='min-w-0'>
-						<h1 className='text-lg font-semibold text-foreground truncate md:text-xl'>
-							{title}
-						</h1>
-						{description && (
-							<p className='text-sm text-muted-foreground'>
+					<div className="min-w-0">
+						{title && (
+							<h1 className="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-white truncate">
+								{title}
+							</h1>
+						)}
+						{title && description && (
+							<p className="text-[10px] text-slate-400 font-bold mt-0.5">
 								{description}
 							</p>
 						)}
-						{!description && employee && (
-							<p className='text-xs text-muted-foreground truncate md:text-sm'>
+						{title && !description && employee && (
+							<p className="text-[10px] text-slate-400 font-bold mt-0.5 truncate">
 								{getGreeting()}, {employee.first_name}
 							</p>
 						)}
 					</div>
 				</div>
-				<div className='flex items-center gap-4'>
-					<div className='relative hidden md:block' ref={searchRef}>
-						<Search className='absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground' />
+
+				<div className="flex items-center gap-4">
+					{/* Desktop Search */}
+					<div className="relative hidden lg:block" ref={searchRef}>
+						<Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
 						<Input
 							placeholder={searchPlaceholder}
-							className='w-64 bg-muted/50 pl-9'
+							className="w-64 bg-slate-50 border border-slate-100 dark:bg-slate-950/20 dark:border-slate-800/40 rounded-xl pl-9 h-9 text-xs text-slate-700 dark:text-slate-200 placeholder-slate-400 focus:bg-white transition-all"
 							value={searchQuery}
 							onChange={(e) => setSearchQuery(e.target.value)}
 							onFocus={() => {
@@ -137,18 +166,18 @@ export function DashboardHeader({
 							}}
 						/>
 						{isDropdownOpen && (
-							<div className='absolute left-0 top-full z-50 mt-1 w-64 rounded-md border border-border bg-popover shadow-lg'>
+							<div className="absolute left-0 top-full z-50 mt-1 w-64 rounded-xl border border-slate-100 bg-white shadow-lg overflow-hidden dark:bg-slate-900 dark:border-slate-800">
 								{isSearching ? (
-									<div className='flex items-center gap-2 p-4 text-sm text-muted-foreground'>
-										<Loader2 className='h-4 w-4 animate-spin' />
+									<div className="flex items-center gap-2 p-4 text-xs text-slate-500">
+										<Loader2 className="h-4 w-4 animate-spin" />
 										Searching...
 									</div>
 								) : searchResults.length === 0 ? (
-									<div className='p-4 text-sm text-muted-foreground'>
+									<div className="p-4 text-xs text-slate-500">
 										No employees found
 									</div>
 								) : (
-									<div className='max-h-64 overflow-y-auto py-1'>
+									<div className="max-h-64 overflow-y-auto py-1">
 										{searchResults.map((emp) => {
 											const name =
 												`${emp.first_name || ""} ${
@@ -157,18 +186,18 @@ export function DashboardHeader({
 											return (
 												<button
 													key={emp.id}
-													type='button'
-													className='flex w-full items-center gap-3 px-3 py-2.5 text-left text-sm hover:bg-muted/80'
+													type="button"
+													className="flex w-full items-center gap-3 px-3 py-2.5 text-left text-xs hover:bg-slate-50 dark:hover:bg-slate-850/60"
 													onClick={() =>
 														handleSelectEmployee(
 															emp
 														)
 													}>
-													<Avatar className='h-8 w-8'>
+													<Avatar className="h-8 w-8">
 														{emp.avatar_url ? (
 															<AvatarImage src={emp.avatar_url} alt={name} />
 														) : null}
-														<AvatarFallback className='text-xs'>
+														<AvatarFallback className="text-[10px]">
 															{(emp
 																.first_name?.[0] ||
 																"") +
@@ -177,11 +206,11 @@ export function DashboardHeader({
 																	"") || "?"}
 														</AvatarFallback>
 													</Avatar>
-													<div className='min-w-0 flex-1'>
-														<p className='truncate font-medium'>
+													<div className="min-w-0 flex-1">
+														<p className="truncate font-bold text-slate-800 dark:text-slate-200">
 															{name}
 														</p>
-														<p className='truncate text-xs text-muted-foreground'>
+														<p className="truncate text-[10px] text-slate-400 font-medium">
 															{emp.designation ||
 																emp.email}
 														</p>
@@ -194,16 +223,48 @@ export function DashboardHeader({
 							</div>
 						)}
 					</div>
+
+					{/* Date Dropdown */}
+					<div className="hidden md:flex items-center gap-1.5 bg-slate-50 dark:bg-slate-950/20 border border-slate-100 dark:border-slate-850 rounded-xl px-3 py-1.5 text-xs text-slate-500 dark:text-slate-400 font-bold hover:bg-slate-100 dark:hover:bg-slate-900 cursor-pointer transition-colors">
+						<Calendar className="w-3.5 h-3.5 text-slate-400" />
+						<span>{new Date().toLocaleDateString("en-US", { day: "numeric", month: "short", year: "numeric" })}</span>
+						<ChevronDown className="w-3 h-3 text-slate-400" />
+					</div>
+
+					{/* Vertical Line */}
+					<div className="w-[1px] h-6 bg-slate-100 dark:bg-slate-800"></div>
+
+					{/* User Card */}
+					<div className="flex items-center gap-2.5 pl-1">
+						<Avatar className="h-8 w-8 border border-slate-200 dark:border-slate-800 shadow-sm">
+							{employee?.avatar_url && (
+								<AvatarImage src={employee.avatar_url} className="object-cover" />
+							)}
+							<AvatarFallback className="bg-blue-50 dark:bg-slate-800 text-blue-600 dark:text-blue-400 font-extrabold text-xs">
+								{initials}
+							</AvatarFallback>
+						</Avatar>
+						<div className="hidden sm:flex flex-col items-start text-left min-w-0">
+							<span className="text-xs font-black text-slate-800 dark:text-slate-200 leading-none">
+								{employee?.first_name} {employee?.last_name}
+							</span>
+							<span className="text-[9px] text-slate-400 font-black uppercase tracking-wider mt-0.5">
+								{employee?.role}
+							</span>
+						</div>
+					</div>
+
 					{actions}
 				</div>
 			</header>
 
+			{/* Mobile Search input wrapper */}
 			<div className="px-4 pt-3 md:hidden" ref={searchMobileRef}>
 				<div className="relative">
-					<Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+					<Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
 					<Input
 						placeholder={searchPlaceholder}
-						className="w-full bg-muted/50 pl-9"
+						className="w-full bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800/40 rounded-xl pl-9 h-9 text-xs text-slate-700 dark:text-slate-250 placeholder-slate-400 focus:bg-white transition-all"
 						value={searchQuery}
 						onChange={(e) => setSearchQuery(e.target.value)}
 						onFocus={() => {
@@ -211,14 +272,14 @@ export function DashboardHeader({
 						}}
 					/>
 					{isDropdownOpen && (
-						<div className="absolute left-0 top-full z-50 mt-1 w-full rounded-md border border-border bg-popover shadow-lg">
+						<div className="absolute left-0 top-full z-50 mt-1 w-full rounded-xl border border-slate-100 bg-white shadow-lg overflow-hidden dark:bg-slate-900 dark:border-slate-800">
 							{isSearching ? (
-								<div className="flex items-center gap-2 p-4 text-sm text-muted-foreground">
+								<div className="flex items-center gap-2 p-4 text-xs text-slate-500">
 									<Loader2 className="h-4 w-4 animate-spin" />
 									Searching...
 								</div>
 							) : searchResults.length === 0 ? (
-								<div className="p-4 text-sm text-muted-foreground">
+								<div className="p-4 text-xs text-slate-500">
 									No employees found
 								</div>
 							) : (
@@ -230,18 +291,18 @@ export function DashboardHeader({
 											<button
 												key={emp.id}
 												type="button"
-												className="flex w-full items-center gap-3 px-3 py-2.5 text-left text-sm hover:bg-muted/80"
+												className="flex w-full items-center gap-3 px-3 py-2.5 text-left text-xs hover:bg-slate-50 dark:hover:bg-slate-850/60"
 												onClick={() => handleSelectEmployee(emp)}
 											>
 												<Avatar className="h-8 w-8">
 													{emp.avatar_url ? <AvatarImage src={emp.avatar_url} alt={name} /> : null}
-													<AvatarFallback className="text-xs">
+													<AvatarFallback className="text-[10px]">
 														{(emp.first_name?.[0] || "") + (emp.last_name?.[0] || "") || "?"}
 													</AvatarFallback>
 												</Avatar>
 												<div className="min-w-0 flex-1">
-													<p className="truncate font-medium">{name}</p>
-													<p className="truncate text-xs text-muted-foreground">
+													<p className="truncate font-bold text-slate-800 dark:text-slate-200">{name}</p>
+													<p className="truncate text-[10px] text-slate-400 font-medium">
 														{emp.designation || emp.email}
 													</p>
 												</div>
@@ -255,163 +316,110 @@ export function DashboardHeader({
 				</div>
 			</div>
 
+			{/* Redesigned Premium Employee Detail Dialog */}
 			<Dialog
 				open={!!selectedEmployee}
-				onOpenChange={(open) => !open && setSelectedEmployee(null)}>
-				<DialogContent className='max-w-[400] p-0 overflow-hidden max-h-[90vh] overflow-y-auto'>
+				onOpenChange={(open) => !open && setSelectedEmployee(null)}
+			>
+				<DialogContent className="max-w-[420px] p-0 overflow-hidden max-h-[95vh] rounded-2xl border-none shadow-2xl bg-white dark:bg-slate-900">
 					<DialogHeader className="sr-only">
 						<DialogTitle>Employee Details</DialogTitle>
 					</DialogHeader>
 					{selectedEmployee && (
 						<>
-							<div className='relative h-28 bg-gradient-to-r from-primary/80 to-primary search-header-image'>
-								<div className='absolute -bottom-12 left-1/2 -translate-x-1/2'>
-									<Avatar className='h-24 w-24 ring-4 ring-background'>
+							<div className="relative h-32 bg-gradient-to-tr from-slate-900 via-primary to-indigo-950">
+								{/* Premium decorative shapes */}
+								<div className="absolute inset-0 overflow-hidden">
+									<div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full blur-xl -mr-8 -mt-8" />
+									<div className="absolute bottom-0 left-0 w-24 h-24 bg-primary/20 rounded-full blur-lg -ml-8 -mb-8" />
+								</div>
+								<div className="absolute -bottom-14 left-1/2 -translate-x-1/2 z-10">
+									<Avatar className="h-28 w-28 ring-4 ring-white dark:ring-slate-900 shadow-xl transition-transform duration-300 hover:scale-105">
 										{selectedEmployee.avatar_url ? (
-											<AvatarImage 
-												src={selectedEmployee.avatar_url} 
+											<AvatarImage
+												src={selectedEmployee.avatar_url}
 												alt={`${selectedEmployee.first_name} ${selectedEmployee.last_name}`}
 												className="object-cover"
 											/>
 										) : null}
-										<AvatarFallback className='text-2xl bg-muted'>
+										<AvatarFallback className="text-3xl bg-slate-100 dark:bg-slate-800 font-semibold text-primary">
 											{(selectedEmployee.first_name?.[0] || "") +
 												(selectedEmployee.last_name?.[0] || "") || "?"}
 										</AvatarFallback>
 									</Avatar>
 								</div>
 							</div>
-							<div className='pt-14 pb-6 px-6 profile-card-image'>
-								<div className='text-center mb-6'>
-									<h3 className='text-xl font-semibold text-foreground'>
+							<div className="pt-16 pb-6 px-6">
+								<div className="text-center mb-6">
+									<h3 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
 										{selectedEmployee.first_name} {selectedEmployee.last_name}
 									</h3>
-									<p className='text-sm text-muted-foreground mt-1 capitalize'>
-										{selectedEmployee.designation || "No designation"}
-									</p>
-									{/* {selectedEmployee.role && (
-										<span className='inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary mt-2 capitalize'>
-											{selectedEmployee.role}
+									<div className="flex flex-wrap items-center justify-center gap-2 mt-2">
+										<span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold bg-primary/10 text-primary capitalize">
+											<User className="w-3 h-3" />
+											{selectedEmployee.designation || "No Designation"}
 										</span>
-									)} */}
-								</div>
-								
-								<div className='space-y-3'>
-									{/* Email */}
-									<div className='flex items-center gap-3 p-2 rounded-lg'>
-										<div className='h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center shrink-0'>
-											<svg className='h-4 w-4 text-primary' fill='none' viewBox='0 0 24 24' stroke='currentColor'>
-												<path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z' />
-											</svg>
-										</div>
-										<div className='min-w-0 flex-1'>
-											<p className='text-xs text-muted-foreground uppercase tracking-wide'>Email</p>
-											<p className='text-sm font-medium truncate'>{selectedEmployee.email}</p>
-										</div>
+										{selectedEmployee.department && (
+											<span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 capitalize">
+												<Building className="w-3 h-3" />
+												{selectedEmployee.department}
+											</span>
+										)}
 									</div>
-									
-									{/* Phone */}
-									{selectedEmployee.phone && (
-										<div className='flex items-center gap-3 p-2 rounded-lg'>
-											<div className='h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center shrink-0'>
-												<svg className='h-4 w-4 text-primary' fill='none' viewBox='0 0 24 24' stroke='currentColor'>
-													<path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z' />
-												</svg>
-											</div>
-											<div className='flex-1'>
-												<p className='text-xs text-muted-foreground uppercase tracking-wide'>Phone</p>
-												<p className='text-sm font-medium'>{selectedEmployee.phone}</p>
-											</div>
-										</div>
-									)}
-									
+								</div>
+
+								<div className="grid grid-cols-2 gap-3 mb-6">
 									{/* Employee ID */}
-									{selectedEmployee.employee_id && (
-										<div className='flex items-center gap-3 p-2 rounded-lg'>
-											<div className='h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center shrink-0'>
-												<svg className='h-4 w-4 text-primary' fill='none' viewBox='0 0 24 24' stroke='currentColor'>
-													<path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0m-5 8a2 2 0 100-4 2 2 0 000 4zm0 0c1.306 0 2.417.835 2.83 2M9 14a3 3 0 00-3 3m3-3a3 3 0 013 3m-3 3v2m6-6v2' />
-												</svg>
-											</div>
-											<div className='flex-1'>
-												<p className='text-xs text-muted-foreground uppercase tracking-wide'>Employee ID</p>
-												<p className='text-sm font-medium'>{selectedEmployee.employee_id}</p>
-											</div>
+									<div className="flex flex-col p-3 rounded-xl border border-slate-100 bg-slate-50/50 dark:border-slate-800/40 dark:bg-slate-950/20 transition-colors hover:bg-slate-50 dark:hover:bg-slate-950">
+										<div className="flex items-center gap-1.5 text-slate-400 dark:text-slate-500 mb-1">
+											<IdCard className="w-3.5 h-3.5 shrink-0 text-primary/70 dark:text-primary-foreground/75" />
+											<span className="text-[10px] font-bold uppercase tracking-wider">Emp ID</span>
 										</div>
-									)}
-									
-									{/* Department */}
-									{selectedEmployee.department && (
-										<div className='flex items-center gap-3 p-2 rounded-lg'>
-											<div className='h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center shrink-0'>
-												<svg className='h-4 w-4 text-primary' fill='none' viewBox='0 0 24 24' stroke='currentColor'>
-													<path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4' />
-												</svg>
-											</div>
-											<div className='flex-1'>
-												<p className='text-xs text-muted-foreground uppercase tracking-wide'>Department</p>
-												<p className='text-sm font-medium'>{selectedEmployee.department}</p>
-											</div>
+										<p className="text-sm font-semibold text-slate-800 dark:text-slate-200">
+											{selectedEmployee.employee_id || "N/A"}
+										</p>
+									</div>
+
+									{/* DOB */}
+									<div className="flex flex-col p-3 rounded-xl border border-slate-100 bg-slate-50/50 dark:border-slate-800/40 dark:bg-slate-950/20 transition-colors hover:bg-slate-50 dark:hover:bg-slate-950">
+										<div className="flex items-center gap-1.5 text-slate-400 dark:text-slate-500 mb-1">
+											<Calendar className="w-3.5 h-3.5 shrink-0 text-primary/70 dark:text-primary-foreground/75" />
+											<span className="text-[10px] font-bold uppercase tracking-wider">DOB</span>
 										</div>
-									)}
-									
-									{/* Joining Date */}
-									{selectedEmployee.joining_date && (
-										<div className='flex items-center gap-3 p-2 rounded-lg'>
-											<div className='h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center shrink-0'>
-												<svg className='h-4 w-4 text-primary' fill='none' viewBox='0 0 24 24' stroke='currentColor'>
-													<path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z' />
-												</svg>
-											</div>
-											<div className='flex-1'>
-												<p className='text-xs text-muted-foreground uppercase tracking-wide'>Joining Date</p>
-												<p className='text-sm font-medium'>
-													{new Date(selectedEmployee.joining_date).toLocaleDateString('en-US', { 
-														day: 'numeric', 
-														month: 'long', 
-														year: 'numeric' 
-													})}
-												</p>
-											</div>
+										<p className="text-sm font-semibold text-slate-800 dark:text-slate-200">
+											{formatDate(selectedEmployee.date_of_birth)}
+										</p>
+									</div>
+
+									{/* Phone */}
+									<div className="flex flex-col p-3 rounded-xl border border-slate-100 bg-slate-50/50 dark:border-slate-800/40 dark:bg-slate-950/20 transition-colors hover:bg-slate-50 dark:hover:bg-slate-950 col-span-1">
+										<div className="flex items-center gap-1.5 text-slate-400 dark:text-slate-500 mb-1">
+											<Phone className="w-3.5 h-3.5 shrink-0 text-primary/70 dark:text-primary-foreground/75" />
+											<span className="text-[10px] font-bold uppercase tracking-wider">Phone</span>
 										</div>
-									)}
-									
-									{/* Date of Birth */}
-									{selectedEmployee.date_of_birth && (
-										<div className='flex items-center gap-3 p-2 rounded-lg'>
-											<div className='h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center shrink-0'>
-												<svg className='h-4 w-4 text-primary' fill='none' viewBox='0 0 24 24' stroke='currentColor'>
-													<path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M21 15.546c-.523 0-1.046.151-1.5.454a2.704 2.704 0 01-3 0 2.704 2.704 0 00-3 0 2.704 2.704 0 01-3 0 2.704 2.704 0 00-3 0 2.704 2.704 0 01-3 0 2.701 2.701 0 00-1.5-.454M9 6v2m3-2v2m3-2v2M9 3h.01M12 3h.01M15 3h.01M21 21v-7a2 2 0 00-2-2H5a2 2 0 00-2 2v7h18zm-3-9v-2a2 2 0 00-2-2H8a2 2 0 00-2 2v2h12z' />
-												</svg>
-											</div>
-											<div className='flex-1'>
-												<p className='text-xs text-muted-foreground uppercase tracking-wide'>Date of Birth</p>
-												<p className='text-sm font-medium'>
-													{new Date(selectedEmployee.date_of_birth).toLocaleDateString('en-US', { 
-														day: 'numeric', 
-														month: 'long', 
-														year: 'numeric' 
-													})}
-												</p>
-											</div>
+										<p className="text-sm font-semibold text-slate-800 dark:text-slate-200 truncate" title={selectedEmployee.phone || ""}>
+											{selectedEmployee.phone ? (
+												<a href={`tel:${selectedEmployee.phone}`} className="hover:text-primary hover:underline transition-colors">
+													{selectedEmployee.phone}
+												</a>
+											) : (
+												"N/A"
+											)}
+										</p>
+									</div>
+
+									{/* Email */}
+									<div className="flex flex-col p-3 rounded-xl border border-slate-100 bg-slate-50/50 dark:border-slate-800/40 dark:bg-slate-950/20 transition-colors hover:bg-slate-50 dark:hover:bg-slate-950 col-span-1">
+										<div className="flex items-center gap-1.5 text-slate-400 dark:text-slate-500 mb-1">
+											<Mail className="w-3.5 h-3.5 shrink-0 text-primary/70 dark:text-primary-foreground/75" />
+											<span className="text-[10px] font-bold uppercase tracking-wider">Email</span>
 										</div>
-									)}
-									
-									{/* Address */}
-									{selectedEmployee.address && (
-										<div className='flex items-start gap-3 p-2 rounded-lg'>
-											<div className='h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center shrink-0 mt-0.5'>
-												<svg className='h-4 w-4 text-primary' fill='none' viewBox='0 0 24 24' stroke='currentColor'>
-													<path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z' />
-													<path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M15 11a3 3 0 11-6 0 3 3 0 016 0z' />
-												</svg>
-											</div>
-											<div className='flex-1'>
-												<p className='text-xs text-muted-foreground uppercase tracking-wide'>Address</p>
-												<p className='text-sm font-medium leading-relaxed'>{selectedEmployee.address}</p>
-											</div>
-										</div>
-									)}
+										<p className="text-sm font-semibold text-slate-800 dark:text-slate-200 truncate" title={selectedEmployee.email}>
+											<a href={`mailto:${selectedEmployee.email}`} className="hover:text-primary hover:underline transition-colors">
+												{selectedEmployee.email}
+											</a>
+										</p>
+									</div>
 								</div>
 							</div>
 						</>

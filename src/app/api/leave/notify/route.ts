@@ -6,6 +6,8 @@ import {
 	newRequestBody,
 	statusUpdateSubject,
 	statusUpdateBody,
+	deductionSubject,
+	deductionBody,
 } from "@/lib/leave-email";
 
 function getTransport() {
@@ -43,13 +45,26 @@ type StatusUpdatePayload = {
 	startDate: string;
 	endDate: string;
 	status: "approved" | "rejected";
+	halfDay?: boolean | null;
+};
+
+type LeaveDeductionPayload = {
+	type: "leave_deduction";
+	employeeEmail: string;
+	employeeName: string;
+	deductedBy: string;
+	leaveTypeName: string;
+	daysDeducted: number;
+	deductionDate: string;
+	reason: string;
 };
 
 export async function POST(request: Request) {
 	try {
 		const body = (await request.json()) as
 			| NewRequestPayload
-			| StatusUpdatePayload;
+			| StatusUpdatePayload
+			| LeaveDeductionPayload;
 		if (!body?.type) {
 			return NextResponse.json(
 				{ error: "Missing type" },
@@ -115,6 +130,7 @@ export async function POST(request: Request) {
 				startDate,
 				endDate,
 				status,
+				halfDay,
 			} = body;
 			if (!employeeEmail) {
 				return NextResponse.json(
@@ -132,6 +148,39 @@ export async function POST(request: Request) {
 					startDate,
 					endDate,
 					status,
+					halfDay,
+				}),
+			});
+			return NextResponse.json({ ok: true });
+		}
+
+		if (body.type === "leave_deduction") {
+			const {
+				employeeEmail,
+				employeeName,
+				deductedBy,
+				leaveTypeName,
+				daysDeducted,
+				deductionDate,
+				reason,
+			} = body;
+			if (!employeeEmail) {
+				return NextResponse.json(
+					{ error: "Missing employeeEmail" },
+					{ status: 400 }
+				);
+			}
+			await transport.sendMail({
+				from: from(),
+				to: employeeEmail,
+				subject: deductionSubject(daysDeducted, leaveTypeName),
+				html: deductionBody({
+					employeeName,
+					deductedBy,
+					leaveTypeName,
+					daysDeducted,
+					deductionDate,
+					reason,
 				}),
 			});
 			return NextResponse.json({ ok: true });

@@ -354,9 +354,9 @@ export default function EmployeesPage() {
 			"PAN Number",
 			"Aadhar Number"
 		];
-		
+
 		const weekDays = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-		
+
 		const rows = filteredEmployees.map((emp) => {
 			return [
 				escape(emp.employee_id),
@@ -723,18 +723,16 @@ export default function EmployeesPage() {
 						<div className="flex gap-1 flex-wrap pb-1">
 							<button
 								onClick={() => setDesignationFilter("all")}
-								className={`inline-flex items-center gap-2 px-2 py-2 rounded-full text-sm font-medium transition-colors shrink-0 ${
-									designationFilter === "all"
-										? "bg-primary text-primary-foreground"
-										: "bg-muted hover:bg-muted/80 text-muted-foreground"
-								}`}
+								className={`inline-flex items-center gap-2 px-2 py-2 rounded-full text-sm font-medium transition-colors shrink-0 ${designationFilter === "all"
+									? "bg-primary text-primary-foreground"
+									: "bg-muted hover:bg-muted/80 text-muted-foreground"
+									}`}
 							>
 								All Employees
-								<span className={`text-xs px-2 py-0.5 rounded-full ${
-									designationFilter === "all"
-										? "bg-primary-foreground/20 text-primary-foreground"
-										: "bg-background text-foreground"
-								}`}>
+								<span className={`text-xs px-2 py-0.5 rounded-full ${designationFilter === "all"
+									? "bg-primary-foreground/20 text-primary-foreground"
+									: "bg-background text-foreground"
+									}`}>
 									{designationStats.get("all")}
 								</span>
 							</button>
@@ -742,18 +740,16 @@ export default function EmployeesPage() {
 								<button
 									key={desig}
 									onClick={() => setDesignationFilter(desig)}
-									className={`inline-flex items-center gap-2 px-2 py-1 rounded-full text-sm font-medium transition-colors shrink-0 ${
-										designationFilter === desig
-											? "bg-primary text-primary-foreground"
-											: "bg-muted hover:bg-muted/80 text-muted-foreground"
-									}`}
+									className={`inline-flex items-center gap-2 px-2 py-1 rounded-full text-sm font-medium transition-colors shrink-0 ${designationFilter === desig
+										? "bg-primary text-primary-foreground"
+										: "bg-muted hover:bg-muted/80 text-muted-foreground"
+										}`}
 								>
 									{desig}
-									<span className={`text-xs px-2 py-0.5 rounded-full ${
-										designationFilter === desig
-											? "bg-primary-foreground/20 text-primary-foreground"
-											: "bg-background text-foreground"
-									}`}>
+									<span className={`text-xs px-2 py-0.5 rounded-full ${designationFilter === desig
+										? "bg-primary-foreground/20 text-primary-foreground"
+										: "bg-background text-foreground"
+										}`}>
 										{designationStats.get(desig)}
 									</span>
 								</button>
@@ -783,7 +779,7 @@ export default function EmployeesPage() {
 								</p>
 							</div>
 						) : (
-							<div className='w-[300px] md:w-full overflow-x-auto'>
+							<div className='w-full overflow-x-auto'>
 								<Table className='w-full'>
 									<TableHeader>
 										<TableRow>
@@ -939,7 +935,7 @@ export default function EmployeesPage() {
 																		employee
 																	) ||
 																	blockActionEmployeeId ===
-																		employee.id
+																	employee.id
 																}
 																onClick={() =>
 																	handleToggleBlockEmployee(
@@ -955,7 +951,7 @@ export default function EmployeesPage() {
 																	<UserCheck className='mr-2 h-4 w-4' />
 																)}
 																{blockActionEmployeeId ===
-																employee.id
+																	employee.id
 																	? employee.is_active
 																		? "Blocking..."
 																		: "Unblocking..."

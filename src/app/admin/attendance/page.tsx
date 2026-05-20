@@ -280,6 +280,7 @@ export default function AttendancePage() {
 		late: allEmployeeRows.filter((r) => r.status === "late").length,
 		onLeave: allEmployeeRows.filter((r) => r.status === "leave").length,
 		weekOff: allEmployeeRows.filter((r) => r.status === "week_off").length,
+		wfh: allEmployeeRows.filter((r) => r.is_wfh).length,
 	};
 
 	const total = allEmployeeRows.length;
@@ -297,7 +298,8 @@ export default function AttendancePage() {
 				?.toLowerCase()
 				.includes(searchQuery.toLowerCase());
 		const matchesStatus =
-			statusFilter === "all" || record.status === statusFilter;
+			statusFilter === "all" ||
+			(statusFilter === "wfh" ? !!record.is_wfh : record.status === statusFilter);
 		return matchesSearch && matchesStatus;
 	});
 
@@ -385,36 +387,42 @@ export default function AttendancePage() {
 			value: "present",
 			label: "Present",
 			count: stats.present,
-			color: "text-emerald-600 bg-emerald-50 border border-emerald-200",
+			color: "text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800/40",
+		},
+		{
+			value: "wfh",
+			label: "WFH",
+			count: stats.wfh,
+			color: "text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800/40",
 		},
 		{
 			value: "late",
 			label: "Late",
 			count: stats.late,
-			color: "text-amber-600 bg-amber-50 border border-amber-200",
+			color: "text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800/40",
 		},
 		{
 			value: "absent",
 			label: "Absent",
 			count: stats.absent,
-			color: "text-red-600 bg-red-50 border border-red-200",
+			color: "text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-800/40",
 		},
 		{
 			value: "leave",
 			label: "On Leave",
 			count: stats.onLeave,
-			color: "text-violet-600 bg-violet-50 border border-violet-200",
+			color: "text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-950/20 border-violet-200 dark:border-violet-800/40",
 		},
 		{
 			value: "week_off",
 			label: "Week Off",
 			count: stats.weekOff,
-			color: "text-slate-600 bg-slate-100 border border-slate-200",
+			color: "text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-800/40 border-slate-200 dark:border-slate-700/40",
 		},
 	];
 
 	return (
-		<div className='flex flex-col min-h-screen bg-background'>
+		<div className='flex flex-col min-h-screen bg-transparent text-slate-800 dark:text-slate-200'>
 			<DashboardHeader
 				title='Attendance Management'
 				description='Track and manage employee attendance records'
@@ -429,17 +437,17 @@ export default function AttendancePage() {
 								? "/hr/attendance/records"
 								: "/admin/attendance/records"
 						}
-						className='inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-primary to-indigo-600 text-white text-sm font-semibold hover:from-primary/90 hover:to-indigo-600/90 transition-all shadow-md hover:shadow-lg'>
-						<DownloadIcon className='h-4 w-4' />
+						className='inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 text-xs font-bold border border-slate-100 dark:border-slate-800/40 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-all shadow-[0_4px_20px_rgba(0,0,0,0.01)] active:scale-[0.98]'>
+						<DownloadIcon className='h-3.5 w-3.5' />
 						Download Report
 					</Link>
 				</div>
 
 				{/* ── Date Navigator ── */}
-				<div className='flex items-center justify-between gap-4 bg-card rounded-2xl px-5 py-4 shadow-sm border border-border/60'>
+				<div className='flex items-center justify-between gap-4 bg-white dark:bg-slate-900 rounded-2xl px-5 py-4 shadow-[0_4px_24px_rgba(0,0,0,0.015)] border border-slate-100 dark:border-slate-800/40'>
 					<button
 						onClick={goToPreviousDay}
-						className='h-9 w-9 rounded-xl flex items-center justify-center border border-border bg-background hover:bg-muted transition-colors shrink-0 cursor-pointer'>
+						className='h-9 w-9 rounded-xl flex items-center justify-center border border-slate-100 dark:border-slate-800/60 bg-slate-50/50 dark:bg-slate-900/50 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all duration-200 shrink-0 cursor-pointer text-slate-600 dark:text-slate-400 active:scale-95'>
 						<ChevronLeft className='h-4 w-4' />
 					</button>
 
@@ -448,7 +456,7 @@ export default function AttendancePage() {
 							<button
 								type='button'
 								onClick={openDatePicker}
-								className='h-7 w-7 rounded-lg border border-border bg-background hover:bg-muted transition-colors shrink-0 flex items-center justify-center'
+								className='h-7 w-7 rounded-lg border border-slate-100 dark:border-slate-800/60 bg-slate-50/50 dark:bg-slate-900/50 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all duration-200 shrink-0 flex items-center justify-center'
 								title='Pick a date'>
 								<Calendar className='h-4 w-4 text-primary shrink-0' />
 							</button>
@@ -465,11 +473,11 @@ export default function AttendancePage() {
 								onChange={(e) =>
 									setSelectedDate(e.target.value)
 								}
-								className='h-8 w-[170px] text-xs'
+								className='h-8 w-[170px] text-xs bg-slate-50/30 dark:bg-slate-950/20 border-slate-100 dark:border-slate-800/60 focus:border-primary/50 focus:ring-primary/20'
 							/>
 						</div>
 						{isToday && (
-							<span className='inline-flex items-center gap-1 text-[11px] font-medium text-primary bg-primary/10 rounded-full px-2.5 py-0.5 mt-0.5'>
+							<span className='inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-wider text-primary bg-primary/10 rounded-full px-2.5 py-0.5 mt-0.5'>
 								<span className='h-1.5 w-1.5 rounded-full bg-primary animate-pulse inline-block' />
 								Today
 							</span>
@@ -479,7 +487,7 @@ export default function AttendancePage() {
 					<button
 						onClick={goToNextDay}
 						disabled={isToday}
-						className='h-9 w-9 rounded-xl flex items-center justify-center border border-border bg-background hover:bg-muted transition-colors shrink-0 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer'>
+						className='h-9 w-9 rounded-xl flex items-center justify-center border border-slate-100 dark:border-slate-800/60 bg-slate-50/50 dark:bg-slate-900/50 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all duration-200 shrink-0 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer text-slate-600 dark:text-slate-400 active:scale-95'>
 						<ChevronRight className='h-4 w-4' />
 					</button>
 				</div>
@@ -487,20 +495,20 @@ export default function AttendancePage() {
 				{/* ── Stat Cards ── */}
 				<div className='grid gap-4 grid-cols-2 sm:grid-cols-3 lg:grid-cols-5'>
 					{/* Present */}
-					<div className='bg-card rounded-2xl border border-border/60 shadow-sm p-5 flex flex-col gap-3 hover:shadow-md transition-shadow group'>
+					<div className='bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800/40 p-5 shadow-[0_4px_24px_rgba(0,0,0,0.015)] hover:shadow-md transition-all duration-200 flex flex-col gap-3 group'>
 						<div className='flex items-center justify-between'>
-							<span className='text-xs font-semibold uppercase tracking-widest text-muted-foreground'>
+							<span className='text-[10px] font-black uppercase tracking-wider text-slate-400'>
 								Present
 							</span>
-							<div className='h-9 w-9 rounded-xl bg-emerald-50 flex items-center justify-center group-hover:scale-110 transition-transform'>
-								<UserCheck className='h-4 w-4 text-emerald-600' />
+							<div className='w-8 h-8 rounded-lg flex items-center justify-center border border-emerald-100 dark:border-emerald-800/30 bg-emerald-50/50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-400 group-hover:scale-110 transition-transform'>
+								<UserCheck className='h-4 w-4' />
 							</div>
 						</div>
 						<div>
-							<p className='text-4xl font-bold text-emerald-600 leading-none'>
+							<p className='text-3xl font-black text-slate-800 dark:text-white leading-none tabular-nums'>
 								{stats.present}
 							</p>
-							<div className='mt-2 h-1.5 w-full bg-muted rounded-full overflow-hidden'>
+							<div className='mt-3 h-1 w-full bg-slate-100 dark:bg-slate-800/50 rounded-full overflow-hidden'>
 								<div
 									className='h-full bg-emerald-500 rounded-full transition-all duration-700'
 									style={{
@@ -512,22 +520,22 @@ export default function AttendancePage() {
 					</div>
 
 					{/* Absent */}
-					<div className='bg-card rounded-2xl border border-border/60 shadow-sm p-5 flex flex-col gap-3 hover:shadow-md transition-shadow group'>
+					<div className='bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800/40 p-5 shadow-[0_4px_24px_rgba(0,0,0,0.015)] hover:shadow-md transition-all duration-200 flex flex-col gap-3 group'>
 						<div className='flex items-center justify-between'>
-							<span className='text-xs font-semibold uppercase tracking-widest text-muted-foreground'>
+							<span className='text-[10px] font-black uppercase tracking-wider text-slate-400'>
 								Absent
 							</span>
-							<div className='h-9 w-9 rounded-xl bg-red-50 flex items-center justify-center group-hover:scale-110 transition-transform'>
-								<UserX className='h-4 w-4 text-red-600' />
+							<div className='w-8 h-8 rounded-lg flex items-center justify-center border border-rose-100 dark:border-rose-800/30 bg-rose-50/50 dark:bg-rose-950/20 text-rose-600 dark:text-rose-400 group-hover:scale-110 transition-transform'>
+								<UserX className='h-4 w-4' />
 							</div>
 						</div>
 						<div>
-							<p className='text-4xl font-bold text-red-600 leading-none'>
+							<p className='text-3xl font-black text-slate-800 dark:text-white leading-none tabular-nums'>
 								{stats.absent}
 							</p>
-							<div className='mt-2 h-1.5 w-full bg-muted rounded-full overflow-hidden'>
+							<div className='mt-3 h-1 w-full bg-slate-100 dark:bg-slate-800/50 rounded-full overflow-hidden'>
 								<div
-									className='h-full bg-red-500 rounded-full transition-all duration-700'
+									className='h-full bg-rose-500 rounded-full transition-all duration-700'
 									style={{
 										width: `${total > 0 ? (stats.absent / total) * 100 : 0}%`,
 									}}
@@ -537,20 +545,20 @@ export default function AttendancePage() {
 					</div>
 
 					{/* Late */}
-					<div className='bg-card rounded-2xl border border-border/60 shadow-sm p-5 flex flex-col gap-3 hover:shadow-md transition-shadow group'>
+					<div className='bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800/40 p-5 shadow-[0_4px_24px_rgba(0,0,0,0.015)] hover:shadow-md transition-all duration-200 flex flex-col gap-3 group'>
 						<div className='flex items-center justify-between'>
-							<span className='text-xs font-semibold uppercase tracking-widest text-muted-foreground'>
+							<span className='text-[10px] font-black uppercase tracking-wider text-slate-400'>
 								Late
 							</span>
-							<div className='h-9 w-9 rounded-xl bg-amber-50 flex items-center justify-center group-hover:scale-110 transition-transform'>
-								<Timer className='h-4 w-4 text-amber-600' />
+							<div className='w-8 h-8 rounded-lg flex items-center justify-center border border-amber-100 dark:border-amber-800/30 bg-amber-50/50 dark:bg-amber-950/20 text-amber-600 dark:text-amber-400 group-hover:scale-110 transition-transform'>
+								<Timer className='h-4 w-4' />
 							</div>
 						</div>
 						<div>
-							<p className='text-4xl font-bold text-amber-600 leading-none'>
+							<p className='text-3xl font-black text-slate-800 dark:text-white leading-none tabular-nums'>
 								{stats.late}
 							</p>
-							<div className='mt-2 h-1.5 w-full bg-muted rounded-full overflow-hidden'>
+							<div className='mt-3 h-1 w-full bg-slate-100 dark:bg-slate-800/50 rounded-full overflow-hidden'>
 								<div
 									className='h-full bg-amber-500 rounded-full transition-all duration-700'
 									style={{
@@ -562,20 +570,20 @@ export default function AttendancePage() {
 					</div>
 
 					{/* Week Off */}
-					<div className='bg-card rounded-2xl border border-border/60 shadow-sm p-5 flex flex-col gap-3 hover:shadow-md transition-shadow group'>
+					<div className='bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800/40 p-5 shadow-[0_4px_24px_rgba(0,0,0,0.015)] hover:shadow-md transition-all duration-200 flex flex-col gap-3 group'>
 						<div className='flex items-center justify-between'>
-							<span className='text-xs font-semibold uppercase tracking-widest text-muted-foreground'>
+							<span className='text-[10px] font-black uppercase tracking-wider text-slate-400'>
 								Week Off
 							</span>
-							<div className='h-9 w-9 rounded-xl bg-slate-100 flex items-center justify-center group-hover:scale-110 transition-transform'>
-								<CalendarOff className='h-4 w-4 text-slate-500' />
+							<div className='w-8 h-8 rounded-lg flex items-center justify-center border border-slate-200 dark:border-slate-800/30 bg-slate-50 dark:bg-slate-900 text-slate-500 group-hover:scale-110 transition-transform'>
+								<CalendarOff className='h-4 w-4' />
 							</div>
 						</div>
 						<div>
-							<p className='text-4xl font-bold text-slate-600 leading-none'>
+							<p className='text-3xl font-black text-slate-800 dark:text-white leading-none tabular-nums'>
 								{stats.weekOff}
 							</p>
-							<div className='mt-2 h-1.5 w-full bg-muted rounded-full overflow-hidden'>
+							<div className='mt-3 h-1 w-full bg-slate-100 dark:bg-slate-800/50 rounded-full overflow-hidden'>
 								<div
 									className='h-full bg-slate-400 rounded-full transition-all duration-700'
 									style={{
@@ -587,20 +595,20 @@ export default function AttendancePage() {
 					</div>
 
 					{/* On Leave */}
-					<div className='bg-card rounded-2xl border border-border/60 shadow-sm p-5 flex flex-col gap-3 hover:shadow-md transition-shadow group col-span-2 sm:col-span-1'>
+					<div className='bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800/40 p-5 shadow-[0_4px_24px_rgba(0,0,0,0.015)] hover:shadow-md transition-all duration-200 flex flex-col gap-3 group col-span-2 sm:col-span-1'>
 						<div className='flex items-center justify-between'>
-							<span className='text-xs font-semibold uppercase tracking-widest text-muted-foreground'>
+							<span className='text-[10px] font-black uppercase tracking-wider text-slate-400'>
 								On Leave
 							</span>
-							<div className='h-9 w-9 rounded-xl bg-violet-50 flex items-center justify-center group-hover:scale-110 transition-transform'>
-								<Coffee className='h-4 w-4 text-violet-600' />
+							<div className='w-8 h-8 rounded-lg flex items-center justify-center border border-violet-100 dark:border-violet-800/30 bg-violet-50/50 dark:bg-violet-950/20 text-violet-600 dark:text-violet-400 group-hover:scale-110 transition-transform'>
+								<Coffee className='h-4 w-4' />
 							</div>
 						</div>
 						<div>
-							<p className='text-4xl font-bold text-violet-600 leading-none'>
+							<p className='text-3xl font-black text-slate-800 dark:text-white leading-none tabular-nums'>
 								{stats.onLeave}
 							</p>
-							<div className='mt-2 h-1.5 w-full bg-muted rounded-full overflow-hidden'>
+							<div className='mt-3 h-1 w-full bg-slate-100 dark:bg-slate-800/50 rounded-full overflow-hidden'>
 								<div
 									className='h-full bg-violet-500 rounded-full transition-all duration-700'
 									style={{
@@ -613,18 +621,18 @@ export default function AttendancePage() {
 				</div>
 
 				{/* ── Summary Banner ── */}
-				<div className='bg-card rounded-2xl border border-border/60 shadow-sm px-5 py-4 flex flex-col sm:flex-row items-start sm:items-center gap-4'>
+				<div className='bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800/40 shadow-[0_4px_24px_rgba(0,0,0,0.015)] px-5 py-5 flex flex-col sm:flex-row items-start sm:items-center gap-5'>
 					{/* Rate pill */}
 					<div className='flex items-center gap-3 flex-1 min-w-0'>
-						<div className='h-12 w-12 rounded-2xl bg-primary/10 flex items-center justify-center shrink-0'>
-							<TrendingUp className='h-5 w-5 text-primary' />
+						<div className='w-10 h-10 rounded-xl flex items-center justify-center border border-primary/10 bg-primary/5 text-primary shrink-0'>
+							<TrendingUp className='h-4 w-4' />
 						</div>
 						<div className='min-w-0'>
-							<p className='text-xs text-muted-foreground font-medium uppercase tracking-wider'>
+							<p className='text-[10px] font-black uppercase tracking-wider text-slate-400'>
 								Attendance Rate
 							</p>
 							<div className='flex items-end gap-2 mt-0.5'>
-								<span className='text-3xl font-bold text-foreground leading-none'>
+								<span className='text-3xl font-black text-slate-800 dark:text-white leading-none'>
 									{presentRate}%
 								</span>
 								<span className='text-xs text-muted-foreground mb-0.5'>
@@ -633,7 +641,7 @@ export default function AttendancePage() {
 								</span>
 							</div>
 							{/* Track bar */}
-							<div className='mt-2 h-2 w-48 max-w-full bg-muted rounded-full overflow-hidden'>
+							<div className='mt-2.5 h-1 w-48 max-w-full bg-slate-100 dark:bg-slate-800/50 rounded-full overflow-hidden'>
 								<div
 									className='h-full bg-gradient-to-r from-primary to-emerald-500 rounded-full transition-all duration-700'
 									style={{ width: `${presentRate}%` }}
@@ -643,14 +651,14 @@ export default function AttendancePage() {
 					</div>
 
 					<div className='flex items-center gap-2 shrink-0'>
-						<div className='h-10 w-10 rounded-xl bg-slate-50 border border-border flex items-center justify-center'>
-							<Users className='h-4 w-4 text-muted-foreground' />
+						<div className='w-10 h-10 rounded-xl flex items-center justify-center border border-slate-100 dark:border-slate-800/60 bg-slate-50/50 dark:bg-slate-900/50 text-slate-500'>
+							<Users className='h-4 w-4' />
 						</div>
 						<div>
-							<p className='text-xs text-muted-foreground font-medium'>
+							<p className='text-[10px] font-black uppercase tracking-wider text-slate-400'>
 								Total Employees
 							</p>
-							<p className='text-xl font-bold text-foreground leading-none'>
+							<p className='text-xl font-bold text-slate-800 dark:text-white leading-none mt-0.5'>
 								{total}
 							</p>
 						</div>
@@ -660,7 +668,7 @@ export default function AttendancePage() {
 					<Button
 						onClick={handleApplyLatePolicy}
 						disabled={applyingPolicy}
-						className='gap-2 rounded-xl h-10 px-5 bg-primary text-primary-foreground hover:bg-primary/90 shrink-0 shadow-sm'>
+						className='gap-2 rounded-xl h-10 px-4 text-xs font-bold bg-primary text-white hover:bg-primary/95 shrink-0 shadow-sm transition-all active:scale-[0.98]'>
 						{applyingPolicy ? (
 							<Loader2 className='h-4 w-4 animate-spin' />
 						) : (
@@ -671,7 +679,7 @@ export default function AttendancePage() {
 				</div>
 
 				{/* ── Filters ── */}
-				<div className='bg-card rounded-2xl border border-border/50 shadow-sm px-5 py-4 space-y-4'>
+				<div className='bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800/40 shadow-[0_4px_24px_rgba(0,0,0,0.015)] px-5 py-4 space-y-4'>
 					{/* Search */}
 					<div className='relative max-w-sm'>
 						<Search className='absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none' />
@@ -679,7 +687,7 @@ export default function AttendancePage() {
 							placeholder='Search employees…'
 							value={searchQuery}
 							onChange={(e) => setSearchQuery(e.target.value)}
-							className='pl-9 rounded-xl h-10 bg-background border-border/70 focus:border-primary/50 focus:ring-primary/20'
+							className='pl-9 rounded-xl h-10 bg-slate-50/30 dark:bg-slate-950/20 border-slate-100 dark:border-slate-800/60 focus:border-primary/50 focus:ring-primary/20 text-slate-800 dark:text-slate-200'
 						/>
 					</div>
 
@@ -689,16 +697,16 @@ export default function AttendancePage() {
 							<button
 								key={tab.value}
 								onClick={() => setStatusFilter(tab.value)}
-								className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-sm font-medium transition-all duration-200 cursor-pointer border ${
+								className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold transition-all duration-200 cursor-pointer border ${
 									statusFilter === tab.value
 										? tab.value === "all"
-											? "bg-primary text-primary-foreground border-primary shadow-sm"
-											: `${tab.color} shadow-sm font-semibold`
-										: "bg-background text-muted-foreground border-border hover:bg-muted"
+											? "bg-primary text-white border-primary shadow-sm"
+											: `${tab.color} shadow-sm`
+										: "bg-slate-50/50 dark:bg-slate-900/50 text-slate-500 dark:text-slate-400 border-slate-100 dark:border-slate-800/40 hover:bg-slate-100/50 dark:hover:bg-slate-800/40"
 								}`}>
 								{tab.label}
 								<span
-									className={`inline-flex items-center justify-center h-4.5 min-w-[1.25rem] text-[11px] font-bold rounded-full px-1.5 ${
+									className={`inline-flex items-center justify-center h-4.5 min-w-[1.25rem] text-[10px] font-black rounded-full px-1.5 ${
 										statusFilter === tab.value &&
 										tab.value === "all"
 											? "bg-white/20 text-white"
@@ -712,15 +720,15 @@ export default function AttendancePage() {
 				</div>
 
 				{/* ── Attendance Records ── */}
-				<div className='bg-card rounded-2xl border border-border/60 shadow-sm overflow-hidden'>
+				<div className='bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800/40 shadow-[0_4px_24px_rgba(0,0,0,0.015)] overflow-hidden'>
 					{/* Card header */}
-					<div className='flex items-center justify-between px-5 py-4 border-b border-border/60'>
+					<div className='flex items-center justify-between px-6 py-5 border-b border-slate-50 dark:border-slate-800/40'>
 						<div className='flex items-center gap-2.5'>
-							<div className='h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center'>
-								<Clock className='h-4 w-4 text-primary' />
+							<div className='w-8 h-8 rounded-lg flex items-center justify-center border border-primary/10 bg-primary/5 text-primary'>
+								<Clock className='h-4 w-4' />
 							</div>
 							<div>
-								<h3 className='text-base font-semibold text-foreground'>
+								<h3 className='text-sm font-bold text-slate-800 dark:text-white'>
 									Attendance Records
 								</h3>
 								<p className='text-xs text-muted-foreground'>
@@ -752,31 +760,31 @@ export default function AttendancePage() {
 					) : (
 						<>
 							{/* Desktop table */}
-							<div className='w-[360px] md:w-full overflow-x-auto'>
+							<div className='w-full overflow-x-auto'>
 								<table className='w-full text-sm'>
 									<thead>
-										<tr className='bg-muted/40 border-b border-border/50'>
-											<th className='text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground px-5 py-3'>
+										<tr className='bg-slate-50/30 dark:bg-slate-950/20 border-b border-slate-100 dark:border-slate-800/40'>
+											<th className='text-left text-[10px] font-black uppercase tracking-wider text-slate-400 px-6 py-3.5'>
 												Employee
 											</th>
-											<th className='text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground px-4 py-3'>
+											<th className='text-left text-[10px] font-black uppercase tracking-wider text-slate-400 px-4 py-3.5'>
 												Status
 											</th>
-											<th className='text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground px-4 py-3'>
+											<th className='text-left text-[10px] font-black uppercase tracking-wider text-slate-400 px-4 py-3.5'>
 												Clock In
 											</th>
-											<th className='text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground px-4 py-3'>
+											<th className='text-left text-[10px] font-black uppercase tracking-wider text-slate-400 px-4 py-3.5'>
 												Clock Out
 											</th>
-											<th className='text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground px-4 py-3'>
+											<th className='text-left text-[10px] font-black uppercase tracking-wider text-slate-400 px-4 py-3.5'>
 												Hours
 											</th>
-											<th className='text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground px-4 py-3'>
+											<th className='text-left text-[10px] font-black uppercase tracking-wider text-slate-400 px-4 py-3.5'>
 												Actions
 											</th>
 										</tr>
 									</thead>
-									<tbody className='divide-y divide-border/40'>
+									<tbody className='divide-y divide-slate-100 dark:divide-slate-800/40'>
 										{filteredRecords.map((record) => {
 											const cfg = getStatusConfig(
 												record.status,
@@ -792,7 +800,7 @@ export default function AttendancePage() {
 													key={record.id}
 													className={`${cfg.row} hover:bg-muted/30 transition-colors group`}>
 													{/* Employee */}
-													<td className='px-5 py-3.5'>
+													<td className='px-6 py-3.5'>
 														<div className='flex items-center gap-3'>
 															<Avatar className='h-9 w-9 shrink-0'>
 																{record.employee

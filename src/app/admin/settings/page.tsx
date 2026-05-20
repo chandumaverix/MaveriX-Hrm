@@ -112,32 +112,34 @@ export default function SettingsPage() {
 
 	if (loading) {
 		return (
-			<div className='flex min-h-screen items-center justify-center'>
-				<Loader2 className='h-8 w-8 animate-spin text-primary' />
+			<div className='flex min-h-screen items-center justify-center bg-[#f8fafc]'>
+				<Loader2 className='h-6 w-6 animate-spin text-slate-400' />
 			</div>
 		);
 	}
 
 	return (
-		<div className='flex flex-col'>
+		<div className='flex flex-col min-h-screen bg-[#f8fafc] text-slate-800 font-sans antialiased'>
 			<DashboardHeader
 				title='Settings'
 				description='Manage attendance, leave policy, and company information'
 			/>
 
-			<div className='flex-1 space-y-6 p-6'>
+			<div className='flex-1 space-y-6 p-4 md:p-6 pb-20 md:pb-6'>
 				<div className='grid gap-6 lg:grid-cols-2'>
 					{/* Attendance Settings */}
-					<Card>
-						<CardHeader>
-							<CardTitle className='flex items-center gap-2'>
-								<SettingsIcon className='h-5 w-5' />
-								Attendance Settings
+					<Card className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800/40 shadow-[0_4px_24px_rgba(0,0,0,0.015)] rounded-2xl overflow-hidden">
+						<CardHeader className="border-b border-slate-100 dark:border-slate-800/40 pb-5">
+							<CardTitle className='flex items-center gap-2.5'>
+								<div className="h-8 w-8 rounded-lg bg-primary/5 flex items-center justify-center text-primary">
+									<SettingsIcon className='h-4 w-4' />
+								</div>
+								<span className="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-white">Attendance Settings</span>
 							</CardTitle>
 						</CardHeader>
-						<CardContent className='space-y-4'>
+						<CardContent className='space-y-4 p-6'>
 							<div className='grid gap-2'>
-								<Label htmlFor='max_clocking_time'>
+								<Label htmlFor='max_clocking_time' className='text-[10px] font-black uppercase tracking-wider text-slate-450 dark:text-slate-500'>
 									Max Clock-In Time
 								</Label>
 								<Input
@@ -150,13 +152,14 @@ export default function SettingsPage() {
 										}))
 									}
 									placeholder='11:00 AM'
+									className='bg-slate-50/20 dark:bg-slate-950/20 border border-slate-100 dark:border-slate-800/40 text-slate-800 dark:text-slate-200 rounded-xl focus:border-slate-200 focus:ring-0 transition-all h-10 px-3.5'
 								/>
-								<p className='text-xs text-muted-foreground'>
+								<p className='text-[10px] font-bold text-slate-400 dark:text-slate-500'>
 									Clock-ins after this time are marked as late
 								</p>
 							</div>
 							<div className='grid gap-2'>
-								<Label htmlFor='auto_clock_out_time'>
+								<Label htmlFor='auto_clock_out_time' className='text-[10px] font-black uppercase tracking-wider text-slate-450 dark:text-slate-500'>
 									Auto Clock-Out Time
 								</Label>
 								<Input
@@ -169,8 +172,9 @@ export default function SettingsPage() {
 										}))
 									}
 									placeholder='7:30 PM'
+									className='bg-slate-50/20 dark:bg-slate-950/20 border border-slate-100 dark:border-slate-800/40 text-slate-800 dark:text-slate-200 rounded-xl focus:border-slate-200 focus:ring-0 transition-all h-10 px-3.5'
 								/>
-								<p className='text-xs text-muted-foreground'>
+								<p className='text-[10px] font-bold text-slate-400 dark:text-slate-500'>
 									Automatically clock out after this time
 								</p>
 							</div>
@@ -178,16 +182,18 @@ export default function SettingsPage() {
 					</Card>
 
 					{/* Late Policy */}
-					<Card>
-						<CardHeader>
-							<CardTitle className='flex items-center gap-2'>
-								<SettingsIcon className='h-5 w-5' />
-								Late Policy
+					<Card className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800/40 shadow-[0_4px_24px_rgba(0,0,0,0.015)] rounded-2xl overflow-hidden">
+						<CardHeader className="border-b border-slate-100 dark:border-slate-800/40 pb-5">
+							<CardTitle className='flex items-center gap-2.5'>
+								<div className="h-8 w-8 rounded-lg bg-primary/5 flex items-center justify-center text-primary">
+									<SettingsIcon className='h-4 w-4' />
+								</div>
+								<span className="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-white">Late Policy</span>
 							</CardTitle>
 						</CardHeader>
-						<CardContent className='space-y-4'>
+						<CardContent className='space-y-4 p-6'>
 							<div className='grid gap-2'>
-								<Label htmlFor='max_late_days'>
+								<Label htmlFor='max_late_days' className='text-[10px] font-black uppercase tracking-wider text-slate-450 dark:text-slate-500'>
 									Max Late Days (per month)
 								</Label>
 								<Input
@@ -201,13 +207,14 @@ export default function SettingsPage() {
 											max_late_days: e.target.value,
 										}))
 									}
+									className='bg-slate-50/20 dark:bg-slate-950/20 border border-slate-100 dark:border-slate-800/40 text-slate-800 dark:text-slate-200 rounded-xl focus:border-slate-200 focus:ring-0 transition-all h-10 px-3.5'
 								/>
-								<p className='text-xs text-muted-foreground'>
+								<p className='text-[10px] font-bold text-slate-400 dark:text-slate-500'>
 									After this many late days, deductions apply
 								</p>
 							</div>
 							<div className='grid gap-2'>
-								<Label htmlFor='late_policy_leave_type_id'>
+								<Label htmlFor='late_policy_leave_type_id' className='text-[10px] font-black uppercase tracking-wider text-slate-450 dark:text-slate-500'>
 									Leave Type to Deduct
 								</Label>
 								<Select
@@ -221,10 +228,10 @@ export default function SettingsPage() {
 												v === "none" ? "" : v,
 										}))
 									}>
-									<SelectTrigger id='late_policy_leave_type_id'>
+									<SelectTrigger id='late_policy_leave_type_id' className='bg-slate-50/20 dark:bg-slate-950/20 border border-slate-100 dark:border-slate-800/40 text-slate-800 dark:text-slate-200 rounded-xl focus:ring-0 transition-all h-10 px-3.5'>
 										<SelectValue placeholder='Select leave type' />
 									</SelectTrigger>
-									<SelectContent>
+									<SelectContent className='rounded-xl border border-slate-100 dark:border-slate-800/40 bg-white dark:bg-slate-950'>
 										<SelectItem value='none'>
 											None (no deduction)
 										</SelectItem>
@@ -237,12 +244,12 @@ export default function SettingsPage() {
 										))}
 									</SelectContent>
 								</Select>
-								<p className='text-xs text-muted-foreground'>
+								<p className='text-[10px] font-bold text-slate-400 dark:text-slate-500'>
 									Which leave balance to deduct from
 								</p>
 							</div>
 							<div className='grid gap-2'>
-								<Label htmlFor='late_policy_deduction_per_day'>
+								<Label htmlFor='late_policy_deduction_per_day' className='text-[10px] font-black uppercase tracking-wider text-slate-450 dark:text-slate-500'>
 									Deduction per Late Day
 								</Label>
 								<Input
@@ -258,8 +265,9 @@ export default function SettingsPage() {
 												e.target.value,
 										}))
 									}
+									className='bg-slate-50/20 dark:bg-slate-950/20 border border-slate-100 dark:border-slate-800/40 text-slate-800 dark:text-slate-200 rounded-xl focus:border-slate-200 focus:ring-0 transition-all h-10 px-3.5'
 								/>
-								<p className='text-xs text-muted-foreground'>
+								<p className='text-[10px] font-bold text-slate-400 dark:text-slate-500'>
 									Days to deduct per late day after max
 								</p>
 							</div>
@@ -267,17 +275,19 @@ export default function SettingsPage() {
 					</Card>
 
 					{/* Company Information */}
-					<Card className='lg:col-span-2'>
-						<CardHeader>
-							<CardTitle className='flex items-center gap-2'>
-								<SettingsIcon className='h-5 w-5' />
-								Company Information
+					<Card className='lg:col-span-2 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800/40 shadow-[0_4px_24px_rgba(0,0,0,0.015)] rounded-2xl overflow-hidden'>
+						<CardHeader className="border-b border-slate-100 dark:border-slate-800/40 pb-5">
+							<CardTitle className='flex items-center gap-2.5'>
+								<div className="h-8 w-8 rounded-lg bg-primary/5 flex items-center justify-center text-primary">
+									<SettingsIcon className='h-4 w-4' />
+								</div>
+								<span className="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-white">Company Information</span>
 							</CardTitle>
 						</CardHeader>
-						<CardContent className='space-y-4'>
+						<CardContent className='space-y-4 p-6'>
 							<div className='grid gap-4 md:grid-cols-2'>
 								<div className='grid gap-2'>
-									<Label htmlFor='company_name'>
+									<Label htmlFor='company_name' className='text-[10px] font-black uppercase tracking-wider text-slate-450 dark:text-slate-500'>
 										Company Name
 									</Label>
 									<Input
@@ -290,10 +300,11 @@ export default function SettingsPage() {
 											}))
 										}
 										placeholder='Company Name'
+										className='bg-slate-50/20 dark:bg-slate-950/20 border border-slate-100 dark:border-slate-800/40 text-slate-800 dark:text-slate-200 rounded-xl focus:border-slate-200 focus:ring-0 transition-all h-10 px-3.5'
 									/>
 								</div>
 								<div className='grid gap-2'>
-									<Label htmlFor='company_logo_url'>
+									<Label htmlFor='company_logo_url' className='text-[10px] font-black uppercase tracking-wider text-slate-450 dark:text-slate-500'>
 										Logo URL
 									</Label>
 									<Input
@@ -307,11 +318,12 @@ export default function SettingsPage() {
 											}))
 										}
 										placeholder='/logo.png'
+										className='bg-slate-50/20 dark:bg-slate-950/20 border border-slate-100 dark:border-slate-800/40 text-slate-800 dark:text-slate-200 rounded-xl focus:border-slate-200 focus:ring-0 transition-all h-10 px-3.5'
 									/>
 								</div>
 							</div>
 							<div className='grid gap-2'>
-								<Label>Company Address</Label>
+								<Label className='text-[10px] font-black uppercase tracking-wider text-slate-450 dark:text-slate-500'>Company Address</Label>
 								{[0, 1, 2].map((i) => (
 									<Input
 										key={i}
@@ -327,6 +339,7 @@ export default function SettingsPage() {
 											}));
 										}}
 										placeholder={`Address line ${i + 1}`}
+										className='bg-slate-50/20 dark:bg-slate-950/20 border border-slate-100 dark:border-slate-800/40 text-slate-800 dark:text-slate-200 rounded-xl focus:border-slate-200 focus:ring-0 transition-all h-10 px-3.5 mb-1'
 									/>
 								))}
 							</div>
@@ -338,16 +351,15 @@ export default function SettingsPage() {
 					<Button
 						onClick={handleSave}
 						disabled={saving}
-						size='lg'
-						className='gap-2'>
+						className="rounded-xl h-10 px-4 text-xs font-black uppercase tracking-wider bg-slate-850 text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-50 transition-all active:scale-[0.98]">
 						{saving ? (
 							<>
-								<Loader2 className='h-4 w-4 animate-spin' />
+								<Loader2 className='mr-2 h-4 w-4 animate-spin' />
 								Saving...
 							</>
 						) : (
 							<>
-								<Save className='h-4 w-4' />
+								<Save className='mr-2 h-4 w-4' />
 								Save Settings
 							</>
 						)}

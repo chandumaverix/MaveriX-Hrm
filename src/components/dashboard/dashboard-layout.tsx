@@ -65,9 +65,9 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
 
 	return (
 		<SettingsProvider>
-			<div className='flex min-h-screen bg-background'>
+			<div className='flex min-h-screen bg-[#f8fafc] dark:bg-slate-950'>
 				<DashboardSidebar />
-				<main className='min-h-screen flex-1 pb-16 md:ml-64 md:pb-0 flex flex-col'>
+				<main className='min-h-screen flex-1 pb-16 md:ml-64 md:pb-0 flex flex-col min-w-0'>
 					<AnniversaryProvider>
 						<BirthdayProvider>
 							<AnnouncementProvider>{children}</AnnouncementProvider>

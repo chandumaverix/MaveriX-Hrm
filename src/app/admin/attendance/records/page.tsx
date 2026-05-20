@@ -192,7 +192,11 @@ export default function AttendanceRecordsPage() {
 			data = data.filter((r) => r.employee_id === filterEmployeeId);
 		}
 		if (filterStatus !== "all") {
-			data = data.filter((r) => r.status === filterStatus);
+			if (filterStatus === "wfh") {
+				data = data.filter((r) => !!r.is_wfh);
+			} else {
+				data = data.filter((r) => r.status === filterStatus);
+			}
 		}
 		if (searchQuery.trim()) {
 			const q = searchQuery.toLowerCase();
@@ -292,22 +296,24 @@ export default function AttendanceRecordsPage() {
 	}
 
 	return (
-		<div className='flex flex-col min-h-screen bg-background'>
+		<div className='flex flex-col min-h-screen bg-transparent text-slate-800 dark:text-slate-200'>
 			<DashboardHeader
 				title='Monthly Attendance Report'
 				description='Download attendance data month by month'
 			/>
 
 			<div className='flex-1 p-4 md:p-6 pb-20 md:pb-8 space-y-5'>
-				<div className='bg-card rounded-2xl border border-border/60 shadow-sm p-5 space-y-4'>
+				<div className='bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800/40 shadow-[0_4px_24px_rgba(0,0,0,0.015)] p-5 space-y-4'>
 					<div className='flex items-center gap-2'>
-						<CalendarDays className='h-4 w-4 text-primary' />
-						<h3 className='font-semibold text-foreground'>Select Month</h3>
+						<div className='w-8 h-8 rounded-lg flex items-center justify-center border border-primary/10 bg-primary/5 text-primary'>
+							<CalendarDays className='h-4 w-4' />
+						</div>
+						<h3 className='text-sm font-bold text-slate-800 dark:text-white'>Select Month</h3>
 					</div>
 
 					<div className='grid gap-4 sm:grid-cols-2 lg:grid-cols-4'>
 						<div className='space-y-1.5'>
-							<label className='text-xs font-semibold text-muted-foreground uppercase tracking-wide'>
+							<label className='text-[10px] font-black uppercase tracking-wider text-slate-400'>
 								Month
 							</label>
 							<Input
@@ -315,16 +321,16 @@ export default function AttendanceRecordsPage() {
 								value={selectedMonth}
 								max={currentMonthStr()}
 								onChange={(e) => setSelectedMonth(e.target.value)}
-								className='h-10 rounded-xl'
+								className='h-10 rounded-xl bg-slate-50/30 dark:bg-slate-950/20 border-slate-100 dark:border-slate-800/60 focus:border-primary/50 focus:ring-primary/20 text-slate-800 dark:text-slate-200'
 							/>
 						</div>
 
 						<div className='space-y-1.5'>
-							<label className='text-xs font-semibold text-muted-foreground uppercase tracking-wide'>
+							<label className='text-[10px] font-black uppercase tracking-wider text-slate-400'>
 								Employee
 							</label>
 							<Select value={filterEmployeeId} onValueChange={setFilterEmployeeId}>
-								<SelectTrigger className='h-10 rounded-xl'>
+								<SelectTrigger className='h-10 rounded-xl bg-slate-50/30 dark:bg-slate-950/20 border-slate-100 dark:border-slate-800/60 text-slate-800 dark:text-slate-200'>
 									<SelectValue placeholder='All Employees' />
 								</SelectTrigger>
 								<SelectContent>
@@ -339,16 +345,17 @@ export default function AttendanceRecordsPage() {
 						</div>
 
 						<div className='space-y-1.5'>
-							<label className='text-xs font-semibold text-muted-foreground uppercase tracking-wide'>
+							<label className='text-[10px] font-black uppercase tracking-wider text-slate-400'>
 								Status
 							</label>
 							<Select value={filterStatus} onValueChange={setFilterStatus}>
-								<SelectTrigger className='h-10 rounded-xl'>
+								<SelectTrigger className='h-10 rounded-xl bg-slate-50/30 dark:bg-slate-950/20 border-slate-100 dark:border-slate-800/60 text-slate-800 dark:text-slate-200'>
 									<SelectValue placeholder='All Status' />
 								</SelectTrigger>
 								<SelectContent>
 									<SelectItem value='all'>All Status</SelectItem>
 									<SelectItem value='present'>Present</SelectItem>
+									<SelectItem value='wfh'>WFH (Work From Home)</SelectItem>
 									<SelectItem value='absent'>Absent</SelectItem>
 									<SelectItem value='late'>Late</SelectItem>
 									<SelectItem value='leave'>On Leave</SelectItem>
@@ -358,13 +365,13 @@ export default function AttendanceRecordsPage() {
 						</div>
 
 						<div className='space-y-1.5'>
-							<label className='text-xs font-semibold text-muted-foreground uppercase tracking-wide'>
+							<label className='text-[10px] font-black uppercase tracking-wider text-slate-400'>
 								Download
 							</label>
 							<Button
 								onClick={downloadMonthlyCSV}
 								disabled={filteredRecords.length === 0 || isLoading}
-								className='w-full gap-2 rounded-xl h-10'>
+								className='w-full gap-2 rounded-xl h-10 text-xs font-bold bg-primary text-white hover:bg-primary/95 transition-all active:scale-[0.98]'>
 								<Download className='h-4 w-4' />
 								Download {monthLabel}
 							</Button>
@@ -377,14 +384,14 @@ export default function AttendanceRecordsPage() {
 							placeholder='Search by employee name or email'
 							value={searchQuery}
 							onChange={(e) => setSearchQuery(e.target.value)}
-							className='pl-9 h-10 rounded-xl'
+							className='pl-9 h-10 rounded-xl bg-slate-50/30 dark:bg-slate-950/20 border-slate-100 dark:border-slate-800/60 focus:border-primary/50 focus:ring-primary/20 text-slate-800 dark:text-slate-200'
 						/>
 					</div>
 				</div>
 
-				<div className='bg-card rounded-2xl border border-border/60 shadow-sm overflow-hidden'>
-					<div className='px-5 py-4 border-b border-border/60'>
-						<h3 className='text-base font-semibold text-foreground'>Attendance Records</h3>
+				<div className='bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800/40 shadow-[0_4px_24px_rgba(0,0,0,0.015)] overflow-hidden'>
+					<div className='px-6 py-5 border-b border-slate-50 dark:border-slate-800/40'>
+						<h3 className='text-sm font-bold text-slate-800 dark:text-white'>Attendance Records</h3>
 						<p className='text-xs text-muted-foreground mt-0.5'>
 							{monthLabel}: {filteredRecords.length} records
 						</p>
@@ -402,14 +409,14 @@ export default function AttendanceRecordsPage() {
 					) : (
 						<div className='overflow-x-auto'>
 							<Table>
-								<TableHeader>
+								<TableHeader className='bg-slate-50/30 dark:bg-slate-950/20 border-b border-slate-100 dark:border-slate-800/40'>
 									<TableRow>
-										<TableHead>Date</TableHead>
-										<TableHead>Employee</TableHead>
-										<TableHead>Status</TableHead>
-										<TableHead>Clock In</TableHead>
-										<TableHead>Clock Out</TableHead>
-										<TableHead>Hours</TableHead>
+										<TableHead className='text-[10px] font-black uppercase tracking-wider text-slate-400 px-6 py-3.5'>Date</TableHead>
+										<TableHead className='text-[10px] font-black uppercase tracking-wider text-slate-400 px-4 py-3.5'>Employee</TableHead>
+										<TableHead className='text-[10px] font-black uppercase tracking-wider text-slate-400 px-4 py-3.5'>Status</TableHead>
+										<TableHead className='text-[10px] font-black uppercase tracking-wider text-slate-400 px-4 py-3.5'>Clock In</TableHead>
+										<TableHead className='text-[10px] font-black uppercase tracking-wider text-slate-400 px-4 py-3.5'>Clock Out</TableHead>
+										<TableHead className='text-[10px] font-black uppercase tracking-wider text-slate-400 px-4 py-3.5'>Hours</TableHead>
 									</TableRow>
 								</TableHeader>
 								<TableBody>
@@ -421,9 +428,9 @@ export default function AttendanceRecordsPage() {
 										return (
 											<Fragment key={`${record.employee_id}-${record.date}-${record.id}`}>
 													{showDateSeparator && (
-														<TableRow className='bg-primary/5 border-y border-primary/20'>
-															<TableCell colSpan={6} className='font-semibold text-primary'>
-																{new Date(`${record.date}T12:00:00`).toLocaleDateString("en-US", {
+														<TableRow className='bg-slate-50/50 dark:bg-slate-900/30 border-y border-slate-100 dark:border-slate-800/40'>
+															<TableCell colSpan={6} className='px-6 py-2.5 font-bold text-xs uppercase tracking-wider text-primary'>
+																{new Date(`${record.date}T12:00:00`).toLocaleDateString("en-IN", {
 																	weekday: "long",
 																	month: "long",
 																	day: "numeric",
@@ -432,23 +439,32 @@ export default function AttendanceRecordsPage() {
 															</TableCell>
 														</TableRow>
 													)}
-													<TableRow key={`${record.id}-${record.employee_id}`} className='border-b border-border/50'>
-														<TableCell>{record.date}</TableCell>
-														<TableCell>
+													<TableRow key={`${record.id}-${record.employee_id}`} className='border-b border-slate-100 dark:border-slate-800/40 hover:bg-slate-50/30 dark:hover:bg-slate-900/20 transition-colors'>
+														<TableCell className='px-6 py-3.5'>{record.date}</TableCell>
+														<TableCell className='px-4 py-3.5'>
 															{record.employee?.first_name} {record.employee?.last_name}
 														</TableCell>
-														<TableCell className='capitalize'>{record.status}</TableCell>
-														<TableCell>
+														<TableCell className='px-4 py-3.5 capitalize'>
+															<div className="flex items-center gap-1.5">
+																<span>{record.status}</span>
+																{record.is_wfh && (
+																	<span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider bg-blue-50 text-blue-600 border border-blue-200">
+																		WFH
+																	</span>
+																)}
+															</div>
+														</TableCell>
+														<TableCell className='px-4 py-3.5'>
 															{record.clock_in
-																? new Date(record.clock_in).toLocaleTimeString()
+																? new Date(record.clock_in).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })
 																: "—"}
 														</TableCell>
-														<TableCell>
+														<TableCell className='px-4 py-3.5'>
 															{record.clock_out
-																? new Date(record.clock_out).toLocaleTimeString()
+																? new Date(record.clock_out).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })
 																: "—"}
 														</TableCell>
-														<TableCell>{record.total_hours ?? "—"}</TableCell>
+														<TableCell className='px-4 py-3.5 font-medium tabular-nums'>{record.total_hours ?? "—"}</TableCell>
 													</TableRow>
 												</Fragment>
 											);

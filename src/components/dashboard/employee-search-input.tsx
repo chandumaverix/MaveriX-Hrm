@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Search, Loader2 } from "lucide-react";
+import { Search, Loader2, Mail, Phone, Calendar, IdCard, Building, ArrowUpRight, User } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
 	Dialog,
@@ -19,6 +19,21 @@ interface EmployeeSearchInputProps {
 	variant?: "pill" | "default";
 	className?: string;
 }
+
+const formatDate = (dateStr?: string | null) => {
+	if (!dateStr) return "N/A";
+	try {
+		const date = new Date(dateStr);
+		if (isNaN(date.getTime())) return dateStr;
+		return date.toLocaleDateString("en-US", {
+			month: "short",
+			day: "numeric",
+			year: "numeric",
+		});
+	} catch {
+		return dateStr;
+	}
+};
 
 export function EmployeeSearchInput({
 	placeholder = "Search employees...",
@@ -215,15 +230,20 @@ export function EmployeeSearchInput({
 				open={!!selectedEmployee}
 				onOpenChange={(open) => !open && setSelectedEmployee(null)}
 			>
-				<DialogContent className="max-w-[400px] p-0 overflow-hidden max-h-[90vh] overflow-y-auto">
+				<DialogContent className="max-w-[420px] p-0 overflow-hidden max-h-[95vh] rounded-2xl border-none shadow-2xl bg-white dark:bg-slate-900">
 					<DialogHeader className="sr-only">
 						<DialogTitle>Employee Details</DialogTitle>
 					</DialogHeader>
 					{selectedEmployee && (
 						<>
-							<div className="relative h-28 bg-gradient-to-r from-primary/80 to-primary">
-								<div className="absolute -bottom-12 left-1/2 -translate-x-1/2">
-									<Avatar className="h-24 w-24 ring-4 ring-background">
+							<div className="relative h-32 bg-gradient-to-tr from-slate-900 via-primary to-indigo-950">
+								{/* Premium decorative shapes */}
+								<div className="absolute inset-0 overflow-hidden">
+									<div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full blur-xl -mr-8 -mt-8" />
+									<div className="absolute bottom-0 left-0 w-24 h-24 bg-primary/20 rounded-full blur-lg -ml-8 -mb-8" />
+								</div>
+								<div className="absolute -bottom-14 left-1/2 -translate-x-1/2 z-10">
+									<Avatar className="h-28 w-28 ring-4 ring-white dark:ring-slate-900 shadow-xl transition-transform duration-300 hover:scale-105">
 										{selectedEmployee.avatar_url ? (
 											<AvatarImage
 												src={selectedEmployee.avatar_url}
@@ -231,60 +251,86 @@ export function EmployeeSearchInput({
 												className="object-cover"
 											/>
 										) : null}
-										<AvatarFallback className="text-2xl bg-muted">
+										<AvatarFallback className="text-3xl bg-slate-100 dark:bg-slate-800 font-semibold text-primary">
 											{(selectedEmployee.first_name?.[0] || "") +
 												(selectedEmployee.last_name?.[0] || "") || "?"}
 										</AvatarFallback>
 									</Avatar>
 								</div>
 							</div>
-							<div className="pt-14 pb-6 px-6">
+							<div className="pt-16 pb-6 px-6">
 								<div className="text-center mb-6">
-									<h3 className="text-xl font-semibold text-foreground">
+									<h3 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
 										{selectedEmployee.first_name} {selectedEmployee.last_name}
 									</h3>
-									<p className="text-sm text-muted-foreground mt-1 capitalize">
-										{selectedEmployee.designation || "No designation"}
-									</p>
-								</div>
-								<div className="space-y-3 text-sm">
-									<div>
-										<p className="text-xs text-muted-foreground uppercase tracking-wide">
-											Email
-										</p>
-										<p className="font-medium truncate">{selectedEmployee.email}</p>
+									<div className="flex flex-wrap items-center justify-center gap-2 mt-2">
+										<span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold bg-primary/10 text-primary capitalize">
+											<User className="w-3 h-3" />
+											{selectedEmployee.designation || "No Designation"}
+										</span>
+										{selectedEmployee.department && (
+											<span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 capitalize">
+												<Building className="w-3 h-3" />
+												{selectedEmployee.department}
+											</span>
+										)}
 									</div>
-									{selectedEmployee.phone && (
-										<div>
-											<p className="text-xs text-muted-foreground uppercase tracking-wide">
-												Phone
-											</p>
-											<p className="font-medium">{selectedEmployee.phone}</p>
-										</div>
-									)}
-									{selectedEmployee.department && (
-										<div>
-											<p className="text-xs text-muted-foreground uppercase tracking-wide">
-												Department
-											</p>
-											<p className="font-medium">{selectedEmployee.department}</p>
-										</div>
-									)}
 								</div>
-								<button
-									type="button"
-									onClick={() => {
-										const q =
-											`${selectedEmployee.first_name} ${selectedEmployee.last_name}`.trim();
-										setSelectedEmployee(null);
-										router.push(
-											`/admin/employees?q=${encodeURIComponent(q)}`
-										);
-									}}
-									className="mt-6 w-full rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
-								>
-									Open in Employees
-								</button>
+
+								<div className="grid grid-cols-2 gap-3 mb-6">
+									{/* Employee ID */}
+									<div className="flex flex-col p-3 rounded-xl border border-slate-100 bg-slate-50/50 dark:border-slate-800/40 dark:bg-slate-950/20 transition-colors hover:bg-slate-50 dark:hover:bg-slate-950">
+										<div className="flex items-center gap-1.5 text-slate-400 dark:text-slate-500 mb-1">
+											<IdCard className="w-3.5 h-3.5 shrink-0 text-primary/70 dark:text-primary-foreground/75" />
+											<span className="text-[10px] font-bold uppercase tracking-wider">Emp ID</span>
+										</div>
+										<p className="text-sm font-semibold text-slate-800 dark:text-slate-200">
+											{selectedEmployee.employee_id || "N/A"}
+										</p>
+									</div>
+
+									{/* DOB */}
+									<div className="flex flex-col p-3 rounded-xl border border-slate-100 bg-slate-50/50 dark:border-slate-800/40 dark:bg-slate-950/20 transition-colors hover:bg-slate-50 dark:hover:bg-slate-950">
+										<div className="flex items-center gap-1.5 text-slate-400 dark:text-slate-500 mb-1">
+											<Calendar className="w-3.5 h-3.5 shrink-0 text-primary/70 dark:text-primary-foreground/75" />
+											<span className="text-[10px] font-bold uppercase tracking-wider">DOB</span>
+										</div>
+										<p className="text-sm font-semibold text-slate-800 dark:text-slate-200">
+											{formatDate(selectedEmployee.date_of_birth)}
+										</p>
+									</div>
+
+									{/* Phone */}
+									<div className="flex flex-col p-3 rounded-xl border border-slate-100 bg-slate-50/50 dark:border-slate-800/40 dark:bg-slate-950/20 transition-colors hover:bg-slate-50 dark:hover:bg-slate-950 col-span-1">
+										<div className="flex items-center gap-1.5 text-slate-400 dark:text-slate-500 mb-1">
+											<Phone className="w-3.5 h-3.5 shrink-0 text-primary/70 dark:text-primary-foreground/75" />
+											<span className="text-[10px] font-bold uppercase tracking-wider">Phone</span>
+										</div>
+										<p className="text-sm font-semibold text-slate-800 dark:text-slate-200 truncate" title={selectedEmployee.phone || ""}>
+											{selectedEmployee.phone ? (
+												<a href={`tel:${selectedEmployee.phone}`} className="hover:text-primary hover:underline transition-colors">
+													{selectedEmployee.phone}
+												</a>
+											) : (
+												"N/A"
+											)}
+										</p>
+									</div>
+
+									{/* Email */}
+									<div className="flex flex-col p-3 rounded-xl border border-slate-100 bg-slate-50/50 dark:border-slate-800/40 dark:bg-slate-950/20 transition-colors hover:bg-slate-50 dark:hover:bg-slate-950 col-span-1">
+										<div className="flex items-center gap-1.5 text-slate-400 dark:text-slate-500 mb-1">
+											<Mail className="w-3.5 h-3.5 shrink-0 text-primary/70 dark:text-primary-foreground/75" />
+											<span className="text-[10px] font-bold uppercase tracking-wider">Email</span>
+										</div>
+										<p className="text-sm font-semibold text-slate-800 dark:text-slate-200 truncate" title={selectedEmployee.email}>
+											<a href={`mailto:${selectedEmployee.email}`} className="hover:text-primary hover:underline transition-colors">
+												{selectedEmployee.email}
+											</a>
+										</p>
+									</div>
+								</div>
+
 							</div>
 						</>
 					)}

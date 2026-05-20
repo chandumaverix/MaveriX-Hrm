@@ -364,13 +364,13 @@ export default function FinancePage() {
 	];
 
 	return (
-		<div className='flex flex-col'>
+		<div className='flex flex-col min-h-screen bg-transparent text-slate-800 dark:text-slate-200'>
 			<DashboardHeader
 				title='Finance'
 				description='Manage financial records'
 			/>
 
-			<div className='flex-1 space-y-6 p-6'>
+			<div className='flex-1 space-y-6 p-6 pb-20 md:pb-8'>
 				{/* Stats */}
 				<div className='grid gap-4 grid-cols-2 md:grid-cols-4'>
 					<StatCard
@@ -399,43 +399,43 @@ export default function FinancePage() {
 				</div>
 
 				<Tabs defaultValue="transactions" className="space-y-6">
-					<TabsList className="bg-muted/50 p-1 rounded-xl h-auto">
-						<TabsTrigger value="transactions" className="rounded-lg px-6 py-2.5 font-medium text-sm">Transactions</TabsTrigger>
-						<TabsTrigger value="documents" className="rounded-lg px-6 py-2.5 font-medium text-sm">Employee Documents</TabsTrigger>
+					<TabsList className="bg-slate-100/85 dark:bg-slate-950/40 p-1 rounded-xl h-auto border border-slate-100 dark:border-slate-800/40">
+						<TabsTrigger value="transactions" className="rounded-lg px-6 py-2.5 font-bold text-xs uppercase tracking-wider transition-all data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-primary data-[state=active]:shadow-[0_2px_8px_rgba(0,0,0,0.02)] text-slate-500 dark:text-slate-400">Transactions</TabsTrigger>
+						<TabsTrigger value="documents" className="rounded-lg px-6 py-2.5 font-bold text-xs uppercase tracking-wider transition-all data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-primary data-[state=active]:shadow-[0_2px_8px_rgba(0,0,0,0.02)] text-slate-500 dark:text-slate-400">Employee Documents</TabsTrigger>
 					</TabsList>
 
 					<TabsContent value="transactions" className="space-y-6">
 						{/* Filters */}
-						<Card className="rounded-2xl border-border/50 shadow-sm">
-					<CardContent className='flex flex-wrap items-center gap-4 p-4'>
-						<div className='relative flex-1 min-w-[200px]'>
-							<Search className='absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground' />
-							<Input
-								placeholder='Search employees...'
-								value={searchQuery}
-								onChange={(e) => setSearchQuery(e.target.value)}
-								className='pl-9'
-							/>
-						</div>
-						<Select
-							value={typeFilter}
-							onValueChange={setTypeFilter}>
-							<SelectTrigger className='w-[150px]'>
-								<SelectValue placeholder='Filter type' />
-							</SelectTrigger>
-							<SelectContent>
-								<SelectItem value='all'>All Types</SelectItem>
-								<SelectItem value='salary'>Salary</SelectItem>
-								<SelectItem value='bonus'>Bonus</SelectItem>
-								<SelectItem value='deduction'>
-									Deduction
-								</SelectItem>
-								<SelectItem value='reimbursement'>
-									Reimbursement
-								</SelectItem>
-							</SelectContent>
-						</Select>
-						<Dialog
+						<Card className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800/40 shadow-[0_4px_24px_rgba(0,0,0,0.015)]">
+							<CardContent className='flex flex-wrap items-center gap-4 p-4'>
+								<div className='relative flex-1 min-w-[200px]'>
+									<Search className='absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400' />
+									<Input
+										placeholder='Search employees...'
+										value={searchQuery}
+										onChange={(e) => setSearchQuery(e.target.value)}
+										className='pl-9 bg-slate-50/30 dark:bg-slate-950/20 border-slate-100 dark:border-slate-800/60 focus:border-primary/50 focus:ring-primary/20 text-slate-800 dark:text-slate-200'
+									/>
+								</div>
+								<Select
+									value={typeFilter}
+									onValueChange={setTypeFilter}>
+									<SelectTrigger className='w-[150px] bg-slate-50/30 dark:bg-slate-950/20 border-slate-100 dark:border-slate-800/60 text-slate-800 dark:text-slate-200 rounded-xl h-10'>
+										<SelectValue placeholder='Filter type' />
+									</SelectTrigger>
+									<SelectContent>
+										<SelectItem value='all'>All Types</SelectItem>
+										<SelectItem value='salary'>Salary</SelectItem>
+										<SelectItem value='bonus'>Bonus</SelectItem>
+										<SelectItem value='deduction'>
+											Deduction
+										</SelectItem>
+										<SelectItem value='reimbursement'>
+											Reimbursement
+										</SelectItem>
+									</SelectContent>
+								</Select>
+								<Dialog
 							open={isAllocateSlipDialogOpen}
 							onOpenChange={(open) => {
 								setIsAllocateSlipDialogOpen(open);
@@ -445,7 +445,7 @@ export default function FinancePage() {
 								}
 							}}>
 							<DialogTrigger asChild>
-								<Button variant='outline'>
+								<Button variant='outline' className='rounded-xl h-10 px-4 text-xs font-bold bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 border border-slate-100 dark:border-slate-800/60 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all active:scale-[0.98]'>
 									<FileText className='mr-2 h-4 w-4' />
 									Allocate Salary Slips
 								</Button>
@@ -680,8 +680,8 @@ export default function FinancePage() {
 								if (!open) setFormError(null);
 							}}>
 							<DialogTrigger asChild>
-								<Button>
-									<Plus className='mr-2 h-4 w-4' />
+								<Button className='gap-2 rounded-xl h-10 px-4 text-xs font-bold bg-primary text-white hover:bg-primary/95 transition-all active:scale-[0.98]'>
+									<Plus className='h-4 w-4' />
 									Add Record
 								</Button>
 							</DialogTrigger>
@@ -1028,8 +1028,8 @@ export default function FinancePage() {
 				</Card>
 
 				{/* Records Table */}
-				<Card className="rounded-2xl border-border/50 shadow-sm overflow-hidden bg-card">
-					<CardHeader className="bg-muted/10 border-b border-border/50 pb-5">
+				<Card className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800/40 shadow-[0_4px_24px_rgba(0,0,0,0.015)] overflow-hidden">
+					<CardHeader className="border-b border-slate-50 dark:border-slate-800/40 pb-5">
 						<div className="flex items-center gap-3">
 							<div className="h-10 w-10 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-600">
 								<DollarSign className="h-5 w-5" />
@@ -1040,38 +1040,38 @@ export default function FinancePage() {
 							</div>
 						</div>
 					</CardHeader>
-					<CardContent>
+					<CardContent className="p-0">
 						{isLoading ? (
-							<div className='flex items-center justify-center py-8'>
-								<p className='text-muted-foreground'>
+							<div className='flex items-center justify-center py-12'>
+								<p className='text-muted-foreground text-sm'>
 									Loading...
 								</p>
 							</div>
 						) : filteredRecords.length === 0 ? (
-							<div className='flex flex-col items-center justify-center py-8'>
-								<p className='text-muted-foreground'>
+							<div className='flex flex-col items-center justify-center py-12'>
+								<p className='text-muted-foreground text-sm'>
 									No finance records found
 								</p>
 							</div>
 						) : (
-							<div className='w-[300px] md:w-full overflow-x-auto'>
+							<div className='w-full overflow-x-auto'>
 								<Table>
 									<TableHeader>
-										<TableRow className="bg-muted/30">
-											<TableHead className="font-semibold px-4 h-11">Employee</TableHead>
-											<TableHead className="font-semibold px-4 h-11">Type</TableHead>
-											<TableHead className="font-semibold px-4 h-11">Amount</TableHead>
-											<TableHead className="font-semibold px-4 h-11">Period</TableHead>
-											<TableHead className="font-semibold px-4 h-11">Description</TableHead>
-											<TableHead className="font-semibold px-4 h-11">Status</TableHead>
-											<TableHead className="font-semibold px-4 h-11">Slip</TableHead>
-											<TableHead className="font-semibold px-4 h-11 text-right">Action</TableHead>
+										<TableRow className="bg-slate-50/50 dark:bg-slate-900/50 hover:bg-slate-50/50 dark:hover:bg-slate-900/50">
+											<TableHead className="font-bold px-6 py-3.5">Employee</TableHead>
+											<TableHead className="font-bold px-4 py-3.5">Type</TableHead>
+											<TableHead className="font-bold px-4 py-3.5">Amount</TableHead>
+											<TableHead className="font-bold px-4 py-3.5">Period</TableHead>
+											<TableHead className="font-bold px-4 py-3.5">Description</TableHead>
+											<TableHead className="font-bold px-4 py-3.5">Status</TableHead>
+											<TableHead className="font-bold px-4 py-3.5">Slip</TableHead>
+											<TableHead className="font-bold px-6 py-3.5 text-right">Action</TableHead>
 										</TableRow>
 									</TableHeader>
 									<TableBody>
 										{filteredRecords.map((record) => (
-											<TableRow key={record.id}>
-												<TableCell>
+											<TableRow key={record.id} className='border-b border-slate-100 dark:border-slate-800/40 hover:bg-slate-50/30 dark:hover:bg-slate-900/20 transition-colors'>
+												<TableCell className='px-6 py-3.5'>
 													<div className='flex items-center gap-3'>
 														<Avatar className='h-8 w-8'>
 															{record.employee?.avatar_url && (
@@ -1358,8 +1358,8 @@ export default function FinancePage() {
 
 					<TabsContent value="documents" className="space-y-6">
 				{/* Employee Documents & Salary – all employees, documents + salary or docs only */}
-				<Card className="rounded-2xl border-border/50 shadow-sm overflow-hidden">
-					<CardHeader className="bg-muted/10 border-b border-border/50 pb-5">
+				<Card className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800/40 shadow-[0_4px_24px_rgba(0,0,0,0.015)] overflow-hidden">
+					<CardHeader className="border-b border-slate-50 dark:border-slate-800/40 pb-5">
 						<div className="flex items-center gap-3">
 							<div className="h-10 w-10 rounded-xl bg-indigo-500/10 flex items-center justify-center text-indigo-600">
 								<FileText className="h-5 w-5" />
@@ -1372,13 +1372,13 @@ export default function FinancePage() {
 							</div>
 						</div>
 					</CardHeader>
-					<CardContent>
+					<CardContent className="p-6 bg-slate-50/50 dark:bg-slate-950/20">
 						{filteredEmployeesForDocs.length === 0 ? (
-							<p className='text-sm text-muted-foreground py-4'>
+							<p className='text-sm text-muted-foreground py-4 text-center'>
 								No employees found.
 							</p>
 						) : (
-							<div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4'>
+							<div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6'>
 								{filteredEmployeesForDocs.map((emp) => {
 									const adharUrl = emp.adhar_url;
 									const panUrl = emp.pan_url;
@@ -1386,7 +1386,7 @@ export default function FinancePage() {
 									const panNo = emp.pan_number;
 
 									return (
-										<Card key={emp.id} className='rounded-2xl overflow-hidden border border-border/60 hover:shadow-lg hover:border-indigo-500/20 transition-all duration-300 bg-card'>
+										<Card key={emp.id} className='overflow-hidden border border-slate-100 dark:border-slate-800/40 hover:shadow-[0_8px_30px_rgba(0,0,0,0.02)] dark:hover:shadow-[0_8px_30px_rgba(0,0,0,0.15)] hover:border-indigo-500/20 transition-all duration-350 bg-white dark:bg-slate-900'>
 											<CardContent className='p-5 space-y-4'>
 												{/* Employee Header */}
 												<div className='flex items-center gap-3 pb-3 border-b border-border/50'>
