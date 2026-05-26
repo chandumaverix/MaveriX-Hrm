@@ -241,28 +241,16 @@ export default function AttendanceRecordsPage() {
 		];
 
 		const rows: string[] = [];
-		let lastDate = "";
 		for (const record of filteredRecords) {
-			if (record.date !== lastDate) {
-				lastDate = record.date;
-				rows.push([
-					escape(`Date: ${new Date(`${record.date}T12:00:00`).toLocaleDateString("en-US", {
-						weekday: "long",
-						month: "long",
-						day: "numeric",
-						year: "numeric",
-					})}`),
-					"",
-					"",
-					"",
-					"",
-					"",
-					"",
-					"",
-				].join(","));
-			}
+			const longDate = new Date(`${record.date}T12:00:00`).toLocaleDateString("en-US", {
+				weekday: "long",
+				month: "long",
+				day: "numeric",
+				year: "numeric",
+			});
+
 			rows.push([
-				escape(record.date),
+				escape(longDate),
 				escape(`${record.employee?.first_name || ""} ${record.employee?.last_name || ""}`),
 				escape(record.employee?.email || ""),
 				escape(record.clock_in ? new Date(record.clock_in).toLocaleTimeString() : "-"),
