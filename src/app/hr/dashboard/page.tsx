@@ -307,6 +307,7 @@ export default function HRDashboardPage() {
 		deductionsChange: "0%",
 		pendingLabel: "Awaiting",
 	});
+	const [earlyBirds, setEarlyBirds] = useState<{name: string, avgClockInMinutes: number, formattedTime: string, recentClockIns: string[]}[]>([]);
 	const [todayAttendance, setTodayAttendance] = useState<Attendance | null>(null);
 	const [recentAttendance, setRecentAttendance] = useState<Attendance[]>([]);
 	const [calendarMonth, setCalendarMonth] = useState(() => new Date());
@@ -503,6 +504,62 @@ export default function HRDashboardPage() {
 
 				const nowTime = new Date();
 				const chartYear = nowTime.getFullYear();
+
+				const monthStartStr = new Date(chartYear, nowTime.getMonth(), 1).toISOString().split("T")[0];
+				const { data: monthAttData } = await supabase
+					.from("attendance")
+					.select("clock_in, employee:employees(id, first_name, last_name)")
+					.gte("date", monthStartStr)
+					.lte("date", today)
+					.not("clock_in", "is", null);
+
+				const employeeClockIns = new Map<string, { name: string; totalMinutes: number; count: number; rawClockIns: string[] }>();
+				if (monthAttData) {
+					monthAttData.forEach((record: any) => {
+						const empId = record.employee?.id;
+						if (!empId) return;
+						const name = `${record.employee.first_name} ${record.employee.last_name}`;
+						const date = new Date(record.clock_in);
+						const minutes = date.getHours() * 60 + date.getMinutes();
+						
+						const existing = employeeClockIns.get(empId) || { name, totalMinutes: 0, count: 0, rawClockIns: [] };
+						existing.totalMinutes += minutes;
+						existing.count += 1;
+						existing.rawClockIns.push(record.clock_in);
+						employeeClockIns.set(empId, existing);
+					});
+				}
+
+				const earlyBirdsData = Array.from(employeeClockIns.values())
+					.map(emp => {
+						const avg = emp.totalMinutes / emp.count;
+						const hours = Math.floor(avg / 60);
+						const mins = Math.floor(avg % 60);
+						const ampm = hours >= 12 ? 'PM' : 'AM';
+						const displayHours = hours % 12 || 12;
+
+						const sortedRaw = [...emp.rawClockIns].sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
+						const recentClockIns = sortedRaw.slice(0, 5).map(iso => {
+							const d = new Date(iso);
+							const h = d.getHours();
+							const m = d.getMinutes();
+							const ap = h >= 12 ? 'PM' : 'AM';
+							const dh = h % 12 || 12;
+							return `${dh}:${m.toString().padStart(2, '0')} ${ap}`;
+						});
+
+						return {
+							name: emp.name,
+							avgClockInMinutes: avg,
+							formattedTime: `${displayHours}:${mins.toString().padStart(2, '0')} ${ampm}`,
+							recentClockIns
+						};
+					})
+					.sort((a, b) => a.avgClockInMinutes - b.avgClockInMinutes)
+					.slice(0, 5);
+
+				setEarlyBirds(earlyBirdsData);
+
 				const rangeStart = `${chartYear}-01-01`;
 				const rangeEnd = `${chartYear}-12-31`;
 
@@ -1419,7 +1476,7 @@ export default function HRDashboardPage() {
 				</div>
 
 				{/* ── TWO COLUMNS: LEAVE PERFORMANCE (LINE CHART) & OVERALL ATTENDANCE (CIRCULAR DONUT) ── */}
-				<div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch">
+				<div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
 
 					{/* Column 1: Leave performance line chart */}
 					<div className="lg:col-span-8 bg-white border border-slate-100 rounded-2xl p-5 shadow-[0_4px_24px_rgba(0,0,0,0.015)] flex flex-col justify-between text-left">
@@ -1612,48 +1669,107 @@ export default function HRDashboardPage() {
 						</div>
 					</div>
 
-					{/* Column 2: Overall Attendance Circular Donut Chart */}
+					{/* Column 2: Early Birds Line Chart */}
 					<div className="lg:col-span-4 bg-white border border-slate-100 rounded-2xl p-5 shadow-[0_4px_24px_rgba(0,0,0,0.015)] flex flex-col justify-between text-left">
 						<div className="flex justify-between items-center border-b border-slate-100 pb-3 mb-4">
 							<div>
-								<h3 className="text-xs font-black uppercase tracking-wider text-slate-400">Overall Attendance</h3>
-								<p className="text-[9px] text-slate-400 font-bold mt-0.5">On time vs late arrivals break</p>
+								<h3 className="text-xs font-black uppercase tracking-wider text-slate-400">Early Birds</h3>
+								<p className="text-[9px] text-slate-400 font-bold mt-0.5">Top 5 earliest average clock-ins this month</p>
 							</div>
 							<Link href="/hr/attendance" className="text-[9px] font-black uppercase bg-slate-50 border border-slate-150 px-2 py-1 rounded-md text-slate-500 hover:bg-slate-100 hover:text-blue-600 transition-colors">
 								View All
 							</Link>
 						</div>
 
-						<div className="flex flex-col sm:flex-row items-center gap-6 justify-center">
+						<div className="flex-1 w-full flex flex-col items-center justify-center pt-2">
+							{earlyBirds.length === 0 ? (
+								<p className="text-[10px] text-slate-400 italic">No clock-in data yet.</p>
+							) : (
+								<div className="w-full relative">
+									{(() => {
+										const chartW = 300;
+										const chartH = 100;
+										const padX = 20;
+										const padY = 15;
+										const values = earlyBirds.map(e => e.avgClockInMinutes);
+										const minVal = Math.min(...values) - 15;
+										const maxVal = Math.max(...values) + 15;
+										const range = maxVal - minVal || 1;
+										const innerW = chartW - padX * 2;
+										const innerH = chartH - padY * 2;
+										
+										const pathData = values.map((val, i) => {
+											const x = padX + (i / (values.length - 1)) * innerW;
+											const y = padY + ((val - minVal) / range) * innerH; // earliest time (lowest val) at top
+											return `${i === 0 ? 'M' : 'L'} ${x} ${y}`;
+										}).join(" ");
 
-							{/* Pure SVG Donut gauge */}
-							<div className="relative w-28 h-28 flex items-center justify-center flex-shrink-0">
-								<svg className="w-full h-full transform -rotate-90">
-									<circle cx="56" cy="56" r="44" stroke="#f1f5f9" strokeWidth="8" fill="transparent" />
-									<circle cx="56" cy="56" r="44" stroke="#2563eb" strokeWidth="8" strokeDasharray="276" strokeDashoffset={String(276 - (Math.max(0, Math.min(100, Number(stats.attendanceRate) || 0)) / 100) * 276)} strokeLinecap="round" fill="transparent" />
-								</svg>
-								<div className="absolute text-center">
-									<span className="text-xl font-black text-slate-800">{(Number(stats.attendanceRate) || 0)}%</span>
-									<p className="text-[7px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">Total Present</p>
+										const pointCoords = values.map((val, i) => ({
+											x: padX + (i / (values.length - 1)) * innerW,
+											y: padY + ((val - minVal) / range) * innerH,
+											val,
+											emp: earlyBirds[i]
+										}));
+
+										return (
+											<>
+												<svg viewBox={`0 0 ${chartW} ${chartH}`} className="w-full h-auto overflow-visible">
+													<path d={pathData} fill="none" stroke="#2563eb" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+													{pointCoords.map((p, i) => (
+														<g key={i}>
+															<circle cx={p.x} cy={p.y} r="4" fill="#fff" stroke="#2563eb" strokeWidth="2" />
+															<text x={p.x} y={p.y - 14} fontSize="5" fontWeight="bold" fill="#94a3b8" textAnchor="middle" className="uppercase tracking-wider">Avg.</text>
+															<text x={p.x} y={p.y - 7} fontSize="7" fontWeight="black" fill="#64748b" textAnchor="middle">{p.emp.formattedTime}</text>
+														</g>
+													))}
+												</svg>
+												<div className="flex justify-between w-full mt-1.5 px-1">
+													{earlyBirds.map((e, i) => {
+														const parts = e.name.split(' ');
+														const shortName = parts.length > 1 ? `${parts[0]} ${parts[1][0]}.` : e.name;
+														return (
+															<div key={i} className="text-[7px] text-slate-500 font-bold max-w-[40px] text-center leading-tight">
+																<div className="text-[8px] font-black text-slate-400 mb-0.5">#{i + 1}</div>
+																{shortName}
+															</div>
+														);
+													})}
+												</div>
+												<details className="w-full mt-3 pt-3 border-t border-slate-100 group">
+													<summary className="text-[8px] font-black uppercase text-slate-400 flex items-center justify-between cursor-pointer list-none outline-none hover:text-slate-600 transition-colors select-none [&::-webkit-details-marker]:hidden">
+														<span>Recent Clock-ins</span>
+														<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="group-open:rotate-180 transition-transform duration-200 text-slate-300">
+															<polyline points="6 9 12 15 18 9"></polyline>
+														</svg>
+													</summary>
+													<div className="flex flex-col gap-1.5 mt-2.5">
+														{earlyBirds.map((e, i) => {
+															const parts = e.name.split(' ');
+															const shortName = parts.length > 1 ? `${parts[0]} ${parts[1][0]}.` : e.name;
+															return (
+																<div key={i} className="flex items-center justify-between gap-1 border-b border-slate-50 pb-1.5 last:border-0 last:pb-0">
+																	<div className="flex items-center gap-1.5 w-16 shrink-0">
+																		<span className="text-[8px] font-black text-slate-300">#{i + 1}</span>
+																		<span className="text-[9px] font-bold text-slate-700 truncate">{shortName}</span>
+																	</div>
+																	<div className="flex items-center gap-1 justify-end flex-wrap">
+																		{e.recentClockIns.map((time, j) => (
+																			<span key={j} className="text-[7px] font-bold text-slate-500 bg-slate-50 border border-slate-150 px-1 py-0.5 rounded whitespace-nowrap">
+																				{time}
+																			</span>
+																		))}
+																		{e.recentClockIns.length === 0 && <span className="text-[8px] text-slate-400 italic">No recent logs</span>}
+																	</div>
+																</div>
+															);
+														})}
+													</div>
+												</details>
+											</>
+										);
+									})()}
 								</div>
-							</div>
-
-							{/* Legend breakdown list */}
-							<div className="space-y-1.5 text-left w-full">
-								{[
-									{ label: "On Time", val: `${stats.onTimeCount}`, dot: "bg-emerald-500" },
-									{ label: "Late Arrival", val: `${stats.lateCount}`, dot: "bg-rose-500" }
-								].map((item, idx) => (
-									<div key={idx} className="flex items-center justify-between text-[10px] font-bold p-1 border-b border-slate-50">
-										<div className="flex items-center gap-1.5">
-											<div className={`w-1.5 h-1.5 rounded-full ${item.dot}`}></div>
-											<span className="text-slate-500">{item.label}</span>
-										</div>
-										<span className="text-slate-800 font-black">{item.val}</span>
-									</div>
-								))}
-							</div>
-
+							)}
 						</div>
 					</div>
 
