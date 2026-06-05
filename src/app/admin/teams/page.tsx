@@ -31,12 +31,41 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
-import { Plus, Users, Pencil, Trash2, UserPlus, Search, Croissant, X } from "lucide-react";
+import {
+	Plus,
+	Users,
+	Pencil,
+	Trash2,
+	UserPlus,
+	Search,
+	X,
+	Crown,
+	UserCheck,
+	AlertTriangle,
+	ChevronDown,
+} from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import type { Team, Employee, TeamMember } from "@/lib/types";
 
 interface TeamWithDetails extends Team {
 	leader?: Employee;
 	team_members?: Array<TeamMember & { employee: Employee }>;
+}
+
+// Curated color palette for team card accents
+const TEAM_COLORS = [
+	{ gradient: "from-blue-600 via-blue-500 to-indigo-500", bg: "bg-blue-50 dark:bg-blue-950/30", text: "text-blue-700 dark:text-blue-300", border: "border-blue-100 dark:border-blue-900/40", badge: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300" },
+	{ gradient: "from-violet-600 via-purple-500 to-fuchsia-500", bg: "bg-violet-50 dark:bg-violet-950/30", text: "text-violet-700 dark:text-violet-300", border: "border-violet-100 dark:border-violet-900/40", badge: "bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300" },
+	{ gradient: "from-emerald-600 via-emerald-500 to-teal-500", bg: "bg-emerald-50 dark:bg-emerald-950/30", text: "text-emerald-700 dark:text-emerald-300", border: "border-emerald-100 dark:border-emerald-900/40", badge: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300" },
+	{ gradient: "from-orange-500 via-amber-500 to-yellow-500", bg: "bg-amber-50 dark:bg-amber-950/30", text: "text-amber-700 dark:text-amber-300", border: "border-amber-100 dark:border-amber-900/40", badge: "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300" },
+	{ gradient: "from-rose-600 via-pink-500 to-fuchsia-500", bg: "bg-rose-50 dark:bg-rose-950/30", text: "text-rose-700 dark:text-rose-300", border: "border-rose-100 dark:border-rose-900/40", badge: "bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300" },
+	{ gradient: "from-cyan-600 via-cyan-500 to-sky-500", bg: "bg-cyan-50 dark:bg-cyan-950/30", text: "text-cyan-700 dark:text-cyan-300", border: "border-cyan-100 dark:border-cyan-900/40", badge: "bg-cyan-100 text-cyan-700 dark:bg-cyan-900/40 dark:text-cyan-300" },
+	{ gradient: "from-slate-700 via-slate-600 to-zinc-500", bg: "bg-slate-50 dark:bg-slate-950/30", text: "text-slate-700 dark:text-slate-300", border: "border-slate-200 dark:border-slate-800/40", badge: "bg-slate-100 text-slate-700 dark:bg-slate-800/40 dark:text-slate-300" },
+	{ gradient: "from-indigo-600 via-indigo-500 to-blue-500", bg: "bg-indigo-50 dark:bg-indigo-950/30", text: "text-indigo-700 dark:text-indigo-300", border: "border-indigo-100 dark:border-indigo-900/40", badge: "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300" },
+];
+
+function getTeamColor(index: number) {
+	return TEAM_COLORS[index % TEAM_COLORS.length];
 }
 
 export default function TeamsPage() {
@@ -52,6 +81,19 @@ export default function TeamsPage() {
 	const [selectedEmployee, setSelectedEmployee] = useState<string>("");
 	const [memberSearch, setMemberSearch] = useState("");
 	const [isLoading, setIsLoading] = useState(true);
+	const [expandedTeams, setExpandedTeams] = useState<Set<string>>(new Set());
+
+	const toggleTeamExpanded = (teamId: string) => {
+		setExpandedTeams((prev) => {
+			const next = new Set(prev);
+			if (next.has(teamId)) {
+				next.delete(teamId);
+			} else {
+				next.add(teamId);
+			}
+			return next;
+		});
+	};
 
 	const [formData, setFormData] = useState({
 		name: "",
@@ -202,18 +244,60 @@ export default function TeamsPage() {
 		);
 	};
 
+	// Stats
+	const totalMembers = teams.reduce(
+		(acc, t) => acc + (t.team_members?.length || 0),
+		0
+	);
+	const teamsWithoutLeader = teams.filter((t) => !t.leader).length;
+
 	return (
 		<div className='flex flex-col'>
 			<DashboardHeader title='Teams' description='Manage all teams' />
 
 			<div className='flex-1 space-y-6 p-6'>
-				{/* Header Actions */}
-				<div className='flex justify-end'>
+				{/* Summary Stats + Create Button */}
+				<div className='flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4'>
+					{/* Stats Pills */}
+					{!isLoading && teams.length > 0 && (
+						<div className='flex flex-wrap items-center gap-2.5'>
+							<div className='flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800/40'>
+								<div className='flex items-center justify-center w-7 h-7 rounded-lg bg-primary/10'>
+									<Users className='h-3.5 w-3.5 text-primary' />
+								</div>
+								<div>
+									<p className='text-[10px] font-bold text-slate-400 uppercase tracking-wider'>Teams</p>
+									<p className='text-sm font-extrabold text-slate-800 dark:text-white leading-none'>{teams.length}</p>
+								</div>
+							</div>
+							<div className='flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800/40'>
+								<div className='flex items-center justify-center w-7 h-7 rounded-lg bg-emerald-500/10'>
+									<UserCheck className='h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400' />
+								</div>
+								<div>
+									<p className='text-[10px] font-bold text-slate-400 uppercase tracking-wider'>Total Members</p>
+									<p className='text-sm font-extrabold text-slate-800 dark:text-white leading-none'>{totalMembers}</p>
+								</div>
+							</div>
+							{teamsWithoutLeader > 0 && (
+								<div className='flex items-center gap-2 px-3.5 py-2 rounded-xl bg-amber-50 dark:bg-amber-950/20 border border-amber-100 dark:border-amber-900/40'>
+									<div className='flex items-center justify-center w-7 h-7 rounded-lg bg-amber-500/10'>
+										<AlertTriangle className='h-3.5 w-3.5 text-amber-600 dark:text-amber-400' />
+									</div>
+									<div>
+										<p className='text-[10px] font-bold text-amber-500 uppercase tracking-wider'>No Leader</p>
+										<p className='text-sm font-extrabold text-amber-700 dark:text-amber-300 leading-none'>{teamsWithoutLeader}</p>
+									</div>
+								</div>
+							)}
+						</div>
+					)}
+
 					<Dialog
 						open={isAddDialogOpen}
 						onOpenChange={setIsAddDialogOpen}>
 						<DialogTrigger asChild>
-							<Button>
+							<Button className='rounded-xl px-5 h-10 font-bold shadow-sm'>
 								<Plus className='mr-2 h-4 w-4' />
 								Create Team
 							</Button>
@@ -302,194 +386,222 @@ export default function TeamsPage() {
 
 				{/* Teams Grid */}
 				{isLoading ? (
-					<div className='flex items-center justify-center py-12'>
-						<p className='text-muted-foreground'>
+					<div className='flex flex-col items-center justify-center py-20'>
+						<div className='w-10 h-10 rounded-full border-2 border-slate-200 border-t-primary animate-spin mb-4' />
+						<p className='text-sm font-medium text-muted-foreground'>
 							Loading teams...
 						</p>
 					</div>
 				) : teams.length === 0 ? (
-					<Card>
-						<CardContent className='flex flex-col items-center justify-center py-12'>
-							<Users className='h-12 w-12 text-muted-foreground mb-4' />
-							<h3 className='text-lg font-medium'>
+					<Card className='border-dashed border-2'>
+						<CardContent className='flex flex-col items-center justify-center py-16'>
+							<div className='w-16 h-16 rounded-2xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center mb-5'>
+								<Users className='h-8 w-8 text-slate-400' />
+							</div>
+							<h3 className='text-lg font-bold text-slate-800 dark:text-white'>
 								No teams yet
 							</h3>
-							<p className='text-sm text-muted-foreground'>
-								Create your first team to get started
+							<p className='text-sm text-muted-foreground mt-1 mb-6 max-w-sm text-center'>
+								Create your first team to organize employees and assign team leaders
 							</p>
+							<Button onClick={() => setIsAddDialogOpen(true)} className='rounded-xl px-6'>
+								<Plus className='mr-2 h-4 w-4' />
+								Create Your First Team
+							</Button>
 						</CardContent>
 					</Card>
 				) : (
-					<div className='grid gap-6 md:grid-cols-2 lg:grid-cols-3'>
-						{teams.map((team) => (
-							<Card key={team.id} className='flex flex-col'>
-								<CardHeader className='pb-3'>
-									<div className='flex items-start justify-between'>
-										<div>
-											<CardTitle className='text-lg'>
-												{team.name}
-											</CardTitle>
-											{team.description && (
-												<CardDescription className='mt-1'>
-													{team.description}
-												</CardDescription>
-											)}
-										</div>
-										<div className='flex gap-1'>
-											<Button
-												variant='ghost'
-												size='icon'
-												className='h-8 w-8'
-												onClick={() =>
-													openEditDialog(team)
-												}>
-												<Pencil className='h-4 w-4' />
-											</Button>
-											<Button
-												variant='ghost'
-												size='icon'
-												className='h-8 w-8 text-destructive'
-												onClick={() =>
-													handleDeleteTeam(team.id)
-												}>
-												<Trash2 className='h-4 w-4' />
-											</Button>
-										</div>
-									</div>
-								</CardHeader>
-								<CardContent className='flex-1 space-y-4'>
-									{/* Team Leader */}
-									{team.leader && (
-										<div className='flex items-center gap-3 rounded-lg bg-muted/50 p-3'>
-											<Avatar className='h-10 w-10'>
-												{team.leader.avatar_url && (
-													<AvatarImage
-														height={32}
-														width={32}
-														className='object-cover'
-														src={team.leader.avatar_url}
-														alt='Profile Pic'
-													/>
-												)}
-												<AvatarFallback className='bg-primary text-primary-foreground'>
-													{
-														team.leader
-															.first_name?.[0]
-													}
-													{team.leader.last_name?.[0]}
-												</AvatarFallback>
-											</Avatar>
-											<div className='flex-1'>
-												<p className='font-medium text-sm'>
-													{team.leader.first_name}{" "}
-													{team.leader.last_name}
-												</p>
-												<p className='text-xs text-muted-foreground'>
-													Team Leader
-												</p>
-											</div>
-										</div>
-									)}
+					<div className='grid gap-5 md:grid-cols-2 xl:grid-cols-3'>
+						{teams.map((team, index) => {
+							const color = getTeamColor(index);
+							const memberCount = team.team_members?.length || 0;
 
-									{/* Team Members */}
-									<div>
-										<div className='flex items-center justify-between mb-2'>
-											<p className='text-sm font-medium'>
-												Members (
-												{team.team_members?.length || 0}
-												)
-											</p>
-											<Button
-												variant='ghost'
-												size='sm'
-												className='h-7 text-xs'
-												onClick={() =>
-													setAddMemberTeam(team)
-												}>
-												<UserPlus className='mr-1 h-3 w-3' />
-												Add
-											</Button>
-										</div>
-										<div className='space-2 flex items-center flex-wrap gap-2'>
-											{team.team_members &&
-												team.team_members.length > 0 ? (
-												team.team_members
-													.slice(0, 4)
-													.map((member) => (
-														<div
-															key={member.id}
-															className='flex items-center justify-center rounded-full border px-2 py-1'>
-															<div className='flex items-center gap-2'>
-																<Avatar className='h-5 w-5'>
-																	{member.employee?.avatar_url && (
-																		<AvatarImage
-																			height={32}
-																			width={32}
-																			className='object-cover'
-																			src={member.employee.avatar_url}
-																			alt='Profile Pic'
-																		/>
-																	)}
-																	<AvatarFallback className='text-xs'>
-																		{
-																			member
-																				.employee
-																				?.first_name?.[0]
-																		}
-																		{
-																			member
-																				.employee
-																				?.last_name?.[0]
-																		}
-																	</AvatarFallback>
-																</Avatar>
-																<span className='text-xs'>
-																	{
-																		member
-																			.employee
-																			?.first_name
-																	}{" "}
-																	{
-																		member
-																			.employee
-																			?.last_name
-																	}
-																</span>
-															</div>
-															<Button
-																variant='ghost'
-																className='h-6 w-6 text-xs hover:text-destructive'
-																onClick={() =>
-																	handleRemoveMember(
-																		member.id
-																	)
-																}>
-																<X className='h-1 w-1' />
-															</Button>
+							return (
+								<motion.div
+									key={team.id}
+									initial={{ opacity: 0, y: 16 }}
+									animate={{ opacity: 1, y: 0 }}
+									transition={{ duration: 0.35, delay: index * 0.05 }}
+								>
+									<Card className='group flex flex-col overflow-hidden border border-slate-100 dark:border-slate-800/40 shadow-sm hover:shadow-md transition-all duration-300 rounded-2xl'>
+
+										<CardHeader className='pb-3 pt-5 px-5'>
+											<div className='flex items-start justify-between'>
+												<div className='flex-1 min-w-0'>
+													<CardTitle className='text-base font-extrabold text-slate-800 dark:text-white tracking-tight truncate'>
+														{team.name}
+													</CardTitle>
+													{team.description && (
+														<CardDescription className='mt-0.5 text-xs line-clamp-2'>
+															{team.description}
+														</CardDescription>
+													)}
+												</div>
+												<div className='flex items-center gap-0.5 ml-3 shrink-0'>
+													<Button
+														variant='ghost'
+														size='icon'
+														className='h-8 w-8 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800'
+														onClick={() =>
+															openEditDialog(team)
+														}>
+														<Pencil className='h-3.5 w-3.5' />
+													</Button>
+													<Button
+														variant='ghost'
+														size='icon'
+														className='h-8 w-8 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30'
+														onClick={() =>
+															handleDeleteTeam(team.id)
+														}>
+														<Trash2 className='h-3.5 w-3.5' />
+													</Button>
+												</div>
+											</div>
+
+											{/* Member count badge */}
+											<div className='flex items-center gap-2 mt-3'>
+												<span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold ${color.badge}`}>
+													<Users className='w-3 h-3' />
+													{memberCount + (team.leader ? 1 : 0)} {memberCount + (team.leader ? 1 : 0) === 1 ? 'Person' : 'People'}
+												</span>
+											</div>
+										</CardHeader>
+
+										<CardContent className='flex-1 space-y-4 px-5 pb-5'>
+											{/* Team Leader */}
+											{team.leader && (
+												<div className={`flex items-center gap-3 rounded-xl p-3 ${color.bg} border ${color.border}`}>
+													<div className='relative'>
+														<Avatar className='h-10 w-10 ring-2 ring-white dark:ring-slate-900 shadow-sm'>
+															{team.leader.avatar_url && (
+																<AvatarImage
+																	height={40}
+																	width={40}
+																	className='object-cover'
+																	src={team.leader.avatar_url}
+																	alt='Profile Pic'
+																/>
+															)}
+															<AvatarFallback className={`text-xs font-bold ${color.text} bg-white dark:bg-slate-800`}>
+																{team.leader.first_name?.[0]}
+																{team.leader.last_name?.[0]}
+															</AvatarFallback>
+														</Avatar>
+														<div className='absolute -top-1 -right-1 w-4.5 h-4.5 rounded-full bg-amber-400 flex items-center justify-center shadow-sm'>
+															<Crown className='w-2.5 h-2.5 text-white' />
 														</div>
-													))
-											) : (
-												<p className='text-xs text-muted-foreground py-2'>
-													No members yet
-												</p>
+													</div>
+													<div className='flex-1 min-w-0'>
+														<p className='font-bold text-sm text-slate-800 dark:text-white truncate'>
+															{team.leader.first_name}{" "}
+															{team.leader.last_name}
+														</p>
+														<p className={`text-[11px] font-semibold ${color.text}`}>
+															Team Leader
+														</p>
+													</div>
+												</div>
 											)}
-											{team.team_members &&
-												team.team_members.length >
-												4 && (
-													<Badge
-														variant='secondary'
-														className='text-xs'>
-														+
-														{team.team_members
-															.length - 4}{" "}
-														more
-													</Badge>
-												)}
-										</div>
-									</div>
-								</CardContent>
-							</Card>
-						))}
+
+											{/* Team Members — Accordion */}
+											<div className='rounded-xl border border-slate-100 dark:border-slate-800/40 overflow-hidden'>
+												<button
+													type='button'
+													onClick={() => toggleTeamExpanded(team.id)}
+													className='flex items-center justify-between w-full px-3.5 py-2.5 hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors'
+												>
+													<div className='flex items-center gap-2'>
+														<Users className='h-3.5 w-3.5 text-slate-400' />
+														<span className='text-xs font-bold text-slate-600 dark:text-slate-300'>
+															Members ({memberCount})
+														</span>
+													</div>
+													<div className='flex items-center gap-1'>
+														<span
+															className='h-6 px-2 inline-flex items-center text-[10px] font-semibold text-slate-500 hover:text-primary rounded-md hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors'
+															onClick={(e) => {
+																e.stopPropagation();
+																setAddMemberTeam(team);
+															}}
+														>
+															<UserPlus className='h-3 w-3 mr-1' />
+															Add
+														</span>
+														<motion.div
+															animate={{ rotate: expandedTeams.has(team.id) ? 180 : 0 }}
+															transition={{ duration: 0.2 }}
+														>
+															<ChevronDown className='h-3.5 w-3.5 text-slate-400' />
+														</motion.div>
+													</div>
+												</button>
+
+												<AnimatePresence initial={false}>
+													{expandedTeams.has(team.id) && (
+														<motion.div
+															initial={{ height: 0, opacity: 0 }}
+															animate={{ height: 'auto', opacity: 1 }}
+															exit={{ height: 0, opacity: 0 }}
+															transition={{ duration: 0.25, ease: 'easeInOut' }}
+															className='overflow-hidden'
+														>
+															<div className='px-3.5 pb-3 pt-1'>
+																{team.team_members &&
+																team.team_members.length > 0 ? (
+																	<div className='flex flex-wrap gap-2'>
+																		{team.team_members.map((member) => (
+																			<div
+																				key={member.id}
+																				className='group/member inline-flex items-center gap-1.5 rounded-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/50 pl-1 pr-2 py-1 hover:border-slate-300 dark:hover:border-slate-600 transition-colors'
+																			>
+																				<Avatar className='h-5 w-5 shrink-0'>
+																					{member.employee?.avatar_url && (
+																						<AvatarImage
+																							height={20}
+																							width={20}
+																							className='object-cover'
+																							src={member.employee.avatar_url}
+																							alt='Profile Pic'
+																						/>
+																					)}
+																					<AvatarFallback className='text-[8px] font-bold bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300'>
+																						{member.employee?.first_name?.[0]}
+																						{member.employee?.last_name?.[0]}
+																					</AvatarFallback>
+																				</Avatar>
+																				<span className='text-xs font-medium text-slate-700 dark:text-slate-300 whitespace-nowrap'>
+																					{member.employee?.first_name}{" "}
+																					{member.employee?.last_name}
+																				</span>
+																				<button
+																					onClick={() =>
+																						handleRemoveMember(member.id)
+																					}
+																					className='opacity-0 group-hover/member:opacity-100 h-4 w-4 flex items-center justify-center rounded-full text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition-all shrink-0 -mr-0.5'
+																				>
+																					<X className='h-2.5 w-2.5' />
+																				</button>
+																			</div>
+																		))}
+																	</div>
+																) : (
+																	<div className='flex flex-col items-center justify-center py-4'>
+																		<p className='text-[11px] text-slate-400 dark:text-slate-500 font-medium'>
+																			No members yet
+																		</p>
+																	</div>
+																)}
+															</div>
+														</motion.div>
+													)}
+												</AnimatePresence>
+											</div>
+										</CardContent>
+									</Card>
+								</motion.div>
+							);
+						})}
 					</div>
 				)}
 
