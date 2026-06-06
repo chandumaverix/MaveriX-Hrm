@@ -36,7 +36,7 @@ function formatRupee(n: number): string {
 }
 
 /** Fetch logo from URL and return as base64 data URL, or null on failure */
-async function fetchLogoAsDataUrl(logoUrl: string): Promise<string | null> {
+export async function fetchLogoAsDataUrl(logoUrl: string): Promise<string | null> {
 	try {
 		const url = logoUrl.startsWith("http")
 			? logoUrl
@@ -58,7 +58,7 @@ async function fetchLogoAsDataUrl(logoUrl: string): Promise<string | null> {
 }
 
 /** Get image dimensions from data URL (preserves aspect ratio when drawing in PDF) */
-function getImageDimensions(
+export function getImageDimensions(
 	dataUrl: string
 ): Promise<{ width: number; height: number }> {
 	return new Promise((resolve, reject) => {
@@ -80,7 +80,7 @@ const MAX_LOGO_W_MM = 28;
 const MAX_LOGO_H_MM = 14;
 
 /** Build PDF from data using jsPDF (logo as base64 image; text/draw only for rest to avoid lab color) */
-function buildPdf(
+export function buildPdf(
 	data: SalarySlipData,
 	logoDataUrl: string | null,
 	logoImgWidth?: number,

@@ -23,6 +23,7 @@ import {
 import type { FinanceRecord } from "@/lib/types";
 import { SalarySlipDownload } from "@/components/salary-slip/salary-slip-download";
 import { companyConfig } from "@/lib/constant";
+import { getSalarySlipData } from "@/lib/salary-slip-helper";
 
 const BUCKET = "employee-documents";
 
@@ -559,111 +560,19 @@ export default function EmployeeFinancePage() {
 											: `Year ${y}`;
 										const isSlipAllocated =
 											isSalarySlipAllocated(m, y);
-										const slipData = {
-											company: {
-												name: companyConfig.name,
-												logoUrl: companyConfig.logoUrl,
-												address: companyConfig.address,
-											},
-											employee: {
-												name: `${
-													employee?.first_name ?? ""
-												} ${
-													employee?.last_name ?? ""
-												}`.trim(),
-												dateOfJoining:
-													employee?.joining_date
-														? String(
-																new Date(
-																	employee.joining_date
-																).getFullYear()
-														  )
-														: undefined,
-												department:
-													employee?.designation ??
-													undefined,
-												address:
-													employeeAddress ||
-													undefined,
-											},
-											month: m,
-											year: y,
-											bank: {
-												bankName:
-													bankForm.bank_name ||
-													undefined,
-												accountNo:
-													bankForm.bank_account_number ||
-													undefined,
-												panNo:
-													bankForm.pan_number ||
-													undefined,
-											},
-											earnings: (() => {
-												const arr = [
-													...(salary > 0
-														? [
-																{
-																	component:
-																		"Basic",
-																	full: salary,
-																	actual: salary,
-																},
-														  ]
-														: []),
-													...(bonus > 0
-														? [
-																{
-																	component:
-																		"Special Allowance",
-																	full: bonus,
-																	actual: bonus,
-																},
-														  ]
-														: []),
-													...(reimbursement > 0
-														? [
-																{
-																	component:
-																		"Reimbursement",
-																	full: reimbursement,
-																	actual: reimbursement,
-																},
-														  ]
-														: []),
-												];
-												return arr.length > 0
-													? arr
-													: [
-															{
-																component:
-																	"Basic",
-																full: 0,
-																actual: 0,
-																companyDeductions: 0,
-															},
-													  ];
-											})(),
-											deductions: items
-												.filter(
-													(i) =>
-														i.type ===
-															"deduction" &&
-														Number(i.amount) > 0
-												)
-												.map((i) => ({
-													component:
-														i.description ||
-														"Deduction",
-													amount: Number(i.amount),
-												})),
-											totalDeductions: deduction,
-											netPay:
-												salary +
-												bonus -
-												deduction +
-												reimbursement,
-										};
+										const fullEmployeeData = {
+											...employee,
+											bank_name: bankForm.bank_name,
+											bank_account_number: bankForm.bank_account_number,
+											pan_number: bankForm.pan_number,
+											address: employeeAddress,
+										} as any;
+										const slipData = getSalarySlipData(
+											fullEmployeeData,
+											m,
+											y,
+											records
+										);
 										return (
 											<div
 												key={key}
