@@ -515,15 +515,15 @@ export default function EmployeeLeavePage() {
 				</div>
 
 				{/* ── Tabbed Section: Requests & Deductions ── */}
-				<div className="w-[340px] md:w-full overflow-x-auto">
+				<div className="w-full overflow-x-auto">
 				<Tabs defaultValue='requests' className='w-full space-y-4'>
-					<div className='flex items-center justify-between'>
-						<TabsList className='h-auto bg-slate-100/60 dark:bg-slate-950/40 p-1 rounded-xl gap-1 border border-slate-200/40 dark:border-slate-850/40'>
-							<TabsTrigger value='requests' className='gap-1.5 rounded-lg px-4 py-1.5 text-xs font-bold data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-slate-800 dark:data-[state=active]:text-white data-[state=active]:shadow-[0_2px_8px_rgba(0,0,0,0.04)] text-slate-500 dark:text-slate-400 transition-all'>
+					<div className='flex flex-wrap items-center justify-between gap-2'>
+						<TabsList className='h-auto bg-slate-100/60 dark:bg-slate-950/40 p-1 rounded-xl gap-1 border border-slate-200/40 dark:border-slate-850/40 flex-shrink-0'>
+							<TabsTrigger value='requests' className='gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-slate-800 dark:data-[state=active]:text-white data-[state=active]:shadow-[0_2px_8px_rgba(0,0,0,0.04)] text-slate-500 dark:text-slate-400 transition-all'>
 								<Calendar className='h-3.5 w-3.5' />
 								My Requests ({filteredRequests.length})
 							</TabsTrigger>
-							<TabsTrigger value='deductions' className='gap-1.5 rounded-lg px-4 py-1.5 text-xs font-bold data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-slate-800 dark:data-[state=active]:text-white data-[state=active]:shadow-[0_2px_8px_rgba(0,0,0,0.04)] text-slate-500 dark:text-slate-400 transition-all'>
+							<TabsTrigger value='deductions' className='gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-slate-800 dark:data-[state=active]:text-white data-[state=active]:shadow-[0_2px_8px_rgba(0,0,0,0.04)] text-slate-500 dark:text-slate-400 transition-all'>
 								<Minus className='h-3.5 w-3.5' />
 								Deductions ({leaveDeductions.length})
 							</TabsTrigger>
@@ -532,9 +532,9 @@ export default function EmployeeLeavePage() {
 							open={isDialogOpen}
 							onOpenChange={setIsDialogOpen}>
 							<DialogTrigger asChild>
-								<Button size='sm' className='rounded-xl gap-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold px-4 py-2 shadow-[0_4px_12px_rgba(37,99,235,0.15)] active:scale-95 transition-all' onClick={openNewDialog}>
+								<Button size='sm' className='rounded-xl gap-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold px-3 py-2 shadow-[0_4px_12px_rgba(37,99,235,0.15)] active:scale-95 transition-all flex-shrink-0' onClick={openNewDialog}>
 									<Plus className='h-4 w-4' />
-									New Request
+									<span className='hidden sm:inline'>New Request</span>
 								</Button>
 							</DialogTrigger>
 							<DialogContent className='max-h-[90vh] overflow-y-auto rounded-2xl border-slate-100 dark:border-slate-800/40'>

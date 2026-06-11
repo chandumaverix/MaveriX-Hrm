@@ -255,33 +255,29 @@ export function MobileBottomNav() {
 	if (items.length === 0) return null;
 
 	return (
-		<nav className='fixed bottom-0 left-0 right-0 z-40 border-t border-slate-100 bg-white pb-[env(safe-area-inset-bottom)] md:hidden shadow-lg'>
-			{/* 5 icons visible in frame; rest scroll right */}
-			<div className='flex overflow-x-auto overflow-y-hidden scrollbar-hide'>
-				{items.map((item) => (
-					<Link
-						key={item.href}
-						href={item.href}
-						className={cn(
-							"flex shrink-0 w-[20%] min-w-[72px] max-w-[84px] flex-col items-center justify-center gap-0.5 py-3 text-[10px] transition-colors font-bold",
-							pathname === item.href ||
-								pathname.startsWith(item.href + "/")
-								? "text-blue-600"
-								: "text-slate-400"
-						)}>
-						{item.icon}
-						<span className='truncate px-0.5 text-center'>
-							{item.label}
-						</span>
-					</Link>
-				))}
+		<nav className='fixed bottom-8 left-5 right-5 z-40 max-w-lg mx-auto rounded-full border border-slate-100/80 bg-white/20 dark:bg-slate-900/90 backdrop-blur-sm dark:border-slate-800/80 shadow-[0_10px_30px_rgba(0,0,0,0.08)] md:hidden'>
+			{/* Scrollable icon list */}
+			<div className='flex items-center justify-between gap-1 overflow-x-auto overflow-y-hidden scrollbar-hide px-3 py-2 w-full'>
+				{items.map((item) => {
+					const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
+					return (
+						<Link
+							key={item.href}
+							href={item.href}
+							className={cn(
+								"flex shrink-0 w-18 h-11 items-center justify-center rounded-full transition-all duration-200",
+								isActive
+									? "bg-blue-600/10 text-blue-600 dark:bg-blue-500/15 dark:text-blue-400"
+									: "text-slate-400 hover:text-slate-600 hover:bg-slate-50 dark:hover:bg-slate-800"
+							)}>
+							{item.icon}
+						</Link>
+					);
+				})}
 				<button
 					onClick={signOut}
-					className="flex shrink-0 w-[20%] min-w-[72px] max-w-[84px] flex-col items-center justify-center gap-0.5 py-3 text-[10px] transition-colors text-slate-400 hover:text-red-500 font-bold">
+					className="flex shrink-0 w-11 h-11 items-center justify-center rounded-full transition-all duration-200 text-slate-400 hover:text-red-500 hover:bg-rose-50 dark:hover:bg-rose-950/20">
 					<LogOut className='h-5 w-5' />
-					<span className='truncate px-0.5 text-center'>
-						Logout
-					</span>
 				</button>
 			</div>
 		</nav>
