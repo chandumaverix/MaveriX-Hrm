@@ -34,8 +34,9 @@ import {
 	Phone,
 	Cake
 } from "lucide-react";
-import type { Post } from "@/lib/types";
+import type { Post, PostLike, PostReply } from "@/lib/types";
 import type { Employee } from "@/lib/types";
+import { toast } from "react-hot-toast";
 
 type EmployeeMention = Pick<
 	Employee,
@@ -45,6 +46,10 @@ type EmployeeMention = Pick<
 export function FeedPage() {
 	const { employee } = useUser();
 	const [posts, setPosts] = useState<Post[]>([]);
+	const [expandedPostReplies, setExpandedPostReplies] = useState<Record<string, boolean>>({});
+	const [replyInputs, setReplyInputs] = useState<Record<string, string>>({});
+	const [isLikesDialogOpen, setIsLikesDialogOpen] = useState(false);
+	const [likesList, setLikesList] = useState<PostLike[]>([]);
 	const [newPost, setNewPost] = useState("");
 	const [isPosting, setIsPosting] = useState(false);
 	const [isLoading, setIsLoading] = useState(true);
@@ -64,7 +69,7 @@ export function FeedPage() {
 		const supabase = createClient();
 		const { data } = await supabase
 			.from("posts")
-			.select("*, author:employees(*)")
+			.select("*, author:employees(*), post_likes(*, employee:employees(id, first_name, last_name, avatar_url)), post_replies(*, author:employees(id, first_name, last_name, avatar_url))")
 			.order("created_at", { ascending: false })
 			.limit(50);
 		setPosts((data as unknown as Post[]) || []);
@@ -157,6 +162,75 @@ export function FeedPage() {
 		}
 	};
 
+	const handleToggleLike = async (postId: string) => {
+		if (!employee) return;
+		const supabase = createClient();
+		const post = posts.find(p => p.id === postId);
+		if (!post) return;
+
+		const existingLike = post.post_likes?.find(l => l.employee_id === employee.id);
+		if (existingLike) {
+			const { error } = await supabase
+				.from("post_likes")
+				.delete()
+				.eq("id", existingLike.id);
+			if (error) {
+				toast.error(error.message);
+				return;
+			}
+		} else {
+			const { error } = await supabase
+				.from("post_likes")
+				.insert({
+					post_id: postId,
+					employee_id: employee.id
+				});
+			if (error) {
+				toast.error(error.message);
+				return;
+			}
+		}
+		await fetchPosts();
+	};
+
+	const handleCreateReply = async (postId: string) => {
+		if (!employee) return;
+		const content = replyInputs[postId] || "";
+		if (!content.trim()) return;
+
+		const supabase = createClient();
+		const { error } = await supabase
+			.from("post_replies")
+			.insert({
+				post_id: postId,
+				author_id: employee.id,
+				content: content.trim()
+			});
+
+		if (error) {
+			toast.error(error.message);
+			return;
+		}
+
+		setReplyInputs(prev => ({ ...prev, [postId]: "" }));
+		await fetchPosts();
+	};
+
+	const handleDeleteReply = async (replyId: string) => {
+		const supabase = createClient();
+		const { error } = await supabase
+			.from("post_replies")
+			.delete()
+			.eq("id", replyId);
+
+		if (error) {
+			toast.error(error.message);
+			return;
+		}
+
+		await fetchPosts();
+	};
+
 	const canDeletePost = (post: Post) => {
 		if (!employee) return false;
 		const authorId = (post as { author_id?: string }).author_id;
@@ -197,11 +271,11 @@ export function FeedPage() {
 							e.stopPropagation();
 							handleMentionClick(part);
 						}}
-						className={`inline-flex items-center rounded-md px-1.5 py-0.5 text-xs font-bold ring-1 ring-inset mx-0.5 transition-all active:scale-95 cursor-pointer ${isMe
-							? 'bg-white/20 text-white ring-white/30 hover:bg-white/40'
-							: 'bg-primary/10 text-primary ring-primary/20 hover:bg-primary/20'
+						className={`font-bold hover:underline cursor-pointer transition-all focus:outline-none ${isMe
+							? 'text-white font-extrabold'
+							: 'text-primary'
 							}`}>
-						{part}
+						{part.slice(1)}
 					</button>
 				);
 			}
@@ -230,7 +304,7 @@ export function FeedPage() {
 									<div className="relative">
 										<Textarea
 											ref={textareaRef}
-											placeholder="Share an update with the team..."
+											placeholder="Use '@' to mention someone..."
 											value={newPost}
 											onChange={(e) => {
 												const v = e.target.value;
@@ -400,6 +474,44 @@ export function FeedPage() {
 													<span className='text-[10px] font-bold text-slate-400 uppercase tracking-tighter'>
 														{createdAt.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} • {createdAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
 													</span>
+
+													<span className="text-[10px] text-slate-300">•</span>
+
+													{/* Like Button & Count */}
+													<div className="flex items-center gap-1">
+														<button
+															onClick={() => handleToggleLike(post.id)}
+															className="hover:scale-110 active:scale-95 transition-all cursor-pointer focus:outline-none"
+														>
+															{post.post_likes?.some(l => l.employee_id === employee?.id) ? (
+																<Heart className="h-3.5 w-3.5 text-rose-500 fill-rose-500" />
+															) : (
+																<Heart className="h-3.5 w-3.5 text-slate-400 hover:text-rose-500 transition-colors" />
+															)}
+														</button>
+														<span
+															onClick={() => {
+																if (post.post_likes && post.post_likes.length > 0) {
+																	setLikesList(post.post_likes);
+																	setIsLikesDialogOpen(true);
+																}
+															}}
+															className={`text-[11px] font-bold text-slate-400 dark:text-slate-500 ${post.post_likes && post.post_likes.length > 0 ? "hover:underline cursor-pointer" : ""}`}
+														>
+															{post.post_likes?.length || 0}
+														</span>
+													</div>
+
+													{/* Reply Button & Count */}
+													<button
+														onClick={() => setExpandedPostReplies(prev => ({ ...prev, [post.id]: !prev[post.id] }))}
+														className="flex items-center gap-1 hover:scale-105 transition-all text-slate-400 hover:text-primary cursor-pointer focus:outline-none"
+													>
+														<MessageCircle className="h-3.5 w-3.5" />
+														<span className="text-[11px] font-bold text-slate-400">
+															{post.post_replies?.length || 0}
+														</span>
+													</button>
 												</div>
 
 												{/* Bubble */}
@@ -411,6 +523,84 @@ export function FeedPage() {
 														{formatPostContent(anyPost.content, isMe)}
 													</div>
 												</div>
+
+												{/* Collapsible Replies Section */}
+												{expandedPostReplies[post.id] && (
+													<div className="mt-3 space-y-3 w-full border-t border-slate-100 dark:border-slate-800/40 pt-3">
+														{/* Replies List */}
+														<div className="space-y-3 max-h-[200px] overflow-y-auto pr-1">
+															{post.post_replies && post.post_replies.length > 0 ? (
+																[...post.post_replies]
+																	.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+																	.map((reply) => {
+																		const isReplyMe = reply.author_id === employee?.id;
+																		return (
+																			<div key={reply.id} className="flex gap-2.5 items-start">
+																				<Avatar className="h-6 w-6 border border-white shadow-xs shrink-0">
+																					{reply.author?.avatar_url && (
+																						<AvatarImage src={reply.author.avatar_url} className="object-cover" />
+																					)}
+																					<AvatarFallback className="text-[8px] font-bold">
+																						{reply.author?.first_name?.[0]}{reply.author?.last_name?.[0]}
+																					</AvatarFallback>
+																				</Avatar>
+																				<div className="flex-1 bg-slate-50 dark:bg-slate-900/60 p-2.5 rounded-[16px] text-xs">
+																					<div className="flex items-center justify-between gap-2 mb-1">
+																						<span className="font-bold text-slate-700 dark:text-slate-300">
+																							{reply.author?.first_name} {reply.author?.last_name}
+																						</span>
+																						<div className="flex items-center gap-1.5">
+																							<span className="text-[9px] text-slate-400 font-bold uppercase tracking-tighter">
+																								{new Date(reply.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+																							</span>
+																							{(isReplyMe || employee?.role === 'admin') && (
+																								<button
+																									onClick={() => handleDeleteReply(reply.id)}
+																									className="text-slate-400 hover:text-rose-500 transition-colors cursor-pointer"
+																									title="Delete Reply"
+																								>
+																									<Trash2 className="h-3 w-3" />
+																								</button>
+																							)}
+																						</div>
+																					</div>
+																					<p className="text-slate-600 dark:text-slate-400 leading-relaxed font-medium">
+																						{reply.content}
+																					</p>
+																				</div>
+																			</div>
+																		);
+																	})
+															) : (
+																<p className="text-[10px] text-slate-400 font-bold text-center py-2 uppercase tracking-wider">No replies yet</p>
+															)}
+														</div>
+
+														{/* Reply Input Composer */}
+														<div className="flex gap-2 w-full mt-1.5 items-center">
+															<input
+																type="text"
+																placeholder="Write a reply..."
+																value={replyInputs[post.id] || ""}
+																onChange={(e) => setReplyInputs(prev => ({ ...prev, [post.id]: e.target.value }))}
+																onKeyDown={(e) => {
+																	if (e.key === "Enter") {
+																		handleCreateReply(post.id);
+																	}
+																}}
+																className="flex-1 h-8 px-3 rounded-full text-xs border border-slate-200 dark:border-slate-800 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 bg-slate-50 dark:bg-slate-900/40 text-slate-800 dark:text-slate-200"
+															/>
+															<Button
+																size="sm"
+																onClick={() => handleCreateReply(post.id)}
+																disabled={!(replyInputs[post.id] || "").trim()}
+																className="h-8 rounded-full px-3.5 bg-primary text-white hover:bg-primary/95 text-[10px] font-bold"
+															>
+																Reply
+															</Button>
+														</div>
+													</div>
+												)}
 											</div>
 										</div>
 									</div>
@@ -440,6 +630,9 @@ export function FeedPage() {
 
 			<Dialog open={mentionDetailsOpen} onOpenChange={setMentionDetailsOpen}>
 				<DialogContent className='w-[280px] p-4 overflow-hidden border-none bg-white rounded-[24px] shadow-2xl'>
+					<DialogHeader className="sr-only">
+						<DialogTitle>Employee Profile</DialogTitle>
+					</DialogHeader>
 					{selectedMentionEmployee && (
 						<div className="flex flex-col items-center text-center">
 							<div className="relative mb-4">
@@ -473,6 +666,45 @@ export function FeedPage() {
 							</Button>
 						</div>
 					)}
+				</DialogContent>
+			</Dialog>
+
+			<Dialog open={isLikesDialogOpen} onOpenChange={setIsLikesDialogOpen}>
+				<DialogContent className='max-w-md rounded-2xl p-6'>
+					<DialogHeader>
+						<DialogTitle className="text-lg font-black text-slate-900 tracking-tight">
+							Likes
+						</DialogTitle>
+						<DialogDescription className="text-xs text-slate-500 font-bold uppercase tracking-wider">
+							People who liked this post
+						</DialogDescription>
+					</DialogHeader>
+					<div className="mt-4 max-h-[300px] overflow-y-auto space-y-4 pr-1">
+						{likesList.map((like) => {
+							const emp = like.employee;
+							if (!emp) return null;
+							return (
+								<div key={like.id} className="flex items-center gap-3">
+									<Avatar className='h-9 w-9 shrink-0 border border-slate-100 shadow-sm'>
+										{emp.avatar_url && (
+											<AvatarImage
+												src={emp.avatar_url}
+												className="object-cover"
+											/>
+										)}
+										<AvatarFallback className='bg-primary/5 text-primary text-[10px] font-black'>
+											{emp.first_name?.[0]}{emp.last_name?.[0]}
+										</AvatarFallback>
+									</Avatar>
+									<div className="flex-1 min-w-0">
+										<p className="text-sm font-bold text-slate-800 truncate">
+											{emp.first_name} {emp.last_name}
+										</p>
+									</div>
+								</div>
+							);
+						})}
+					</div>
 				</DialogContent>
 			</Dialog>
 		</div>

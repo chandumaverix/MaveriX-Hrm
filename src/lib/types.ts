@@ -124,6 +124,7 @@ export interface FinanceRecord {
 	created_at: string;
 	updated_at: string;
 	salary_slip_allocated?: boolean;
+	salary_slip_sent?: boolean;
 	employee?: Employee;
 }
 
@@ -142,6 +143,23 @@ export interface Resignation {
 	reviewer?: Employee;
 }
 
+export interface PostLike {
+	id: string;
+	post_id: string;
+	employee_id: string;
+	created_at: string;
+	employee?: Employee;
+}
+
+export interface PostReply {
+	id: string;
+	post_id: string;
+	author_id: string;
+	content: string;
+	created_at: string;
+	author?: Employee;
+}
+
 export interface Post {
 	id: string;
 	author_id: string;
@@ -149,6 +167,8 @@ export interface Post {
 	created_at: string;
 	updated_at: string;
 	author?: Employee;
+	post_likes?: PostLike[];
+	post_replies?: PostReply[];
 }
 
 export interface Announcement {

@@ -19,6 +19,8 @@ import {
 	Eye,
 	EyeOff,
 	Download,
+	ChevronDown,
+	ChevronUp,
 } from "lucide-react";
 import type { FinanceRecord } from "@/lib/types";
 import { SalarySlipDownload } from "@/components/salary-slip/salary-slip-download";
@@ -50,6 +52,7 @@ export default function EmployeeFinancePage() {
 	const [isSavingBank, setIsSavingBank] = useState(false);
 	const [bankMessage, setBankMessage] = useState<string | null>(null);
 	const [salaryVisible, setSalaryVisible] = useState(false);
+	const [isDocsCollapsed, setIsDocsCollapsed] = useState(true);
 	const aadharInputRef = useRef<HTMLInputElement>(null);
 	const panInputRef = useRef<HTMLInputElement>(null);
 
@@ -80,8 +83,8 @@ export default function EmployeeFinancePage() {
 		setIsLoading(false);
 	};
 
-	// Check if salary slip is allocated for a given month/year
-	const isSalarySlipAllocated = (month: number, year: number) => {
+	// Check if salary slip is sent/available for a given month/year
+	const isSalarySlipSent = (month: number, year: number) => {
 		const salaryRecord = records.find(
 			(r) =>
 				r.type === "salary" &&
@@ -89,7 +92,7 @@ export default function EmployeeFinancePage() {
 				r.year === year &&
 				r.employee_id === employee?.id
 		);
-		return salaryRecord?.salary_slip_allocated === true;
+		return salaryRecord?.salary_slip_sent === true;
 	};
 
 	const fetchProfile = async () => {
@@ -559,7 +562,7 @@ export default function EmployeeFinancePage() {
 											  )
 											: `Year ${y}`;
 										const isSlipAllocated =
-											isSalarySlipAllocated(m, y);
+											isSalarySlipSent(m, y);
 										const fullEmployeeData = {
 											...employee,
 											bank_name: bankForm.bank_name,
@@ -675,18 +678,41 @@ export default function EmployeeFinancePage() {
 
 				{/* Aadhar & PAN – display on page, view, delete */}
 				<Card className="border border-slate-100 dark:border-slate-800/40 bg-white dark:bg-slate-900 shadow-[0_4px_24px_rgba(0,0,0,0.015)] rounded-2xl overflow-hidden">
-					<CardHeader className="border-b border-slate-100 dark:border-slate-800/40 pb-5">
-						<CardTitle className='flex items-center gap-2.5'>
-							<div className="h-8 w-8 rounded-lg bg-primary/5 flex items-center justify-center text-primary">
-								<FileText className='h-4.5 w-4.5' />
-							</div>
-							<span className="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-white">Aadhar & PAN</span>
-						</CardTitle>
-						<p className='text-[10px] text-slate-400 dark:text-slate-500 font-bold mt-1.5 leading-normal'>
-							Uploaded documents are shown below. View, replace, or delete.
-						</p>
+					<CardHeader 
+						onClick={() => setIsDocsCollapsed(!isDocsCollapsed)}
+						className={`flex flex-row items-center justify-between cursor-pointer select-none pb-5 transition-all duration-305 ${
+							isDocsCollapsed ? "" : "border-b border-slate-100 dark:border-slate-800/40"
+						}`}
+					>
+						<div>
+							<CardTitle className='flex items-center gap-2.5'>
+								<div className="h-8 w-8 rounded-lg bg-primary/5 flex items-center justify-center text-primary">
+									<FileText className='h-4.5 w-4.5' />
+								</div>
+								<span className="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-white">Aadhar & PAN</span>
+							</CardTitle>
+							<p className='text-[10px] text-slate-400 dark:text-slate-500 font-bold mt-1.5 leading-normal'>
+								Uploaded documents are shown below. View, replace, or delete.
+							</p>
+						</div>
+						<Button
+							variant="ghost"
+							size="sm"
+							className="h-8 w-8 p-0 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"
+							onClick={(e) => {
+								e.stopPropagation();
+								setIsDocsCollapsed(!isDocsCollapsed);
+							}}
+						>
+							{isDocsCollapsed ? (
+								<ChevronDown className="h-4 w-4 text-slate-400" />
+							) : (
+								<ChevronUp className="h-4 w-4 text-slate-400" />
+							)}
+						</Button>
 					</CardHeader>
-					<CardContent className='space-y-6 p-6'>
+					{!isDocsCollapsed && (
+						<CardContent className='space-y-6 p-6'>
 						{uploadError && (
 							<div className='rounded-xl bg-rose-50 dark:bg-rose-950/20 p-3 text-xs font-bold border border-rose-100 dark:border-rose-900/30 text-rose-500'>
 								{uploadError}
@@ -885,6 +911,7 @@ export default function EmployeeFinancePage() {
 							</div>
 						</div>
 					</CardContent>
+				)}
 				</Card>
 			</div>
 		</div>

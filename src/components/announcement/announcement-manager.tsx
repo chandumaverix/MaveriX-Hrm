@@ -17,6 +17,7 @@ export function AnnouncementManager() {
 	const { employee } = useUser();
 	const [list, setList] = useState<Announcement[]>([]);
 	const [createOpen, setCreateOpen] = useState(false);
+	const [expandedIds, setExpandedIds] = useState<Record<string, boolean>>({});
 
 	const canCreate = employee?.role === "admin" || employee?.role === "hr";
 
@@ -69,6 +70,11 @@ export function AnnouncementManager() {
 							{list.map((a) => {
 								const isToday = a.date === todayStr();
 								const isPast = a.date < todayStr();
+								const isExpanded = expandedIds[a.id];
+								const shouldTruncate = a.content.length > 180;
+								const displayText = shouldTruncate && !isExpanded 
+									? `${a.content.slice(0, 180)}...` 
+									: a.content;
 								return (
 									<li
 										key={a.id}
@@ -111,9 +117,17 @@ export function AnnouncementManager() {
 												{a.title}
 											</p>
 										)}
-										<p className='text-sm whitespace-pre-wrap text-muted-foreground'>
-											{a.content}
+										<p className='text-sm whitespace-pre-wrap text-muted-foreground leading-relaxed'>
+											{displayText}
 										</p>
+										{shouldTruncate && (
+											<button
+												onClick={() => setExpandedIds(prev => ({ ...prev, [a.id]: !prev[a.id] }))}
+												className="text-xs font-bold text-primary hover:underline mt-1 w-fit focus:outline-none cursor-pointer text-left self-start"
+											>
+												{isExpanded ? "Show Less" : "Read More"}
+											</button>
+										)}
 									</li>
 								);
 							})}

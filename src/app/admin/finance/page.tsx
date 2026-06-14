@@ -277,9 +277,22 @@ export default function FinancePage() {
 			return;
 		}
 
-		// Send payslip emails asynchronously to the allocated employees
-		toast.loading("Allocating Salary Slips", { id: "payslip-email-status" });
+		toast.success("Salary slips generated successfully");
+		setIsAllocateSlipDialogOpen(false);
+		setSelectedEmployeesForSlip([]);
+		setSlipEmployeeSearch("");
+		await fetchRecords();
+	};
+
+	const handleSendSalarySlip = async (record: FinanceWithEmployee) => {
+		if (!record.employee || !record.employee.email) {
+			toast.error("Employee email not found");
+			return;
+		}
+
+		const toastId = toast.loading("Sending salary slip...");
 		try {
+			const supabase = createClient();
 			const logoUrl = companyConfig.logoUrl ?? "/paysliplogo.png";
 			const logoDataUrl = await fetchLogoAsDataUrl(logoUrl);
 			let logoW: number | undefined;
@@ -294,74 +307,50 @@ export default function FinancePage() {
 				}
 			}
 
-			let emailSuccessCount = 0;
-			let emailFailCount = 0;
-
-			for (const employeeId of selectedEmployeesForSlip) {
-				const emp = employees.find((e) => e.id === employeeId);
-				if (!emp || !emp.email) {
-					emailFailCount++;
-					continue;
-				}
-
-				try {
-					const slipData = getSalarySlipData(
-						emp,
-						allocateSlipMonth,
-						allocateSlipYear,
-						records
-					);
-
-					const pdf = buildPdf(slipData, logoDataUrl, logoW, logoH);
-					const pdfBase64 = pdf.output("datauristring");
-
-					const monthName = months[allocateSlipMonth - 1] ?? "N/A";
-					const res = await fetch("/api/finance/notify", {
-						method: "POST",
-						headers: { "Content-Type": "application/json" },
-						body: JSON.stringify({
-							employeeEmail: emp.email,
-							employeeName: `${emp.first_name ?? ""} ${emp.last_name ?? ""}`.trim(),
-							monthName,
-							year: allocateSlipYear,
-							pdfBase64,
-						}),
-					});
-
-					const resData = await res.json();
-					if (res.ok && !resData.skipped) {
-						emailSuccessCount++;
-					} else {
-						emailFailCount++;
-					}
-				} catch (err) {
-					console.error("Failed to send email to " + emp.email, err);
-					emailFailCount++;
-				}
-			}
-
-			toast.dismiss("payslip-email-status");
-			if (emailFailCount === 0) {
-				toast.success(
-					`Salary slips allocated and emails sent to ${emailSuccessCount} employee(s)`
-				);
-			} else {
-				toast.success(
-					`Salary slips allocated. Emails sent: ${emailSuccessCount}, failed/skipped: ${emailFailCount}.`
-				);
-			}
-		} catch (err) {
-			console.error("Failed in generating or sending payslip emails", err);
-			toast.dismiss("payslip-email-status");
-			toast.success(
-				`Salary slips allocated for ${selectedEmployeesForSlip.length} employee(s) (email notification failed).`
+			const slipData = getSalarySlipData(
+				record.employee,
+				record.month ?? 1,
+				record.year ?? new Date().getFullYear(),
+				records
 			);
-		}
 
-		setIsAllocateSlipDialogOpen(false);
-		setSelectedEmployeesForSlip([]);
-		setSlipEmployeeSearch("");
-		await fetchRecords();
+			const pdf = buildPdf(slipData, logoDataUrl, logoW, logoH);
+			const pdfBase64 = pdf.output("datauristring");
+
+			const monthName = months[(record.month ?? 1) - 1] ?? "N/A";
+			const res = await fetch("/api/finance/notify", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({
+					employeeEmail: record.employee.email,
+					employeeName: `${record.employee.first_name ?? ""} ${record.employee.last_name ?? ""}`.trim(),
+					monthName,
+					year: record.year,
+					pdfBase64,
+				}),
+			});
+
+			const resData = await res.json();
+			if (!res.ok || resData.skipped) {
+				throw new Error(resData.error || "Failed to send email");
+			}
+
+			// Update database setting salary_slip_sent to true
+			const { error } = await supabase
+				.from("finance_records")
+				.update({ salary_slip_sent: true })
+				.eq("id", record.id);
+
+			if (error) {
+				throw new Error(error.message);
+			}
+
+			toast.success("Salary slip sent and shared successfully", { id: toastId });
+			await fetchRecords();
+		} catch (err) {
+			console.error("Failed sending salary slip:", err);
+			toast.error(err instanceof Error ? err.message : "Failed to send salary slip", { id: toastId });
+		}
 	};
 
 	// Get employees who have salary records for the selected month/year
@@ -1249,31 +1238,49 @@ export default function FinancePage() {
 																)}
 															</TableCell>
 															<TableCell>
-																{record.type === "salary" &&
-																	record.salary_slip_allocated && (
-																		<SalarySlipDownload
-																			data={getSalarySlipData(
-																				record.employee as any,
-																				record.month ?? 1,
-																				record.year ?? new Date().getFullYear(),
-																				records
-																			)}
-																			trigger={
-																				<Button
-																					variant='ghost'
-																					size='sm'>
-																					<Download className='mr-2 h-4 w-4' />
-																					Download
-																				</Button>
-																			}
-																		/>
-																	)}
-																{record.type === "salary" &&
-																	!record.salary_slip_allocated && (
-																		<Badge variant='secondary'>
-																			Not Allocated
-																		</Badge>
-																	)}
+																{record.type === "salary" && (
+																	<div className="flex items-center gap-2">
+																		{record.salary_slip_allocated ? (
+																			<>
+																				<SalarySlipDownload
+																					data={getSalarySlipData(
+																						record.employee as any,
+																						record.month ?? 1,
+																						record.year ?? new Date().getFullYear(),
+																						records
+																					)}
+																					trigger={
+																						<Button
+																							variant='ghost'
+																							size='sm'
+																							className="h-8 px-2 text-xs">
+																							<Download className='mr-1.5 h-3.5 w-3.5' />
+																							Download
+																						</Button>
+																					}
+																				/>
+																				{record.salary_slip_sent ? (
+																					<Badge className="bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-450 border border-emerald-100/50 dark:border-emerald-900/30 flex items-center gap-1 h-7 text-[10px] font-bold">
+																						<CheckCircle2 className="h-3 w-3" />
+																						Sent
+																					</Badge>
+																				) : (
+																					<Button
+																						variant='outline'
+																						size='sm'
+																						onClick={() => handleSendSalarySlip(record)}
+																						className="h-8 px-2 text-xs border-blue-200 dark:border-blue-900 text-blue-600 dark:text-blue-400 bg-white dark:bg-slate-900 hover:bg-blue-50 dark:hover:bg-blue-950/30">
+																						Send
+																					</Button>
+																				)}
+																			</>
+																		) : (
+																			<Badge variant='secondary' className="h-7 text-[10px] font-bold">
+																				Not Allocated
+																			</Badge>
+																		)}
+																	</div>
+																)}
 															</TableCell>
 															<TableCell className="text-right">
 																<div className="flex items-center justify-end gap-2 text-right">
