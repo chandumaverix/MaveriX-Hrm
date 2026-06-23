@@ -95,6 +95,7 @@ export default function AttendanceRecordsPage() {
 	const { employee } = useUser();
 	const [selectedMonth, setSelectedMonth] = useState<string>(currentMonthStr());
 	const [employees, setEmployees] = useState<Employee[]>([]);
+	const [approvedLeaves, setApprovedLeaves] = useState<any[]>([]);
 	const [attendanceRecords, setAttendanceRecords] = useState<AttendanceWithEmployee[]>(
 		[],
 	);
@@ -116,20 +117,31 @@ export default function AttendanceRecordsPage() {
 			const supabase = createClient();
 			const { start, end } = getMonthRange(selectedMonth);
 
-			const [{ data: employeesData, error: employeesError }, attendanceData] =
-				await Promise.all([
-					supabase
-						.from("employees")
-						.select("*")
-						.eq("is_active", true)
-						.neq("role", "admin")
-						.order("first_name", { ascending: true }),
-					fetchAllAttendanceForMonth(supabase, start, end),
-				]);
+			const [
+				{ data: employeesData, error: employeesError },
+				{ data: leavesData, error: leavesError },
+				attendanceData
+			] = await Promise.all([
+				supabase
+					.from("employees")
+					.select("*")
+					.eq("is_active", true)
+					.neq("role", "admin")
+					.order("first_name", { ascending: true }),
+				supabase
+					.from("leave_requests")
+					.select("*")
+					.eq("status", "approved")
+					.gte("end_date", start)
+					.lte("start_date", end),
+				fetchAllAttendanceForMonth(supabase, start, end),
+			]);
 
 			if (employeesError) throw employeesError;
+			if (leavesError) throw leavesError;
 
 			setEmployees((employeesData as Employee[]) || []);
+			setApprovedLeaves(leavesData || []);
 			setAttendanceRecords(attendanceData || []);
 		} catch (e) {
 			console.error(e);
@@ -160,6 +172,9 @@ export default function AttendanceRecordsPage() {
 
 				const day = new Date(`${date}T12:00:00`).getDay();
 				const isWeekOff = emp.week_off_day != null && emp.week_off_day === day;
+				const isOnLeave = approvedLeaves.some(
+					(leave) => leave.employee_id === emp.id && date >= leave.start_date && date <= leave.end_date
+				);
 				generated.push({
 					id: `synthetic-${emp.id}-${date}`,
 					employee_id: emp.id,
@@ -167,7 +182,7 @@ export default function AttendanceRecordsPage() {
 					clock_in: null,
 					clock_out: null,
 					total_hours: null,
-					status: isWeekOff ? "week_off" : "absent",
+					status: isOnLeave ? "leave" : isWeekOff ? "week_off" : "absent",
 					notes: null,
 					created_at: "",
 					updated_at: "",
@@ -184,7 +199,7 @@ export default function AttendanceRecordsPage() {
 			return nameA.localeCompare(nameB);
 		});
 		return generated;
-	}, [attendanceRecords, employees, selectedMonth]);
+	}, [attendanceRecords, employees, selectedMonth, approvedLeaves]);
 
 	const filteredRecords = useMemo(() => {
 		let data = allMonthRecords;

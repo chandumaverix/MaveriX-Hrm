@@ -312,6 +312,7 @@ export default function HRDashboardPage() {
 	const [recentAttendance, setRecentAttendance] = useState<Attendance[]>([]);
 	const [calendarMonth, setCalendarMonth] = useState(() => new Date());
 	const [monthAttendance, setMonthAttendance] = useState<Attendance[]>([]);
+	const [myApprovedLeaves, setMyApprovedLeaves] = useState<any[]>([]);
 	const [announcements, setAnnouncements] = useState<Announcement[]>([]);
 	const [pendingLeaves, setPendingLeaves] = useState<
 		(LeaveRequest & {
@@ -410,6 +411,15 @@ export default function HRDashboardPage() {
 						.gte("date", monthStart)
 						.lte("date", monthEnd);
 					setMonthAttendance((monthAtt as Attendance[]) || []);
+
+					const { data: myLeaves } = await supabase
+						.from("leave_requests")
+						.select("*")
+						.eq("employee_id", employee.id)
+						.eq("status", "approved")
+						.gte("end_date", monthStart)
+						.lte("start_date", monthEnd);
+					setMyApprovedLeaves(myLeaves || []);
 				} catch (err) {
 					console.error("Error fetching personal attendance:", err);
 				}
@@ -1187,6 +1197,10 @@ export default function HRDashboardPage() {
 									let label: string | null = null;
 									let type: "present" | "late" | "absent" | "weekoff" | "leave" | null = null;
 
+									const isOnLeave = myApprovedLeaves.some(
+										(leave) => dateStr >= leave.start_date && dateStr <= leave.end_date
+									);
+
 									if (att) {
 										if (att.status === "present") { label = "Present"; type = "present"; }
 										else if (att.status === "late") { label = "Late"; type = "late"; }
@@ -1196,7 +1210,8 @@ export default function HRDashboardPage() {
 										const isWeekoff = weekOffDay !== null && weekOffDay !== undefined
 											? day.getDay() === weekOffDay
 											: (day.getDay() === 0 || day.getDay() === 6);
-										if (isWeekoff) { label = "Weekoff"; type = "weekoff"; }
+										if (isOnLeave) { label = "Leave"; type = "leave"; }
+										else if (isWeekoff) { label = "Weekoff"; type = "weekoff"; }
 										else if (dateStr < todayStr) { label = "Absent"; type = "absent"; }
 									}
 

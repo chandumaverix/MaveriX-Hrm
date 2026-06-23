@@ -98,6 +98,7 @@ export default function EmployeeAttendancePage() {
 	);
 	const selectedMonth = selectedDate.slice(0, 7);
 	const [isLoading, setIsLoading] = useState(true);
+	const [approvedLeaves, setApprovedLeaves] = useState<any[]>([]);
 	const dateInputRef = useRef<HTMLInputElement>(null);
 
 	useEffect(() => {
@@ -119,7 +120,16 @@ export default function EmployeeAttendancePage() {
 			.lte("date", end)
 			.order("date", { ascending: false });
 
+		const { data: leaves } = await supabase
+			.from("leave_requests")
+			.select("*")
+			.eq("employee_id", employee.id)
+			.eq("status", "approved")
+			.gte("end_date", start)
+			.lte("start_date", end);
+
 		setRecords(data || []);
+		setApprovedLeaves(leaves || []);
 		setIsLoading(false);
 	};
 
@@ -176,12 +186,18 @@ export default function EmployeeAttendancePage() {
 	const days: DayRow[] = dates.map((date) => {
 		const rec = recordByDate.get(date);
 		const dayOfWeek = new Date(date + "T12:00:00").getDay();
+		const isOnLeave = approvedLeaves.some(
+			(leave) => date >= leave.start_date && date <= leave.end_date
+		);
 
 		if (weekOffDay != null && dayOfWeek === weekOffDay) {
 			return { date, status: "week_off" as DayStatus };
 		}
 		if (rec) {
 			return { date, status: rec.status as DayStatus, record: rec };
+		}
+		if (isOnLeave) {
+			return { date, status: "leave" as DayStatus };
 		}
 		return { date, status: "absent" as DayStatus };
 	});

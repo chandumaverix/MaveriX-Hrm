@@ -74,6 +74,7 @@ export default function EmployeeDashboardPage() {
 	);
 	const [recentAttendance, setRecentAttendance] = useState<Attendance[]>([]);
 	const [monthAttendance, setMonthAttendance] = useState<Attendance[]>([]);
+	const [approvedLeaveRecords, setApprovedLeaveRecords] = useState<any[]>([]);
 	const [teamMembers, setTeamMembers] = useState<MinimalTeamMember[]>([]);
 	const [isTeamLoading, setIsTeamLoading] = useState(false);
 	const [stats, setStats] = useState({
@@ -167,17 +168,28 @@ export default function EmployeeDashboardPage() {
 			.eq("status", "pending");
 
 		// Fetch approved leaves this year
-		const { count: approvedLeaves } = await supabase
+		const { count: approvedLeavesCount } = await supabase
 			.from("leave_requests")
 			.select("*", { count: "exact", head: true })
 			.eq("employee_id", employee.id)
 			.eq("status", "approved");
 
+		// Fetch approved leave requests detailed data for current year to check against calendar
+		const yearStart = `${currentYear}-01-01`;
+		const { data: approvedLeaveData } = await supabase
+			.from("leave_requests")
+			.select("*")
+			.eq("employee_id", employee.id)
+			.eq("status", "approved")
+			.gte("end_date", yearStart);
+
+		setApprovedLeaveRecords(approvedLeaveData || []);
+
 		setStats({
 			daysWorked: daysWorked || 0,
 			hoursThisWeek: 0,
 			pendingLeaves: pendingLeaves || 0,
-			approvedLeaves: approvedLeaves || 0,
+			approvedLeaves: approvedLeavesCount || 0,
 		});
 
 		// Fetch minimal team info (first team only, up to a few members + leader)
@@ -970,6 +982,10 @@ export default function EmployeeDashboardPage() {
 									const att = monthAttendanceByDate[dateStr];
 									const hasAttendance = !!att;
 
+									const isOnLeave = approvedLeaveRecords.some(
+										(leave) => dateStr >= leave.start_date && dateStr <= leave.end_date
+									);
+
 									// Determine type and label
 									let label: string | null = null;
 									let type: "present" | "late" | "absent" | "weekoff" | "leave" | null = null;
@@ -991,7 +1007,10 @@ export default function EmployeeDashboardPage() {
 											? day.getDay() === weekOffDay
 											: (day.getDay() === 0 || day.getDay() === 6);
 
-										if (isWeekoff) {
+										if (isOnLeave) {
+											label = "Leave";
+											type = "leave";
+										} else if (isWeekoff) {
 											label = "Weekoff";
 											type = "weekoff";
 										} else if (dateStr < todayStr) {
