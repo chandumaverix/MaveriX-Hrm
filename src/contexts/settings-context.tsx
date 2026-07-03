@@ -7,6 +7,7 @@ import type { Settings } from "@/lib/types";
 interface SettingsContextValue {
 	settings: Settings | null;
 	isLoading: boolean;
+	companyAnniversary: string | null;
 	refreshSettings: () => Promise<void>;
 }
 
@@ -38,11 +39,20 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
 		fetchSettings();
 	}, []);
 
+	const companyAnniversary = (() => {
+		if (!settings || !Array.isArray(settings.company_address)) return null;
+		const item = settings.company_address.find((addr) =>
+			addr.startsWith("ANNIVERSARY:")
+		);
+		return item ? item.replace("ANNIVERSARY:", "") : null;
+	})();
+
 	return (
 		<SettingsContext.Provider
 			value={{
 				settings,
 				isLoading,
+				companyAnniversary,
 				refreshSettings: fetchSettings,
 			}}>
 			{children}

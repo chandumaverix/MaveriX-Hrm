@@ -33,6 +33,7 @@ export default function SettingsPage() {
 		company_name: "",
 		company_logo_url: "",
 		company_address: ["", "", ""],
+		company_anniversary: "",
 	});
 
 	useEffect(() => {
@@ -55,6 +56,13 @@ export default function SettingsPage() {
 		if (settingsData) {
 			const s = settingsData as Settings;
 			setSettings(s);
+			const addr = Array.isArray(s.company_address) ? s.company_address : ["", "", ""];
+			const anniversaryItem = addr.find((item) => item.startsWith("ANNIVERSARY:"));
+			const anniversaryDate = anniversaryItem ? anniversaryItem.replace("ANNIVERSARY:", "") : "";
+			const plainAddress = addr.filter((item) => !item.startsWith("ANNIVERSARY:"));
+			while (plainAddress.length < 3) {
+				plainAddress.push("");
+			}
 			setForm({
 				max_clocking_time: s.max_clocking_time,
 				max_late_days: s.max_late_days.toString(),
@@ -64,9 +72,8 @@ export default function SettingsPage() {
 					s.late_policy_deduction_per_day.toString(),
 				company_name: s.company_name,
 				company_logo_url: s.company_logo_url,
-				company_address: Array.isArray(s.company_address)
-					? s.company_address
-					: ["", "", ""],
+				company_address: plainAddress,
+				company_anniversary: anniversaryDate,
 			});
 		}
 		setLoading(false);
@@ -76,6 +83,12 @@ export default function SettingsPage() {
 		setSaving(true);
 		try {
 			const supabase = createClient();
+			const finalAddress = form.company_address
+				.map((s) => s.trim())
+				.filter(Boolean);
+			if (form.company_anniversary) {
+				finalAddress.push(`ANNIVERSARY:${form.company_anniversary}`);
+			}
 			const payload = {
 				max_clocking_time: form.max_clocking_time.trim(),
 				max_late_days: form.max_late_days,
@@ -86,9 +99,7 @@ export default function SettingsPage() {
 					form.late_policy_deduction_per_day,
 				company_name: form.company_name.trim(),
 				company_logo_url: form.company_logo_url.trim(),
-				company_address: form.company_address
-					.map((s) => s.trim())
-					.filter(Boolean),
+				company_address: finalAddress,
 				updated_at: new Date().toISOString(),
 			};
 			if (settings?.id) {
@@ -285,7 +296,7 @@ export default function SettingsPage() {
 							</CardTitle>
 						</CardHeader>
 						<CardContent className='space-y-4 p-6'>
-							<div className='grid gap-4 md:grid-cols-2'>
+							<div className='grid gap-4 md:grid-cols-3'>
 								<div className='grid gap-2'>
 									<Label htmlFor='company_name' className='text-[10px] font-black uppercase tracking-wider text-slate-450 dark:text-slate-500'>
 										Company Name
@@ -321,6 +332,23 @@ export default function SettingsPage() {
 										className='bg-slate-50/20 dark:bg-slate-950/20 border border-slate-100 dark:border-slate-800/40 text-slate-800 dark:text-slate-200 rounded-xl focus:border-slate-200 focus:ring-0 transition-all h-10 px-3.5'
 									/>
 								</div>
+								<div className='grid gap-2'>
+									<Label htmlFor='company_anniversary' className='text-[10px] font-black uppercase tracking-wider text-slate-450 dark:text-slate-500'>
+										Company Anniversary Date
+									</Label>
+									<Input
+										id='company_anniversary'
+										type='date'
+										value={form.company_anniversary}
+										onChange={(e) =>
+											setForm((f) => ({
+												...f,
+												company_anniversary: e.target.value,
+											}))
+										}
+										className='bg-slate-50/20 dark:bg-slate-950/20 border border-slate-100 dark:border-slate-800/40 text-slate-800 dark:text-slate-200 rounded-xl focus:border-slate-200 focus:ring-0 transition-all h-10 px-3.5'
+									/>
+								</div>
 							</div>
 							<div className='grid gap-2'>
 								<Label className='text-[10px] font-black uppercase tracking-wider text-slate-450 dark:text-slate-500'>Company Address</Label>
@@ -351,7 +379,7 @@ export default function SettingsPage() {
 					<Button
 						onClick={handleSave}
 						disabled={saving}
-						className="rounded-xl h-10 px-4 text-xs font-black uppercase tracking-wider bg-slate-850 text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-50 transition-all active:scale-[0.98]">
+						className="rounded-xl h-10 px-4 text-xs font-black uppercase tracking-wider bg-slate-800 text-white hover:bg-slate-900 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-50 transition-all active:scale-[0.98]">
 						{saving ? (
 							<>
 								<Loader2 className='mr-2 h-4 w-4 animate-spin' />

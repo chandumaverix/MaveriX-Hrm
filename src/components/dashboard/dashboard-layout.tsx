@@ -7,6 +7,7 @@ import { AnnouncementProvider } from "@/components/announcement/announcement-pro
 import { BirthdayProvider } from "@/components/birthday/birthday-provider";
 import { AnniversaryProvider } from "@/components/anniversary/anniversary-provider";
 import { SettingsProvider } from "@/contexts/settings-context";
+import { CompanyAnniversaryCelebrator } from "@/components/company-anniversary/company-anniversary-celebrator";
 import { useUser } from "../../contexts/user-context";
 import { Loader2, Lock } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
@@ -65,17 +66,19 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
 
 	return (
 		<SettingsProvider>
-			<div className='flex min-h-screen bg-[#f8fafc] dark:bg-slate-950'>
-				<DashboardSidebar />
-				<main className='min-h-screen flex-1 pb-24 md:ml-64 md:pb-0 flex flex-col min-w-0'>
-					<AnniversaryProvider>
-						<BirthdayProvider>
-							<AnnouncementProvider>{children}</AnnouncementProvider>
-						</BirthdayProvider>
-					</AnniversaryProvider>
-				</main>
-				<MobileBottomNav />
-			</div>
+			<CompanyAnniversaryCelebrator>
+				<div className='flex min-h-screen bg-[#f8fafc] dark:bg-slate-950'>
+					<DashboardSidebar />
+					<main className='min-h-screen flex-1 pb-24 md:ml-64 md:pb-0 flex flex-col min-w-0'>
+						<AnniversaryProvider>
+							<BirthdayProvider>
+								<AnnouncementProvider>{children}</AnnouncementProvider>
+							</BirthdayProvider>
+						</AnniversaryProvider>
+					</main>
+					<MobileBottomNav />
+				</div>
+			</CompanyAnniversaryCelebrator>
 		</SettingsProvider>
 	);
 }

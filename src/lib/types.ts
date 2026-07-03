@@ -191,6 +191,7 @@ export interface Settings {
 	company_name: string;
 	company_logo_url: string;
 	company_address: string[];
+	company_anniversary?: string;
 	updated_at: string;
 }
 

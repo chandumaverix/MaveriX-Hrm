@@ -10,7 +10,7 @@ export const OFFICE_LOCATION = {
 
 // Company info for salary slips and other documents.
 export const companyConfig = {
-	name: "Mavericks and Musers Media Pvt. Ltd.",
+	name: "Mavericks and Musers Media PVT. LTD.",
 	logoUrl: "/paysliplogo.png",
 	address: [
 		"79A, B Block Shyam Nagar",

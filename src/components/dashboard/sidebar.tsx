@@ -301,7 +301,13 @@ export function DashboardSidebar() {
 		: "U";
 
 	return (
-		<aside className='fixed left-0 top-0 z-40 hidden h-screen w-64 flex-col bg-white text-slate-800 border-r border-slate-100 md:flex shadow-[4px_0_24px_rgba(0,0,0,0.01)]'>
+		<aside 
+			className='fixed left-0 z-40 hidden w-64 flex-col bg-white text-slate-800 border-r border-slate-100 md:flex shadow-[4px_0_24px_rgba(0,0,0,0.01)]'
+			style={{
+				top: "var(--anniversary-banner-height, 0px)",
+				height: "calc(100vh - var(--anniversary-banner-height, 0px))"
+			}}
+		>
 			{/* Logo */}
 			<div className='flex items-center justify-between h-16 border-b border-slate-100 px-5'>
 				<div className="flex items-center gap-2">

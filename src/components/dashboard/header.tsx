@@ -126,7 +126,12 @@ export function DashboardHeader({
 
 	return (
 		<>
-			<header className="sticky top-0 z-30 flex h-16 items-center justify-between gap-4 border-b border-slate-100 bg-white/95 dark:bg-slate-900/95 dark:border-slate-800/40 px-4 md:px-6 backdrop-blur shadow-[0_2px_12px_rgba(0,0,0,0.015)]">
+			<header 
+				className="sticky z-30 flex h-16 items-center justify-between gap-4 border-b border-slate-100 bg-white/95 dark:bg-slate-900/95 dark:border-slate-800/40 px-4 md:px-6 backdrop-blur shadow-[0_2px_12px_rgba(0,0,0,0.015)]"
+				style={{
+					top: "var(--anniversary-banner-height, 0px)"
+				}}
+			>
 				<div className="flex min-w-0 flex-1 justify-between items-center gap-3">
 					{/* Logo on mobile (sidebar hidden); matches sidebar branding */}
 					<div className="flex shrink-0 items-center gap-2 md:hidden">
