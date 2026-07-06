@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { useUser } from "@/contexts/user-context";
 import { OFFICE_LOCATION } from "@/lib/constant";
 import { determineAttendanceStatus } from "@/lib/utils";
+import { updateGPSLocation } from "@/lib/locationCache";
 import { toast } from "react-hot-toast";
 import {
 	Users,
@@ -704,6 +705,7 @@ export default function HRDashboardPage() {
 		navigator.geolocation.getCurrentPosition(
 			(position) => {
 				const { latitude, longitude } = position.coords;
+				updateGPSLocation(latitude, longitude);
 				const distance = getDistanceInMeters(latitude, longitude, OFFICE_LOCATION.lat, OFFICE_LOCATION.lng);
 				const withinRadius = distance <= 50;
 				setIsLocationAllowed(withinRadius);

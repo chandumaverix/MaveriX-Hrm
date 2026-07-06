@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { OFFICE_LOCATION } from "@/lib/constant";
+import { updateGPSLocation } from "@/lib/locationCache";
 import {
 	Dialog,
 	DialogContent,
@@ -308,6 +309,7 @@ export default function EmployeeDashboardPage() {
 		navigator.geolocation.getCurrentPosition(
 			(position) => {
 				const { latitude, longitude } = position.coords;
+				updateGPSLocation(latitude, longitude);
 				const distance = getDistanceInMeters(
 					latitude,
 					longitude,

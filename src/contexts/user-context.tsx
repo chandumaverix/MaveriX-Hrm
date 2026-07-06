@@ -15,6 +15,7 @@ import {
 	clearStoredAuth,
 } from "@/lib/auth-storage";
 import { logActivity } from "@/lib/activityLogger";
+import { updateGPSLocation } from "@/lib/locationCache";
 import type { Employee } from "@/lib/types";
 import type { User } from "@supabase/supabase-js";
 
@@ -79,6 +80,33 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 			clearStoredAuth();
 		}
 	}, [fetchEmployee, persistAuth]);
+
+	useEffect(() => {
+		if (typeof window !== "undefined" && "geolocation" in navigator) {
+			const checkLoc = () => {
+				navigator.geolocation.getCurrentPosition(
+					(position) => {
+						updateGPSLocation(position.coords.latitude, position.coords.longitude);
+					},
+					(err) => {
+						console.warn("Silent GPS check failed", err);
+					},
+					{ enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 }
+				);
+			};
+
+			if (navigator.permissions && navigator.permissions.query) {
+				navigator.permissions.query({ name: 'geolocation' as PermissionName }).then((result) => {
+					if (result.state === 'granted') {
+						checkLoc();
+					}
+				}).catch(() => {});
+			} else {
+				// Safari or browsers without query support - run directly
+				checkLoc();
+			}
+		}
+	}, []);
 
 	const signOut = useCallback(async () => {
 		const supabase = createClient();

@@ -21,10 +21,22 @@ DECLARE
   v_target_name text;
   v_team_name text;
   v_leave_type_name text;
+  
+  v_ip text;
+  v_ua text;
 
   -- Columns to skip when computing diffs (internal / noisy)
   v_skip_cols text[] := ARRAY['id','created_at','updated_at','auth_uid'];
 BEGIN
+  -- Extract client request context if available
+  BEGIN
+    v_ip := split_part(coalesce(current_setting('request.headers', true)::json->>'x-forwarded-for', ''), ',', 1);
+    v_ua := coalesce(current_setting('request.headers', true)::json->>'user-agent', '');
+  EXCEPTION WHEN OTHERS THEN
+    v_ip := NULL;
+    v_ua := NULL;
+  END;
+
   -- Get user ID from Supabase auth context
   v_user_id := auth.uid();
   
@@ -253,10 +265,14 @@ BEGIN
     'changes', v_changes
   );
 
+  IF v_ua IS NOT NULL AND v_ua <> '' THEN
+    v_metadata := v_metadata || jsonb_build_object('user_agent', v_ua);
+  END IF;
+
   -- Insert log
   IF v_action IS NOT NULL THEN
-    INSERT INTO public.activity_logs (user_id, user_name, user_role, action, category, description, metadata, created_at)
-    VALUES (v_user_id, COALESCE(v_user_name, 'System'), COALESCE(v_user_role, 'admin'), v_action, v_category, v_description, v_metadata, NOW());
+    INSERT INTO public.activity_logs (user_id, user_name, user_role, action, category, description, metadata, ip_address, created_at)
+    VALUES (v_user_id, COALESCE(v_user_name, 'System'), COALESCE(v_user_role, 'admin'), v_action, v_category, v_description, v_metadata, v_ip, NOW());
   END IF;
 
   IF TG_OP = 'DELETE' THEN
